@@ -72,6 +72,32 @@ class MemePipeline:
             self.generator = MemeImageGenerator(output_dir=self.config.output_dir)
         return self.generator
 
+    def _generate_query_angles(self, topic: str, num_angles: int) -> list[str]:
+        """Generate diverse query angles to get varied RAG context per batch."""
+        if num_angles <= 1:
+            return [topic]
+
+        prompt = f"""Given this bluegrass meme topic: "{topic}"
+
+Generate {num_angles} different specific angles/sub-topics to explore.
+Each should pull from DIFFERENT aspects of bluegrass history:
+- Different eras (1940s-50s origins, 1960s folk revival, 1970s newgrass, modern)
+- Different regions (Appalachia, Nashville, California, urban scenes)
+- Different people (legends, sidemen, fans, promoters)
+- Different situations (festivals, jam sessions, recording, touring)
+
+Return just the angles, one per line, no numbering. Make them specific search queries."""
+
+        response = self.rag.grok._chat([
+            {"role": "user", "content": prompt}
+        ], max_tokens=300, temperature=0.9)
+
+        angles = [a.strip() for a in response.strip().split('\n') if a.strip()]
+        # Always include original topic as fallback
+        if topic not in angles:
+            angles.insert(0, topic)
+        return angles[:num_angles]
+
     def generate_concepts(
         self,
         topic: str,
@@ -96,6 +122,9 @@ class MemePipeline:
         all_concepts = []
         batches_needed = (num_concepts + concepts_per_batch - 1) // concepts_per_batch
 
+        # Generate diverse query angles for each batch
+        query_angles = self._generate_query_angles(topic, batches_needed)
+
         print(f"Generating {num_concepts} concepts in {batches_needed} batches...")
 
         for batch_num in range(batches_needed):
@@ -105,9 +134,12 @@ class MemePipeline:
             if batch_size <= 0:
                 break
 
-            # Get fresh context for variety
+            # Use different query angle for each batch to get diverse context
+            query = query_angles[batch_num] if batch_num < len(query_angles) else topic
+            print(f"    Query angle: {query}")
+
             context = self.rag.get_context(
-                topic,
+                query,
                 k=self.config.num_context_chunks,
             )
 
@@ -163,27 +195,30 @@ CONTEXT FROM BLUEGRASS UNLIMITED ARCHIVES:
 
 {template_catalog}
 
-Generate {num_ideas} diverse meme concepts. Use different templates for variety.
-Pick templates that best fit each joke's structure.
+Generate {num_ideas} diverse meme concepts. EACH MEME MUST BE A DIFFERENT TYPE OF JOKE:
+- Don't make multiple memes about the same subject (e.g., not all about instrument rivalries)
+- Mix up joke structures: observational, absurdist, wholesome, self-deprecating, historical
+- Reference DIFFERENT artists, eras, or situations in each meme
 
-BE CREATIVE AND TAKE RISKS. Avoid obvious jokes. Go for unexpected humor.
+Pick templates that best fit each joke's structure.
 TRY LESS COMMON TEMPLATES - don't just use Drake/Distracted Boyfriend every time!
 
 Use this EXACT format for each (no markdown):
 
 FORMAT: exact template name from list above
-TOP_TEXT: the top text (for 2-box templates)
-BOTTOM_TEXT: the bottom text (for 2-box templates)
+TOP_TEXT: see template description for what goes here
+BOTTOM_TEXT: see template description for what goes here
 EXPLANATION: why funny to bluegrass fans
 SOURCE_QUOTE: quote/fact that inspired this
 ARTIST_REFERENCE: artist(s) referenced
 
-FOR MULTI-PANEL TEMPLATES (3+ boxes like Expanding Brain, Panik Kalm Panik, Gru's Plan):
-- Put panel 1 in TOP_TEXT
-- Put remaining panels in BOTTOM_TEXT, separated by " / "
-- Example for Expanding Brain (4 boxes):
-  TOP_TEXT: First level idea
-  BOTTOM_TEXT: Second level / Third level / Fourth galaxy brain level
+IMPORTANT: Each template description tells you EXACTLY what TOP_TEXT and BOTTOM_TEXT mean for that template.
+Follow the box order precisely! For example:
+- Epic Handshake: TOP_TEXT=left arm label, BOTTOM_TEXT=right arm label / middle handshake text
+- Expanding Brain: TOP_TEXT=level 1, BOTTOM_TEXT=level 2 / level 3 / level 4
+- Gru's Plan: TOP_TEXT=step 1, BOTTOM_TEXT=step 2 / step 3 / step 4 (backfire)
+
+For multi-panel templates, separate panels in BOTTOM_TEXT with " / "
 
 ---
 

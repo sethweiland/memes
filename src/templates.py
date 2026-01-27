@@ -11,6 +11,15 @@ from pathlib import Path
 import httpx
 
 
+def _load_extra_descriptions() -> dict[str, str]:
+    """Load additional template descriptions from JSON file."""
+    extra_path = Path("data/new_template_descriptions.json")
+    if extra_path.exists():
+        with open(extra_path) as f:
+            return json.load(f)
+    return {}
+
+
 @dataclass
 class MemeTemplate:
     """A meme template from imgflip."""
@@ -31,37 +40,41 @@ class MemeTemplate:
 
 # Hand-written descriptions for popular templates to help Grok understand them
 TEMPLATE_DESCRIPTIONS = {
-    "Drake Hotline Bling": "Two panels: top shows Drake dismissing something, bottom shows Drake approving something. Use for 'thing I don't want' vs 'thing I prefer'.",
-    "Two Buttons": "Sweating person must choose between two buttons. Use for difficult choices or dilemmas.",
-    "Distracted Boyfriend": "Guy looking at another woman while girlfriend looks angry. Use for being tempted by something new over what you have.",
-    "Change My Mind": "Person sitting at table with sign. Use for controversial or stubborn opinions.",
-    "Expanding Brain": "4 panels showing increasingly 'galaxy brain' ideas. Use for escalating absurdity.",
-    "Is This A Pigeon?": "Anime character pointing at butterfly asking 'Is this a pigeon?'. Use for misidentifying something obvious.",
-    "One Does Not Simply": "Boromir explaining something is not simple. Use for things that are harder than they seem.",
-    "Batman Slapping Robin": "Batman slapping Robin mid-sentence. Use for shutting down bad takes.",
-    "Left Exit 12 Off Ramp": "Car swerving to exit. Use for choosing an unexpected/worse option.",
-    "Waiting Skeleton": "Skeleton on bench. Use for waiting forever for something.",
-    "Roll Safe": "Guy tapping head smugly. Use for 'clever' logic that's actually dumb.",
-    "Ancient Aliens": "History channel guy with wild hair. Use for absurd explanations.",
-    "Surprised Pikachu": "Pikachu with shocked face. Use for obvious consequences someone didn't expect.",
-    "Woman Yelling At Cat": "Two panels: angry woman pointing, confused cat at dinner table. Use for arguments where one side is unreasonable.",
-    "They're The Same Picture": "Office scene comparing two pictures. Use for things that are identical despite claims otherwise.",
-    "Buff Doge vs. Cheems": "Strong doge vs weak doge. Use for 'then vs now' or comparing strong/weak versions.",
-    "Gru's Plan": "4 panels: Gru presents plan, realizes flaw. Use for plans that backfire.",
-    "Always Has Been": "Astronaut pointing gun at another astronaut. 'Wait, it's all X?' 'Always has been.'",
-    "Panik Kalm Panik": "3 panels showing panic, calm, then panic again. Use for false sense of security.",
-    "Tuxedo Winnie The Pooh": "Regular Pooh vs fancy Pooh. Use for basic vs sophisticated versions of same thing.",
-    "Bernie Sanders Once Again Asking": "Bernie at podium. Use for repeatedly asking for something.",
-    "Boardroom Meeting Suggestion": "Person thrown out window for suggestion. Use for rejecting good ideas.",
-    "Disaster Girl": "Girl smiling in front of fire. Use for causing chaos and being pleased about it.",
-    "Hide the Pain Harold": "Old man with forced smile hiding pain. Use for pretending everything is fine.",
-    "Monkey Puppet": "Puppet looking away awkwardly. Use for avoiding uncomfortable truths.",
-    "Spider-Man Pointing": "Two Spider-Men pointing at each other. Use for two things that are the same.",
-    "This Is Fine": "Dog in burning room saying 'this is fine'. Use for ignoring obvious problems.",
-    "Sad Pablo Escobar": "Pablo Escobar waiting alone. Use for loneliness or waiting.",
-    "Epic Handshake": "Two arms clasping in agreement. Use for unlikely allies or shared opinions.",
-    "UNO Draw 25": "Choice between doing something or drawing 25 cards. Use for refusing to do something easy.",
+    "Drake Hotline Bling": "TOP_TEXT=thing rejected, BOTTOM_TEXT=thing approved. Drake dismisses top, approves bottom.",
+    "Two Buttons": "TOP_TEXT=button 1 choice, BOTTOM_TEXT=button 2 choice. Sweating over difficult decision.",
+    "Distracted Boyfriend": "TOP_TEXT=boyfriend label, BOTTOM_TEXT=other woman label / girlfriend label. Guy tempted by new thing over current thing.",
+    "Change My Mind": "TOP_TEXT=controversial opinion on the sign, BOTTOM_TEXT=not used. Person at table daring others to disagree.",
+    "Expanding Brain": "TOP_TEXT=basic level 1, BOTTOM_TEXT=level 2 / level 3 / galaxy brain level 4. Escalating absurdity.",
+    "Is This A Pigeon?": "TOP_TEXT=what they're misidentifying, BOTTOM_TEXT=what they wrongly call it. Obvious misidentification.",
+    "One Does Not Simply": "TOP_TEXT='One does not simply', BOTTOM_TEXT=thing that's harder than it seems.",
+    "Batman Slapping Robin": "TOP_TEXT=Robin's bad take (cut off mid-sentence), BOTTOM_TEXT=Batman's correction. Shutting down bad opinions.",
+    "Left Exit 12 Off Ramp": "TOP_TEXT=sensible path, BOTTOM_TEXT=exit sign / car label. Choosing unexpected/worse option.",
+    "Waiting Skeleton": "TOP_TEXT=what you're waiting for, BOTTOM_TEXT=optional extra context. Waiting forever.",
+    "Roll Safe": "TOP_TEXT=flawed 'clever' logic, BOTTOM_TEXT=not used. Guy tapping head smugly.",
+    "Ancient Aliens": "TOP_TEXT=thing being explained, BOTTOM_TEXT='Aliens' or absurd explanation.",
+    "Surprised Pikachu": "TOP_TEXT=action taken, BOTTOM_TEXT=obvious consequence. Shocked at predictable outcome.",
+    "Woman Yelling At Cat": "TOP_TEXT=angry woman's complaint, BOTTOM_TEXT=cat's confused response. One side unreasonable.",
+    "They're The Same Picture": "TOP_TEXT=thing 1, BOTTOM_TEXT=thing 2. Pam says they're identical.",
+    "Buff Doge vs. Cheems": "TOP_TEXT=strong/old version label, BOTTOM_TEXT=weak/new version label. Then vs now comparison.",
+    "Gru's Plan": "TOP_TEXT=step 1 of plan, BOTTOM_TEXT=step 2 / step 3 / step 4 (the backfire). Plan goes wrong.",
+    "Always Has Been": "TOP_TEXT='Wait, it's all X?', BOTTOM_TEXT='Always has been.' Astronaut with gun reveal.",
+    "Panik Kalm Panik": "TOP_TEXT=first panic, BOTTOM_TEXT=calm / second panic. False sense of security.",
+    "Tuxedo Winnie The Pooh": "TOP_TEXT=basic/crude version, BOTTOM_TEXT=fancy/sophisticated version.",
+    "Bernie Sanders Once Again Asking": "TOP_TEXT=not used, BOTTOM_TEXT=what Bernie is asking for repeatedly.",
+    "Boardroom Meeting Suggestion": "TOP_TEXT=question asked, BOTTOM_TEXT=suggestion 1 / suggestion 2 / good idea that gets rejected.",
+    "Disaster Girl": "TOP_TEXT=chaos happening, BOTTOM_TEXT=not used. Girl smiling at destruction she caused.",
+    "Hide the Pain Harold": "TOP_TEXT=painful situation, BOTTOM_TEXT=not used. Forced smile hiding pain.",
+    "Monkey Puppet": "TOP_TEXT=uncomfortable truth, BOTTOM_TEXT=not used. Looking away awkwardly.",
+    "Spider-Man Pointing": "TOP_TEXT=first thing, BOTTOM_TEXT=second identical thing. Two same things pointing at each other.",
+    "This Is Fine": "TOP_TEXT=disaster happening around you, BOTTOM_TEXT='This is fine' or similar denial.",
+    "Sad Pablo Escobar": "TOP_TEXT=what you're waiting for, BOTTOM_TEXT=still waiting / alone. Loneliness and waiting.",
+    "Epic Handshake": "TOP_TEXT=group 1 (left arm), BOTTOM_TEXT=group 2 (right arm) / what they agree on (middle handshake).",
+    "UNO Draw 25": "TOP_TEXT=easy thing they refuse to do, BOTTOM_TEXT=drawing 25 cards instead.",
+    "Trade Offer": "TOP_TEXT=what you receive, BOTTOM_TEXT=what I receive. Transaction proposal.",
 }
+
+# Merge in additional descriptions from generated JSON
+TEMPLATE_DESCRIPTIONS.update(_load_extra_descriptions())
 
 
 class TemplatesCatalog:
