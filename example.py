@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """
-Example usage of the Bluegrass RAG pipeline.
+Example usage of the Domain-Agnostic Meme Generator.
+
+This example uses the bluegrass domain, but the same patterns work
+for any configured domain.
 
 Before running:
 1. Install dependencies: pip install -r requirements.txt
 2. Set up .env file with API keys:
    OPENAI_API_KEY=your_openai_key
    XAI_API_KEY=your_xai_key
+   IMGFLIP_USERNAME=your_username
+   IMGFLIP_PASSWORD=your_password
 """
 
-from src.rag import BluegrassRAG
+from src.config import load_domain
+from src.core.rag import DomainRAG
+from src.core.retriever import DomainRetriever
+from src.core.pipeline import MemePipeline, PipelineConfig
 
 
 def example_indexing():
@@ -18,7 +26,8 @@ def example_indexing():
     print("INDEXING ARTICLES")
     print("=" * 60)
 
-    rag = BluegrassRAG()
+    config = load_domain("bluegrass")
+    rag = DomainRAG(config)
 
     # Index articles (only needs to be done once)
     chunk_count = rag.index_articles(
@@ -36,7 +45,8 @@ def example_search():
     print("SEARCH EXAMPLES")
     print("=" * 60)
 
-    rag = BluegrassRAG()
+    config = load_domain("bluegrass")
+    rag = DomainRAG(config)
 
     # Basic search
     print("\n--- Basic Search: 'Earl Scruggs banjo' ---")
@@ -82,7 +92,8 @@ def example_meme_generation():
     print("MEME GENERATION")
     print("=" * 60)
 
-    rag = BluegrassRAG()
+    config = load_domain("bluegrass")
+    rag = DomainRAG(config)
 
     # Generate meme ideas
     print("\n--- Generating memes for: 'Bill Monroe being stubborn about what counts as bluegrass' ---")
@@ -109,13 +120,45 @@ def example_meme_generation():
         print(f"Grok API error (check XAI_API_KEY): {e}")
 
 
+def example_pipeline():
+    """Run the full meme generation pipeline."""
+    print("\n" + "=" * 60)
+    print("FULL PIPELINE")
+    print("=" * 60)
+
+    config = load_domain("bluegrass")
+    pipeline_config = PipelineConfig(
+        num_concepts=5,    # How many ideas to generate
+        num_images=2,      # How many to render
+        creativity=1.2,    # 0.0-1.5, higher = more creative
+    )
+
+    pipeline = MemePipeline(config, pipeline_config)
+
+    print("\n--- Running pipeline for: 'banjo players at jam sessions' ---")
+
+    try:
+        result = pipeline.run("banjo players at jam sessions")
+
+        print(f"\nGenerated {len(result.top_memes)} memes:")
+        for i, meme in enumerate(result.top_memes, 1):
+            print(f"\n{i}. {meme['template']}")
+            print(f"   Top: {meme['top_text']}")
+            print(f"   Bottom: {meme['bottom_text']}")
+            print(f"   Image: {meme['local_path']}")
+
+    except Exception as e:
+        print(f"Pipeline error: {e}")
+
+
 def example_brainstorm():
     """Brainstorm meme topics from the archive."""
     print("\n" + "=" * 60)
     print("TOPIC BRAINSTORMING")
     print("=" * 60)
 
-    rag = BluegrassRAG()
+    config = load_domain("bluegrass")
+    rag = DomainRAG(config)
 
     try:
         print("\n--- Brainstorming meme topics ---")
@@ -138,9 +181,8 @@ def example_query_expansion():
     print("QUERY EXPANSION")
     print("=" * 60)
 
-    from src.retriever import BluegrassRetriever
-
-    retriever = BluegrassRetriever()
+    config = load_domain("bluegrass")
+    retriever = DomainRetriever(config)
 
     queries = [
         "weird banjo players",
@@ -163,6 +205,7 @@ if __name__ == "__main__":
         "index": example_indexing,
         "search": example_search,
         "meme": example_meme_generation,
+        "pipeline": example_pipeline,
         "brainstorm": example_brainstorm,
         "expand": example_query_expansion,
         "all": lambda: [f() for f in [
@@ -182,13 +225,14 @@ if __name__ == "__main__":
             print(f"Unknown example: {example_name}")
             print(f"Available: {', '.join(examples.keys())}")
     else:
-        print("Bluegrass RAG Examples")
+        print("Domain-Agnostic Meme Generator Examples")
         print("=" * 60)
         print("\nUsage: python example.py <example>")
         print("\nAvailable examples:")
         print("  index     - Index articles into vector store")
         print("  search    - Demonstrate search capabilities")
         print("  meme      - Generate meme ideas")
+        print("  pipeline  - Run full meme generation pipeline")
         print("  brainstorm - Brainstorm meme topics")
         print("  expand    - Show query expansion")
         print("  all       - Run all examples")
