@@ -4,18 +4,33 @@ __pycache__/
 *$py.class
 *.so
 .Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
 venv/
 env/
 .venv/
+.conda/
+
+# Environment variables (contains API keys)
 .env
 
-# Data files (too large for git)
+# Data files - indexes are large and machine-generated
+# Old structure (deprecated)
 data/chroma/
 data/bm25_index.pkl
+# New domain-specific structure
+data/*/chroma/
+data/*/bm25_index.pkl
+# Template cache
 data/meme_templates.json
 data/meme_templates_expanded.json
 
-# Output files
+# Output files (generated memes)
 output/
 
 # IDE
@@ -23,10 +38,29 @@ output/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

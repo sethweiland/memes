@@ -1,0 +1,10 @@
+Based on these {{ domain.display_name | lower }} articles, suggest {{ num_topics }} funny meme topics.
+
+{{ context_text }}
+
+Focus on:
+{% for focus in domain.humor_focus %}
+- {{ focus }}
+{% endfor %}
+
+Return just the topics, one per line, no numbering.

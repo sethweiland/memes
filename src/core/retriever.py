@@ -1,13 +1,18 @@
 """
 Retriever with hybrid search, query expansion, and reranking.
+Domain-agnostic version that uses prompt templates.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 from openai import OpenAI
 
-from .vectorstore import BluegrassVectorStore
+from .vectorstore import DomainVectorStore
+
+if TYPE_CHECKING:
+    from ..config.domain_config import DomainConfig
+    from ..config.prompt_templates import PromptTemplates
 
 
 @dataclass
@@ -21,17 +26,28 @@ class RetrievalResult:
     combined_score: float = 0.0
 
 
-class BluegrassRetriever:
+class DomainRetriever:
     """
     Hybrid retriever combining semantic and keyword search with reranking.
+
+    Uses domain configuration and prompt templates for query expansion.
     """
 
-    def __init__(self, vectorstore: Optional[BluegrassVectorStore] = None):
+    def __init__(
+        self,
+        domain_config: "DomainConfig",
+        vectorstore: Optional[DomainVectorStore] = None,
+        prompt_templates: Optional["PromptTemplates"] = None,
+    ):
         """
         Args:
+            domain_config: Domain configuration
             vectorstore: Existing vectorstore instance, or creates new one
+            prompt_templates: Prompt templates for query expansion
         """
-        self.vectorstore = vectorstore or BluegrassVectorStore()
+        self.domain = domain_config
+        self.vectorstore = vectorstore or DomainVectorStore(domain_config)
+        self.prompts = prompt_templates
         self.openai_client = OpenAI()
 
     def expand_query(self, query: str, num_variants: int = 3) -> list[str]:
@@ -45,7 +61,16 @@ class BluegrassRetriever:
         Returns:
             List of query variants including original
         """
-        prompt = f"""Generate {num_variants} alternative search queries for finding bluegrass music articles.
+        # Use prompt template if available
+        if self.prompts and self.prompts.has_template("query_expansion"):
+            prompt = self.prompts.render(
+                "query_expansion",
+                query=query,
+                num_variants=num_variants,
+            )
+        else:
+            # Fallback to generic prompt
+            prompt = f"""Generate {num_variants} alternative search queries for finding {self.domain.display_name.lower()} articles.
 Original query: "{query}"
 
 Generate queries that:
@@ -65,7 +90,6 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         variants = response.choices[0].message.content.strip().split('\n')
         variants = [v.strip() for v in variants if v.strip()]
 
-        # Include original query
         return [query] + variants[:num_variants]
 
     def _normalize_scores(self, scores: list[float]) -> list[float]:
@@ -82,11 +106,12 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         """
         Build ChromaDB where filter from user-friendly filter dict.
 
-        Supported filters:
+        Supported filters (passed to ChromaDB):
             - artist: str - Filter by artist subject
-            - instrument: str - Filter by instrument mentioned
             - year_range: tuple[int, int] - Filter by year range
-            - topic: str - Filter by topic
+
+        Note: instrument and topic filters are handled via post-filtering
+        since ChromaDB doesn't support substring matching.
         """
         conditions = []
 
@@ -94,9 +119,6 @@ Return ONLY the queries, one per line, no numbering or bullets."""
             conditions.append({
                 "artist_subject": {"$eq": filters['artist']}
             })
-
-        # Note: instrument and topic filters handled via post-filtering
-        # since ChromaDB doesn't support substring matching
 
         if 'year_range' in filters and filters['year_range']:
             start_year, end_year = filters['year_range']
@@ -114,7 +136,13 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         results: list[RetrievalResult],
         filters: dict
     ) -> list[RetrievalResult]:
-        """Apply filters that require substring matching."""
+        """
+        Apply filters that require substring matching (not supported by ChromaDB).
+
+        Filters handled here:
+            - instrument: str - Filter by instrument mentioned in metadata
+            - topic: str - Filter by topic mentioned in metadata
+        """
         filtered = results
 
         if 'instrument' in filters and filters['instrument']:
@@ -156,17 +184,12 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         Returns:
             List of RetrievalResult objects, ranked by combined score
         """
-        # Expand query if requested
         queries = self.expand_query(query) if expand_query else [query]
-
-        # Build ChromaDB filter
         chroma_filter = self._build_chroma_filter(filters) if filters else None
 
-        # Collect results from all queries
         all_results: dict[str, RetrievalResult] = {}
 
         for q in queries:
-            # Semantic search
             semantic_results = self.vectorstore.semantic_search(
                 q, k=k * 2, where=chroma_filter
             )
@@ -177,13 +200,11 @@ Return ONLY the queries, one per line, no numbering or bullets."""
                         text=r['text'],
                         metadata=r['metadata'],
                     )
-                # Take max semantic score across query variants
                 all_results[r['id']].semantic_score = max(
                     all_results[r['id']].semantic_score,
                     r['score']
                 )
 
-            # Keyword search (no filtering support in BM25)
             keyword_results = self.vectorstore.keyword_search(q, k=k * 2)
             for r in keyword_results:
                 if r['id'] not in all_results:
@@ -192,13 +213,11 @@ Return ONLY the queries, one per line, no numbering or bullets."""
                         text=r['text'],
                         metadata=r['metadata'],
                     )
-                # Take max keyword score across query variants
                 all_results[r['id']].keyword_score = max(
                     all_results[r['id']].keyword_score,
                     r['score']
                 )
 
-        # Normalize scores
         results = list(all_results.values())
         if not results:
             return []
@@ -209,14 +228,12 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         norm_semantic = self._normalize_scores(semantic_scores)
         norm_keyword = self._normalize_scores(keyword_scores)
 
-        # Calculate combined scores
         for i, r in enumerate(results):
             r.combined_score = (
                 semantic_weight * norm_semantic[i] +
                 keyword_weight * norm_keyword[i]
             )
 
-        # Sort by combined score and return top k
         results.sort(key=lambda x: x.combined_score, reverse=True)
 
         # Apply post-filters for instrument/topic (not supported by ChromaDB)
@@ -230,21 +247,11 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         results: list[RetrievalResult],
         similarity_threshold: float = 0.9,
     ) -> list[RetrievalResult]:
-        """
-        Remove near-duplicate results based on text similarity.
-
-        Args:
-            results: List of results to deduplicate
-            similarity_threshold: Jaccard similarity threshold for deduplication
-
-        Returns:
-            Deduplicated list of results
-        """
+        """Remove near-duplicate results based on text similarity."""
         if len(results) <= 1:
             return results
 
         def jaccard_similarity(text1: str, text2: str) -> float:
-            """Calculate Jaccard similarity between two texts."""
             words1 = set(text1.lower().split())
             words2 = set(text2.lower().split())
             intersection = words1 & words2
@@ -264,9 +271,9 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         return deduplicated
 
     def search_by_artist(self, artist: str, k: int = 10) -> list[RetrievalResult]:
-        """Search for content about a specific artist."""
+        """Search for content about a specific artist/entity."""
         return self.hybrid_search(
-            f"{artist} bluegrass music stories",
+            f"{artist} {self.domain.display_name.lower()} stories",
             k=k,
             filters={"artist": artist}
         )
@@ -277,7 +284,7 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         query: str = "",
         k: int = 10
     ) -> list[RetrievalResult]:
-        """Search for content about a specific instrument."""
+        """Search for content about a specific instrument/category."""
         search_query = f"{instrument} {query}" if query else f"{instrument} technique stories"
         return self.hybrid_search(
             search_query,
@@ -293,7 +300,7 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         k: int = 10
     ) -> list[RetrievalResult]:
         """Search for content from a specific era."""
-        search_query = query or "bluegrass history stories"
+        search_query = query or f"{self.domain.display_name.lower()} history stories"
         return self.hybrid_search(
             search_query,
             k=k,
@@ -301,11 +308,5 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         )
 
 
-if __name__ == "__main__":
-    # Quick test
-    retriever = BluegrassRetriever()
-    print("Retriever initialized")
-
-    # Test query expansion
-    expanded = retriever.expand_query("weird banjo players")
-    print(f"Query expansion: {expanded}")
+# Backward compatibility alias
+BluegrassRetriever = DomainRetriever
