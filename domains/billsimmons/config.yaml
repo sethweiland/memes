@@ -101,4 +101,40 @@ humor_focus:
   - LeBron relitigations
   - Book of Basketball pyramid debates
   - Pronunciation quirks (Westbrook, etc.)
-  - "Top 11" style arbitrary rankings
+  - Top 11 style arbitrary rankings
+
+# Evaluation criteria for two-stage generation
+evaluation_criteria:
+  - name: source_accuracy
+    display_name: Reference Accuracy
+    description: Is this referencing a real Bill Simmons moment, take, or behavior?
+    weight: 0.35
+    low_score_note: "intentional exaggeration?"
+    scoring_guide:
+      low: "Made up, not actually something Bill said/did"
+      medium: "Partially accurate or exaggerated reference"
+      high: "Completely accurate, real quote/moment/behavior"
+
+  - name: cultural_legitimacy
+    display_name: Fan Recognition
+    description: Would actual Bill Simmons listeners recognize and appreciate this?
+    weight: 0.30
+    scoring_guide:
+      low: "Generic sports joke, non-listeners wouldn't get it"
+      medium: "Somewhat BS-specific, casual fans might get it"
+      high: "Deep cut that r/billsimmons would love"
+
+  - name: humor
+    display_name: Humor
+    description: Is it actually funny?
+    weight: 0.35
+    scoring_guide:
+      low: "Not funny, forced, doesn't land"
+      medium: "Mildly amusing"
+      high: "Hilarious, would go viral on sports Twitter"
+
+# Flag memes as potential exaggeration when source_accuracy < 4 and humor >= 6
+absurdism_detection:
+  enabled: true
+  low_accuracy_threshold: 4
+  high_humor_threshold: 6
