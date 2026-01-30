@@ -1,18 +1,22 @@
 """
-Main RAG interface for the Bluegrass Meme Generator.
+Main RAG interface for domain-specific meme generation.
 Orchestrates the full pipeline: indexing, retrieval, and generation.
 """
 
 import os
-from typing import Optional
-from dataclasses import dataclass, field
+from typing import Optional, TYPE_CHECKING
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
-from .processor import ArticleProcessor, ArticleChunk
-from .vectorstore import BluegrassVectorStore
-from .retriever import BluegrassRetriever, RetrievalResult
+from .processor import ContentProcessor, ContentChunk
+from .vectorstore import DomainVectorStore
+from .retriever import DomainRetriever, RetrievalResult
 from .grok import GrokClient, MemeIdea
+
+if TYPE_CHECKING:
+    from ..config.domain_config import DomainConfig
+    from ..config.prompt_templates import PromptTemplates
 
 
 @dataclass
@@ -30,21 +34,14 @@ class TokenBudget:
     - 100,000 tokens (~$0.02): ~30 searches + 15 meme generations
     - 500,000 tokens (~$0.10): Heavy usage, ~100 searches + 50 memes
     - None (unlimited): No tracking, pay as you go
-
-    Cost breakdown per operation:
-    - Search (with query expansion): ~1,000 tokens
-    - Search (no expansion): ~100 tokens
-    - Meme generation: ~3,000-5,000 tokens
-    - Topic brainstorm: ~2,000-3,000 tokens
     """
-    limit: Optional[int] = None  # None = unlimited
+    limit: Optional[int] = None
     used: int = 0
     searches: int = 0
     meme_generations: int = 0
     cache_hits: int = 0
 
-    # Estimated tokens per operation
-    TOKENS_PER_SEARCH: int = 1000  # with query expansion
+    TOKENS_PER_SEARCH: int = 1000
     TOKENS_PER_SEARCH_NO_EXPAND: int = 100
     TOKENS_PER_MEME_GEN: int = 4000
     TOKENS_PER_BRAINSTORM: int = 2500
@@ -88,59 +85,46 @@ class TokenBudgetExceeded(Exception):
     pass
 
 
-class BluegrassRAG:
+class DomainRAG:
     """
-    Main RAG interface for bluegrass meme generation.
+    Main RAG interface for domain-specific meme generation.
 
     Usage:
-        rag = BluegrassRAG(token_budget=50000)  # Optional budget
-        rag.index_articles("articles/bluegrass_unlimited_archives.json")
-        ideas = rag.generate_meme_ideas("Bill Monroe being stubborn")
-        print(rag.budget.summary())  # Check usage
+        from src.config import load_domain
+        from src.core.rag import DomainRAG
 
-    Token Budget Guide:
-    -------------------
-    - 10,000 tokens (~$0.002): Light testing, ~10 searches
-    - 50,000 tokens (~$0.01): Normal session, ~20 searches + 5 memes
-    - 100,000 tokens (~$0.02): Heavy session, ~30 searches + 15 memes
-    - None (default): Unlimited, no tracking
+        config = load_domain("bluegrass")
+        rag = DomainRAG(config, token_budget=50000)
+        rag.index_content("articles/bluegrass_unlimited_archives.json")
+        ideas = rag.generate_meme_ideas("Bill Monroe being stubborn")
+        print(rag.budget.summary())
     """
 
     def __init__(
         self,
-        persist_dir: str = "data/chroma",
-        bm25_path: str = "data/bm25_index.pkl",
-        chunk_size: int = 750,
-        chunk_overlap: int = 100,
+        domain_config: "DomainConfig",
         token_budget: Optional[int] = None,
     ):
         """
         Initialize the RAG pipeline.
 
         Args:
-            persist_dir: Directory for ChromaDB persistence
-            bm25_path: Path for BM25 index
-            chunk_size: Target tokens per chunk
-            chunk_overlap: Overlap tokens between chunks
-            token_budget: Optional token limit for the session.
-                         See TokenBudget docstring for guidance.
+            domain_config: Domain configuration
+            token_budget: Optional token limit for the session
         """
-        # Load environment variables
         load_dotenv()
 
-        # Token budget tracking
+        self.domain = domain_config
         self.budget = TokenBudget(limit=token_budget)
 
-        # Initialize components
-        self.processor = ArticleProcessor(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
-        self.vectorstore = BluegrassVectorStore(
-            persist_dir=persist_dir,
-            bm25_path=bm25_path,
-        )
-        self.retriever = BluegrassRetriever(vectorstore=self.vectorstore)
+        # Initialize prompt templates
+        from ..config.prompt_templates import PromptTemplates
+        self.prompts = PromptTemplates(domain_config.prompts_dir, domain_config)
+
+        # Initialize components with domain config
+        self.processor = ContentProcessor(domain_config)
+        self.vectorstore = DomainVectorStore(domain_config)
+        self.retriever = DomainRetriever(domain_config, self.vectorstore, self.prompts)
 
         # Grok client (lazy initialization)
         self._grok_client: Optional[GrokClient] = None
@@ -160,10 +144,9 @@ class BluegrassRAG:
     ) -> int:
         """
         Index articles from JSON file into the vector store.
-        Note: Indexing costs are one-time and not tracked in session budget.
 
         Args:
-            json_path: Path to bluegrass_unlimited_archives.json
+            json_path: Path to JSON articles file
             clear_existing: Whether to clear existing index first
             show_progress: Whether to print progress
 
@@ -175,7 +158,6 @@ class BluegrassRAG:
                 print("Clearing existing index...")
             self.vectorstore.clear()
 
-        # Check if already indexed
         existing_count = self.vectorstore.get_chunk_count()
         if existing_count > 0 and not clear_existing:
             if show_progress:
@@ -183,7 +165,6 @@ class BluegrassRAG:
                       "Use clear_existing=True to reindex.")
             return existing_count
 
-        # Process articles
         if show_progress:
             print(f"Processing articles from {json_path}...")
         chunks = self.processor.process_all(json_path)
@@ -191,10 +172,12 @@ class BluegrassRAG:
         if show_progress:
             print(f"Generated {len(chunks)} chunks from articles")
 
-        # Index chunks
         self.vectorstore.add_chunks(chunks, show_progress=show_progress)
 
         return len(chunks)
+
+    # Alias for backward compatibility
+    index_content = index_articles
 
     def search(
         self,
@@ -215,7 +198,6 @@ class BluegrassRAG:
         Returns:
             List of RetrievalResult objects
         """
-        # Check budget
         tokens_needed = (
             self.budget.TOKENS_PER_SEARCH if expand_query
             else self.budget.TOKENS_PER_SEARCH_NO_EXPAND
@@ -229,10 +211,8 @@ class BluegrassRAG:
             filters=filters,
         )
 
-        # Record usage (check cache hits to reduce estimate)
         cache_stats = self.vectorstore.embedding_cache.stats()
         if cache_stats["hits"] > self.budget.cache_hits:
-            # Had cache hits, reduce token count
             new_hits = cache_stats["hits"] - self.budget.cache_hits
             tokens_needed = max(100, tokens_needed - (new_hits * 50))
             self.budget.cache_hits = cache_stats["hits"]
@@ -286,10 +266,8 @@ class BluegrassRAG:
         Returns:
             List of MemeIdea objects
         """
-        # Check budget for meme generation (search budget checked in get_context)
         self.budget.check(self.budget.TOKENS_PER_MEME_GEN, "meme generation")
 
-        # Retrieve relevant context
         context = self.get_context(
             topic,
             k=num_context_chunks,
@@ -299,7 +277,6 @@ class BluegrassRAG:
         if not context:
             raise ValueError(f"No relevant content found for topic: {topic}")
 
-        # Generate memes with Grok
         ideas = self.grok.generate_meme_ideas(
             topic=topic,
             context_chunks=context,
@@ -311,7 +288,7 @@ class BluegrassRAG:
 
     def brainstorm_topics(
         self,
-        seed_query: str = "bluegrass music history stories",
+        seed_query: str = "",
         num_topics: int = 5,
     ) -> list[str]:
         """
@@ -325,6 +302,9 @@ class BluegrassRAG:
             List of topic suggestions
         """
         self.budget.check(self.budget.TOKENS_PER_BRAINSTORM, "brainstorm")
+
+        if not seed_query:
+            seed_query = f"{self.domain.display_name.lower()} history stories"
 
         context = self.get_context(seed_query, k=5)
         topics = self.grok.brainstorm_topics(context, num_topics=num_topics)
@@ -377,8 +357,5 @@ class BluegrassRAG:
         self.close()
 
 
-if __name__ == "__main__":
-    # Quick test
-    rag = BluegrassRAG()
-    stats = rag.get_stats()
-    print(f"RAG initialized. Stats: {stats}")
+# Backward compatibility alias
+BluegrassRAG = DomainRAG

@@ -1,18 +1,23 @@
 """
 Vector store implementation using ChromaDB and BM25 for hybrid search.
+Domain-agnostic version that uses DomainConfig for collection naming.
 """
 
 import os
 import pickle
 from collections import OrderedDict
-from typing import Optional
+from pathlib import Path
+from typing import Optional, TYPE_CHECKING
 
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
 from rank_bm25 import BM25Okapi
 
-from .processor import ArticleChunk
+from .processor import ContentChunk
+
+if TYPE_CHECKING:
+    from ..config.domain_config import DomainConfig
 
 
 class EmbeddingCache:
@@ -46,25 +51,38 @@ class EmbeddingCache:
         return {"hits": self.hits, "misses": self.misses, "hit_rate": f"{hit_rate:.1%}"}
 
 
-class BluegrassVectorStore:
-    """Vector store combining ChromaDB (semantic) and BM25 (keyword) search."""
+class DomainVectorStore:
+    """
+    Vector store combining ChromaDB (semantic) and BM25 (keyword) search.
 
-    COLLECTION_NAME = "bluegrass_articles"
+    Uses domain configuration for collection naming and data paths.
+    """
 
     def __init__(
         self,
-        persist_dir: str = "data/chroma",
-        bm25_path: str = "data/bm25_index.pkl",
+        domain_config: "DomainConfig",
+        persist_dir: Optional[str] = None,
+        bm25_path: Optional[str] = None,
         cache_size: int = 1000,
     ):
         """
         Args:
-            persist_dir: Directory for ChromaDB persistence
-            bm25_path: Path to save/load BM25 index
+            domain_config: Domain configuration
+            persist_dir: Directory for ChromaDB persistence (defaults to domain data_dir/chroma)
+            bm25_path: Path to save/load BM25 index (defaults to domain data_dir/bm25_index.pkl)
             cache_size: Max number of query embeddings to cache
         """
-        self.persist_dir = persist_dir
-        self.bm25_path = bm25_path
+        self.domain = domain_config
+        self.collection_name = domain_config.collection_name
+
+        # Use domain-specific paths if not overridden
+        data_dir = Path(domain_config.data_dir)
+        self.persist_dir = persist_dir or str(data_dir / "chroma")
+        self.bm25_path = bm25_path or str(data_dir / "bm25_index.pkl")
+
+        # Ensure directories exist
+        os.makedirs(self.persist_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(self.bm25_path), exist_ok=True)
 
         # Initialize OpenAI client for embeddings
         self.openai_client = OpenAI()
@@ -74,13 +92,13 @@ class BluegrassVectorStore:
 
         # Initialize ChromaDB
         self.chroma_client = chromadb.PersistentClient(
-            path=persist_dir,
+            path=self.persist_dir,
             settings=Settings(anonymized_telemetry=False)
         )
 
         # Get or create collection
         self.collection = self.chroma_client.get_or_create_collection(
-            name=self.COLLECTION_NAME,
+            name=self.collection_name,
             metadata={"hnsw:space": "cosine"}
         )
 
@@ -112,7 +130,6 @@ class BluegrassVectorStore:
 
     def _get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         """Get embeddings for multiple texts."""
-        # OpenAI allows up to 2048 inputs per request
         batch_size = 100
         all_embeddings = []
 
@@ -128,7 +145,6 @@ class BluegrassVectorStore:
 
     def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization for BM25."""
-        # Lowercase and split on non-alphanumeric
         import re
         tokens = re.findall(r'\b\w+\b', text.lower())
         return tokens
@@ -153,12 +169,12 @@ class BluegrassVectorStore:
                     tokenized = [self._tokenize(doc) for doc in self.bm25_corpus]
                     self.bm25_index = BM25Okapi(tokenized)
 
-    def add_chunks(self, chunks: list[ArticleChunk], show_progress: bool = True):
+    def add_chunks(self, chunks: list[ContentChunk], show_progress: bool = True):
         """
         Add chunks to both vector stores.
 
         Args:
-            chunks: List of ArticleChunk objects
+            chunks: List of ContentChunk objects
             show_progress: Whether to print progress
         """
         if not chunks:
@@ -167,32 +183,30 @@ class BluegrassVectorStore:
         if show_progress:
             print(f"Indexing {len(chunks)} chunks...")
 
-        # Prepare data for ChromaDB
         ids = [chunk.chunk_id for chunk in chunks]
         texts = [chunk.text for chunk in chunks]
         metadatas = []
 
         for chunk in chunks:
+            # Build metadata - use backward-compatible field names
             metadata = {
-                "article_url": chunk.article_url,
+                "article_url": chunk.content_url,
                 "title": chunk.title,
                 "author": chunk.author,
                 "source": chunk.source,
                 "year": chunk.year or 0,
-                "artist_subject": chunk.artist_subject or "",
-                "artists_mentioned": ",".join(chunk.artists_mentioned),
-                "instruments": ",".join(chunk.instruments),
+                "artist_subject": chunk.primary_entity or "",
+                "artists_mentioned": ",".join(chunk.entities_mentioned),
+                "instruments": ",".join(chunk.categories.get('instruments', [])),
                 "topics": ",".join(chunk.topics),
                 "tone": chunk.tone,
             }
             metadatas.append(metadata)
 
-        # Get embeddings
         if show_progress:
             print("Generating embeddings...")
         embeddings = self._get_embeddings_batch(texts)
 
-        # Add to ChromaDB in batches
         batch_size = 100
         for i in range(0, len(chunks), batch_size):
             end_idx = min(i + batch_size, len(chunks))
@@ -205,7 +219,6 @@ class BluegrassVectorStore:
             if show_progress:
                 print(f"  Added {end_idx}/{len(chunks)} to ChromaDB")
 
-        # Build BM25 index
         if show_progress:
             print("Building BM25 index...")
         self.bm25_corpus = texts
@@ -250,7 +263,7 @@ class BluegrassVectorStore:
                 'text': results['documents'][0][i],
                 'metadata': results['metadatas'][0][i],
                 'distance': results['distances'][0][i],
-                'score': 1 - results['distances'][0][i],  # Convert distance to similarity
+                'score': 1 - results['distances'][0][i],
             })
         return output
 
@@ -271,7 +284,6 @@ class BluegrassVectorStore:
         tokenized_query = self._tokenize(query)
         scores = self.bm25_index.get_scores(tokenized_query)
 
-        # Get top k indices
         top_indices = sorted(
             range(len(scores)),
             key=lambda i: scores[i],
@@ -280,8 +292,7 @@ class BluegrassVectorStore:
 
         output = []
         for idx in top_indices:
-            if scores[idx] > 0:  # Only include if there's a match
-                # Get full metadata from ChromaDB
+            if scores[idx] > 0:
                 result = self.collection.get(
                     ids=[self.bm25_ids[idx]],
                     include=["documents", "metadatas"]
@@ -300,9 +311,9 @@ class BluegrassVectorStore:
 
     def clear(self):
         """Clear all data from the vector store."""
-        self.chroma_client.delete_collection(self.COLLECTION_NAME)
+        self.chroma_client.delete_collection(self.collection_name)
         self.collection = self.chroma_client.create_collection(
-            name=self.COLLECTION_NAME,
+            name=self.collection_name,
             metadata={"hnsw:space": "cosine"}
         )
         self.bm25_index = None
@@ -312,7 +323,5 @@ class BluegrassVectorStore:
             os.remove(self.bm25_path)
 
 
-if __name__ == "__main__":
-    # Quick test
-    store = BluegrassVectorStore()
-    print(f"Current chunk count: {store.get_chunk_count()}")
+# Backward compatibility alias
+BluegrassVectorStore = DomainVectorStore

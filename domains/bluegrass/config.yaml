@@ -1,0 +1,102 @@
+name: bluegrass
+display_name: Bluegrass Music
+description: Bluegrass music culture, history, and community
+
+content_source_name: Bluegrass Unlimited
+content_source_description: Bluegrass Unlimited Archives
+
+entity_categories:
+  - name: instruments
+    display_name: Instruments
+    patterns:
+      mandolin: ["mandolin", "mando"]
+      banjo: ["banjo", "5-string", "five-string"]
+      fiddle: ["fiddle", "violin", "fiddler", "fiddlin"]
+      guitar: ["guitar", "flatpick", "flat-pick", "dreadnought"]
+      dobro: ["dobro", "resonator", "resophonic"]
+      bass: ["bass", "upright bass", "string bass", "doghouse"]
+
+topic_categories:
+  - name: technique
+    patterns: ["technique", "style", "picking", "chop", "lick", "run"]
+  - name: history
+    patterns: ["history", "origin", "began", "started", "founded", "early days"]
+  - name: recording
+    patterns: ["record", "album", "session", "studio", "track"]
+  - name: touring
+    patterns: ["tour", "road", "travel", "show", "festival", "concert"]
+  - name: personal
+    patterns: ["born", "grew up", "childhood", "family", "married", "wife", "husband"]
+  - name: gear
+    patterns: ["instrument", "strings", "pick", "mic", "amp", "setup"]
+  - name: business
+    patterns: ["contract", "label", "money", "paid", "booking", "manager"]
+  - name: jam
+    patterns: ["jam", "picking party", "session", "sitting in"]
+
+tone_indicators:
+  - tone: nostalgic
+    patterns: ["remember", "those days", "back then", "used to", "old times"]
+  - tone: humorous
+    patterns: ["funny", "laugh", "joke", "hilarious", "crazy"]
+  - tone: technical
+    patterns: ["technique", "position", "finger", "fret", "timing"]
+  - tone: biographical
+    patterns: ["born", "grew up", "childhood", "family"]
+
+tone_guidelines:
+  - Be affectionate and celebratory toward bluegrass legends, not mocking or negative
+  - Humor should come from love of the genre, not tearing anyone down
+  - It's OK to joke about quirks/personalities, but always with respect
+  - Think "laughing with" not "laughing at"
+  - Positive > negative energy
+
+style_guidelines:
+  - Write in normal internet English
+  - Avoid overdoing dialect or apostrophes (don't write "eyein'", "glarin'", "reckon", etc)
+  - Keep it natural and readable
+  - Ground humor in real facts/stories from the provided context
+
+humor_focus:
+  - Artist personalities and quirks
+  - Instrument-specific stereotypes
+  - Genre debates and gatekeeping
+  - Festival culture
+  - Jam session dynamics
+
+# Evaluation criteria for two-stage generation
+# Each domain can define what matters for scoring memes
+evaluation_criteria:
+  - name: source_accuracy
+    display_name: Historical Accuracy
+    description: Is the bluegrass history/reference real and accurate?
+    weight: 0.35
+    low_score_note: "intentional absurdism?"
+    scoring_guide:
+      low: "Made up, wrong facts, or no real reference"
+      medium: "Partially accurate or vague reference"
+      high: "Completely accurate, specific real fact"
+
+  - name: cultural_legitimacy
+    display_name: Cultural Legitimacy
+    description: Would actual bluegrass fans recognize and appreciate this?
+    weight: 0.30
+    scoring_guide:
+      low: "Generic, could be any genre, fans wouldn't get it"
+      medium: "Somewhat bluegrass-specific"
+      high: "Deep cut that real fans would love"
+
+  - name: humor
+    display_name: Humor
+    description: Is it actually funny?
+    weight: 0.35
+    scoring_guide:
+      low: "Not funny, forced, doesn't land"
+      medium: "Mildly amusing"
+      high: "Hilarious, would go viral"
+
+# Flag memes as potential absurdism when source_accuracy < 4 and humor >= 6
+absurdism_detection:
+  enabled: true
+  low_accuracy_threshold: 4
+  high_humor_threshold: 6

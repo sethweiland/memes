@@ -1,25 +1,71 @@
 """
-Bluegrass RAG Pipeline for Meme Generation.
+Domain-Agnostic Meme Generator.
+
+Usage:
+    from src.config import load_domain
+    from src.core import DomainRAG, MemePipeline, PipelineConfig
+
+    config = load_domain("bluegrass")
+    rag = DomainRAG(config)
+    # or
+    pipeline = MemePipeline(config, PipelineConfig(num_concepts=15))
 """
 
-from .rag import BluegrassRAG
-from .processor import ArticleProcessor, ArticleChunk
-from .vectorstore import BluegrassVectorStore
-from .retriever import BluegrassRetriever, RetrievalResult
-from .grok import GrokClient, MemeIdea
-from .templates import TemplatesCatalog, MemeTemplate
-from .evaluator import MemeEvaluator, ScoredMeme
-from .meme_generator import MemeImageGenerator, GeneratedMeme
-from .pipeline import MemePipeline, PipelineConfig, PipelineResult
+# Configuration system
+from .config import (
+    DomainConfig,
+    EntityCategory,
+    TopicCategory,
+    ToneIndicator,
+    PromptTemplates,
+    load_domain,
+    list_domains,
+)
+
+# Core components
+from .core import (
+    # RAG components
+    DomainRAG,
+    ContentProcessor,
+    ContentChunk,
+    DomainVectorStore,
+    DomainRetriever,
+    RetrievalResult,
+    TokenBudget,
+    TokenBudgetExceeded,
+    # Meme generation
+    GrokClient,
+    MemeIdea,
+    TemplatesCatalog,
+    MemeTemplate,
+    MemeEvaluator,
+    ScoredMeme,
+    MemeImageGenerator,
+    GeneratedMeme,
+    # Pipeline
+    MemePipeline,
+    PipelineConfig,
+    PipelineResult,
+)
 
 __all__ = [
+    # Configuration
+    "DomainConfig",
+    "EntityCategory",
+    "TopicCategory",
+    "ToneIndicator",
+    "PromptTemplates",
+    "load_domain",
+    "list_domains",
     # Core RAG
-    "BluegrassRAG",
-    "ArticleProcessor",
-    "ArticleChunk",
-    "BluegrassVectorStore",
-    "BluegrassRetriever",
+    "DomainRAG",
+    "ContentProcessor",
+    "ContentChunk",
+    "DomainVectorStore",
+    "DomainRetriever",
     "RetrievalResult",
+    "TokenBudget",
+    "TokenBudgetExceeded",
     # Meme generation
     "GrokClient",
     "MemeIdea",
