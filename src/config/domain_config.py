@@ -32,6 +32,33 @@ class ToneIndicator:
 
 
 @dataclass
+class ScoringGuide:
+    """Scoring guide for an evaluation criterion."""
+    low: str                            # Description for low scores (1-3)
+    medium: str                         # Description for medium scores (4-6)
+    high: str                           # Description for high scores (7-10)
+
+
+@dataclass
+class EvaluationCriterion:
+    """A criterion for evaluating meme quality."""
+    name: str                           # e.g., "source_accuracy"
+    display_name: str                   # e.g., "Historical Accuracy"
+    description: str                    # e.g., "Is the history/reference real?"
+    weight: float                       # Weight in overall score (0.0-1.0)
+    scoring_guide: ScoringGuide         # Guide for scoring
+    low_score_note: str = ""            # Note for low scores (e.g., "intentional absurdism?")
+
+
+@dataclass
+class AbsurdismDetection:
+    """Configuration for detecting intentional absurdism."""
+    enabled: bool = True
+    low_accuracy_threshold: int = 4     # Below this = low accuracy
+    high_humor_threshold: int = 6       # Above this = high humor
+
+
+@dataclass
 class DomainConfig:
     """
     Complete domain configuration.
@@ -63,6 +90,10 @@ class DomainConfig:
 
     # Humor focus areas
     humor_focus: list[str] = field(default_factory=list)
+
+    # Evaluation criteria for two-stage generation
+    evaluation_criteria: list[EvaluationCriterion] = field(default_factory=list)
+    absurdism_detection: AbsurdismDetection = field(default_factory=AbsurdismDetection)
 
     # Paths (set after loading)
     prompts_dir: Path = field(default_factory=lambda: Path("prompts"))
@@ -124,6 +155,31 @@ class DomainConfig:
             for ind in data.pop('tone_indicators', [])
         ]
 
+        # Parse evaluation criteria
+        evaluation_criteria = []
+        for crit in data.pop('evaluation_criteria', []):
+            scoring_guide = crit.get('scoring_guide', {})
+            evaluation_criteria.append(EvaluationCriterion(
+                name=crit['name'],
+                display_name=crit.get('display_name', crit['name'].title()),
+                description=crit.get('description', ''),
+                weight=crit.get('weight', 0.33),
+                scoring_guide=ScoringGuide(
+                    low=scoring_guide.get('low', 'Low quality'),
+                    medium=scoring_guide.get('medium', 'Medium quality'),
+                    high=scoring_guide.get('high', 'High quality'),
+                ),
+                low_score_note=crit.get('low_score_note', ''),
+            ))
+
+        # Parse absurdism detection config
+        absurdism_data = data.pop('absurdism_detection', {})
+        absurdism_detection = AbsurdismDetection(
+            enabled=absurdism_data.get('enabled', True),
+            low_accuracy_threshold=absurdism_data.get('low_accuracy_threshold', 4),
+            high_humor_threshold=absurdism_data.get('high_humor_threshold', 6),
+        )
+
         # Set paths relative to config file
         prompts_dir = config_path.parent / "prompts"
         data_dir = Path("data") / data['name']
@@ -132,6 +188,8 @@ class DomainConfig:
             entity_categories=entity_categories,
             topic_categories=topic_categories,
             tone_indicators=tone_indicators,
+            evaluation_criteria=evaluation_criteria,
+            absurdism_detection=absurdism_detection,
             prompts_dir=prompts_dir,
             data_dir=data_dir,
             **{k: v for k, v in data.items() if k in cls.__dataclass_fields__}
@@ -150,3 +208,56 @@ class DomainConfig:
             if entity in entities:
                 return entity_type
         return None
+
+    def get_evaluation_prompt_section(self) -> str:
+        """Generate the evaluation criteria section for prompts."""
+        if not self.evaluation_criteria:
+            return ""
+
+        lines = []
+        for i, crit in enumerate(self.evaluation_criteria, 1):
+            lines.append(f"{i}. {crit.name.upper()} (1-10): {crit.description}")
+            lines.append(f"   - 1-3: {crit.scoring_guide.low}")
+            lines.append(f"   - 4-6: {crit.scoring_guide.medium}")
+            lines.append(f"   - 7-10: {crit.scoring_guide.high}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def get_criterion_by_name(self, name: str) -> Optional[EvaluationCriterion]:
+        """Get an evaluation criterion by name."""
+        for crit in self.evaluation_criteria:
+            if crit.name == name:
+                return crit
+        return None
+
+    def calculate_overall_score(self, scores: dict[str, int]) -> float:
+        """Calculate overall score from individual criterion scores."""
+        if not self.evaluation_criteria:
+            return sum(scores.values()) / len(scores) if scores else 0
+
+        total = 0.0
+        for crit in self.evaluation_criteria:
+            if crit.name in scores:
+                total += scores[crit.name] * crit.weight
+
+        # Apply penalty for low accuracy (if configured)
+        accuracy_crit = self.get_criterion_by_name("source_accuracy")
+        if accuracy_crit and "source_accuracy" in scores:
+            if scores["source_accuracy"] < self.absurdism_detection.low_accuracy_threshold:
+                total *= 0.7  # 30% penalty for inaccurate source
+
+        return total
+
+    def is_potential_absurdism(self, scores: dict[str, int]) -> bool:
+        """Check if a meme might be intentional absurdism."""
+        if not self.absurdism_detection.enabled:
+            return False
+
+        accuracy = scores.get("source_accuracy", 10)
+        humor = scores.get("humor", 0)
+
+        return (
+            accuracy < self.absurdism_detection.low_accuracy_threshold
+            and humor >= self.absurdism_detection.high_humor_threshold
+        )

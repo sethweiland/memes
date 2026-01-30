@@ -1,7 +1,7 @@
 """
 Domain-Agnostic Meme Generator.
 
-New Usage (recommended):
+Usage:
     from src.config import load_domain
     from src.core import DomainRAG, MemePipeline, PipelineConfig
 
@@ -9,10 +9,6 @@ New Usage (recommended):
     rag = DomainRAG(config)
     # or
     pipeline = MemePipeline(config, PipelineConfig(num_concepts=15))
-
-Legacy Usage (deprecated but still works):
-    from src import BluegrassRAG
-    rag = BluegrassRAG()  # Shows deprecation warning
 """
 
 # Configuration system
@@ -26,7 +22,7 @@ from .config import (
     list_domains,
 )
 
-# New generic exports (recommended)
+# Core components
 from .core import (
     # RAG components
     DomainRAG,
@@ -52,15 +48,6 @@ from .core import (
     PipelineResult,
 )
 
-# Backward compatibility (deprecated)
-from .compat import (
-    BluegrassRAG,
-    BluegrassVectorStore,
-    BluegrassRetriever,
-    ArticleProcessor,
-    ArticleChunk,
-)
-
 __all__ = [
     # Configuration
     "DomainConfig",
@@ -70,7 +57,7 @@ __all__ = [
     "PromptTemplates",
     "load_domain",
     "list_domains",
-    # Core RAG (new)
+    # Core RAG
     "DomainRAG",
     "ContentProcessor",
     "ContentChunk",
@@ -92,10 +79,4 @@ __all__ = [
     "MemePipeline",
     "PipelineConfig",
     "PipelineResult",
-    # Deprecated (backward compat)
-    "BluegrassRAG",
-    "BluegrassVectorStore",
-    "BluegrassRetriever",
-    "ArticleProcessor",
-    "ArticleChunk",
 ]

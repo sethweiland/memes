@@ -63,3 +63,40 @@ humor_focus:
   - Genre debates and gatekeeping
   - Festival culture
   - Jam session dynamics
+
+# Evaluation criteria for two-stage generation
+# Each domain can define what matters for scoring memes
+evaluation_criteria:
+  - name: source_accuracy
+    display_name: Historical Accuracy
+    description: Is the bluegrass history/reference real and accurate?
+    weight: 0.35
+    low_score_note: "intentional absurdism?"
+    scoring_guide:
+      low: "Made up, wrong facts, or no real reference"
+      medium: "Partially accurate or vague reference"
+      high: "Completely accurate, specific real fact"
+
+  - name: cultural_legitimacy
+    display_name: Cultural Legitimacy
+    description: Would actual bluegrass fans recognize and appreciate this?
+    weight: 0.30
+    scoring_guide:
+      low: "Generic, could be any genre, fans wouldn't get it"
+      medium: "Somewhat bluegrass-specific"
+      high: "Deep cut that real fans would love"
+
+  - name: humor
+    display_name: Humor
+    description: Is it actually funny?
+    weight: 0.35
+    scoring_guide:
+      low: "Not funny, forced, doesn't land"
+      medium: "Mildly amusing"
+      high: "Hilarious, would go viral"
+
+# Flag memes as potential absurdism when source_accuracy < 4 and humor >= 6
+absurdism_detection:
+  enabled: true
+  low_accuracy_threshold: 4
+  high_humor_threshold: 6

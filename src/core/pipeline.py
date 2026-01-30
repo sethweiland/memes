@@ -22,17 +22,51 @@ if TYPE_CHECKING:
 @dataclass
 class PipelineConfig:
     """Configuration for the meme pipeline."""
-    num_concepts: int = 100
-    concepts_per_batch: int = 10
-    num_context_chunks: int = 5
-    creativity: float = 1.0
+    # Generation
+    num_concepts: int = 100           # How many concepts to generate
+    concepts_per_batch: int = 10      # Concepts per Grok call
+    num_context_chunks: int = 5       # RAG context chunks per batch
+    creativity: float = 1.0           # Temperature (0.0-1.5)
 
-    eval_batch_size: int = 10
+    # Two-stage evaluation
+    two_stage: bool = True            # Use two-stage generation (recommended)
+    generation_creativity: float = 1.0  # Temperature for stage 1 (1.0 = balanced, 1.4 = high variance)
+    eval_batch_size: int = 10         # Memes per evaluation call
 
-    num_images: int = 5
+    # Output
+    num_to_review: int = 15           # How many to surface for human review
+    num_images: int = 5               # Final images to generate (after human selection)
     output_dir: str = "output/memes"
 
+    # Budget
     token_budget: int = 100000
+
+
+@dataclass
+class EvaluatedMeme:
+    """A meme with evaluation scores for human review."""
+    idea: MemeIdea
+    scores: dict[str, int]        # Criterion name -> score (1-10)
+    overall_score: float          # Weighted combination
+    evaluation_notes: str         # AI's notes on the meme
+    is_absurdist: bool = False    # Flag for intentional absurdism
+
+    def get_score(self, criterion: str) -> int:
+        """Get score for a specific criterion."""
+        return self.scores.get(criterion, 0)
+
+    def to_dict(self) -> dict:
+        result = {
+            "format": self.idea.format,
+            "top_text": self.idea.top_text,
+            "bottom_text": self.idea.bottom_text,
+            "overall_score": self.overall_score,
+            "evaluation_notes": self.evaluation_notes,
+            "is_absurdist": self.is_absurdist,
+        }
+        # Add individual scores
+        result.update(self.scores)
+        return result
 
 
 @dataclass
@@ -457,3 +491,347 @@ IMAGE URL: {img.image_url}
             print(f"   Scores: H={s.humor_score} A={s.authenticity_score} F={s.template_fit_score}")
 
         return scored
+
+    # =========================================================================
+    # TWO-STAGE GENERATION (human-in-the-loop)
+    # =========================================================================
+
+    def generate_freely(
+        self,
+        topic: str,
+        context_text: str,
+        template_catalog: str,
+        num_ideas: int = 10,
+    ) -> list[MemeIdea]:
+        """
+        Stage 1: Generate memes WITHOUT explanation requirement.
+        Higher creativity, no justification needed = more unexpected ideas.
+        """
+        # Use prompt template if available
+        if self.prompts.has_template("system_generation_free"):
+            system_prompt = self.prompts.render("system_generation_free")
+        else:
+            system_prompt = f"""You are a comedy writer for {self.domain.display_name.lower()} memes.
+Be weird, unexpected, creative. Take risks. No explanations needed - just write funny memes."""
+
+        if self.prompts.has_template("user_generation_free"):
+            user_prompt = self.prompts.render(
+                "user_generation_free",
+                topic=topic,
+                context_text=context_text,
+                template_catalog=template_catalog,
+                num_ideas=num_ideas,
+            )
+        else:
+            user_prompt = f"""Topic: {topic}
+
+CONTEXT FROM {self.domain.content_source_description.upper()}:
+{context_text}
+
+{template_catalog}
+
+Generate {num_ideas} memes. Be creative, unexpected, absurdist. Take risks.
+DON'T explain why they're funny - just write them.
+
+Use EXACT format:
+
+FORMAT: template name
+TOP_TEXT: top text
+BOTTOM_TEXT: bottom text
+
+---
+
+FORMAT: next template..."""
+
+        response = self.rag.grok._chat([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ], max_tokens=2000, temperature=self.config.generation_creativity)
+
+        return self.rag.grok._parse_meme_response(response)
+
+    def evaluate_for_review(
+        self,
+        memes: list[MemeIdea],
+        context_text: str,
+    ) -> list[EvaluatedMeme]:
+        """
+        Stage 2: Evaluate memes using domain-specific criteria.
+        Returns ALL memes with scores - human makes final selection.
+        """
+        if not memes:
+            return []
+
+        # Build meme list for evaluation
+        meme_list = ""
+        for i, m in enumerate(memes, 1):
+            meme_list += f"""
+MEME {i}:
+Template: {m.format}
+Top: {m.top_text}
+Bottom: {m.bottom_text}
+"""
+
+        # Get evaluation criteria from domain config
+        criteria_section = self.domain.get_evaluation_prompt_section()
+
+        # Build response format based on criteria
+        criteria_names = [c.name.upper() for c in self.domain.evaluation_criteria]
+        score_format = " ".join([f"{name}=X" for name in criteria_names])
+
+        prompt = f"""You are evaluating {self.domain.display_name.lower()} memes. Score each on these criteria:
+
+{criteria_section}
+
+CONTEXT (use this to verify accuracy):
+{context_text}
+
+MEMES TO EVALUATE:
+{meme_list}
+
+For each meme, respond with:
+MEME 1: {score_format}
+NOTES: Brief note on why it works (or doesn't)
+
+MEME 2: {score_format}
+NOTES: ...
+
+Be STRICT on accuracy criteria. If a fact is made up, score it low."""
+
+        response = self.rag.grok._chat([
+            {"role": "user", "content": prompt}
+        ], max_tokens=2000, temperature=0.3)
+
+        return self._parse_evaluations(memes, response)
+
+    def _parse_evaluations(
+        self,
+        memes: list[MemeIdea],
+        response: str,
+    ) -> list[EvaluatedMeme]:
+        """Parse evaluation response into EvaluatedMeme objects."""
+        evaluated = []
+        lines = response.strip().split('\n')
+
+        current_idx = None
+        current_scores: dict[str, int] = {}
+        current_notes = ""
+
+        # Get criterion names from domain config
+        criterion_names = {c.name.upper(): c.name for c in self.domain.evaluation_criteria}
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.upper().startswith("MEME "):
+                # Save previous
+                if current_idx is not None and current_scores:
+                    evaluated.append(self._create_evaluated_meme(
+                        memes[current_idx] if current_idx < len(memes) else None,
+                        current_scores,
+                        current_notes
+                    ))
+
+                # Parse new meme scores
+                try:
+                    parts = line.split(":", 1)
+                    meme_num = int(parts[0].replace("MEME", "").strip()) - 1
+                    current_idx = meme_num
+                    current_scores = {}
+                    current_notes = ""
+
+                    score_part = parts[1] if len(parts) > 1 else ""
+
+                    # Parse scores for each criterion
+                    for upper_name, actual_name in criterion_names.items():
+                        if upper_name + "=" in score_part.upper():
+                            idx = score_part.upper().find(upper_name + "=")
+                            val_str = score_part[idx + len(upper_name) + 1:].split()[0]
+                            val_str = ''.join(c for c in val_str if c.isdigit())
+                            if val_str:
+                                current_scores[actual_name] = int(val_str)
+                except (ValueError, IndexError):
+                    continue
+
+            elif line.upper().startswith("NOTES:"):
+                current_notes = line.split(":", 1)[1].strip() if ":" in line else ""
+
+        # Don't forget last one
+        if current_idx is not None and current_scores:
+            evaluated.append(self._create_evaluated_meme(
+                memes[current_idx] if current_idx < len(memes) else None,
+                current_scores,
+                current_notes
+            ))
+
+        # Sort by overall score
+        evaluated = [e for e in evaluated if e is not None]
+        evaluated.sort(key=lambda x: x.overall_score, reverse=True)
+
+        return evaluated
+
+    def _create_evaluated_meme(
+        self,
+        meme: MemeIdea | None,
+        scores: dict[str, int],
+        notes: str,
+    ) -> EvaluatedMeme | None:
+        """Create EvaluatedMeme from parsed scores."""
+        if meme is None:
+            return None
+
+        # Calculate overall score using domain config
+        overall = self.domain.calculate_overall_score(scores)
+
+        # Check for absurdism
+        is_absurdist = self.domain.is_potential_absurdism(scores)
+
+        return EvaluatedMeme(
+            idea=meme,
+            scores=scores,
+            overall_score=overall,
+            evaluation_notes=notes,
+            is_absurdist=is_absurdist,
+        )
+
+    def review_candidates(
+        self,
+        evaluated: list[EvaluatedMeme],
+        num_to_review: int | None = None,
+    ) -> None:
+        """
+        Present memes for human review.
+        Shows scores as guidance but emphasizes human decision-making.
+        """
+        num_to_review = num_to_review or self.config.num_to_review
+        to_show = evaluated[:num_to_review]
+
+        print(f"\n{'='*70}")
+        print(f"MEMES FOR HUMAN REVIEW ({len(to_show)} of {len(evaluated)})")
+        print("Scores are guidance - YOU make the final call!")
+        print(f"{'='*70}")
+
+        for i, e in enumerate(to_show, 1):
+            print(f"\n{'─'*60}")
+            print(f"#{i} - {e.idea.format}")
+            print(f"{'─'*60}")
+            print(f"Top: {e.idea.top_text}")
+            print(f"Bottom: {e.idea.bottom_text}")
+
+            print(f"\n📊 SCORES:")
+            for crit in self.domain.evaluation_criteria:
+                score = e.scores.get(crit.name, 0)
+                note = ""
+                if crit.low_score_note and score < 4:
+                    note = f" ⚠️ ({crit.low_score_note})"
+                print(f"   {crit.display_name}: {score}/10{note}")
+
+            print(f"   Overall: {e.overall_score:.1f}/10")
+            print(f"\n📝 AI Notes: {e.evaluation_notes}")
+
+            if e.is_absurdist:
+                print(f"\n🎭 NOTE: Low accuracy but decent humor - might be intentional absurdism!")
+
+        print(f"\n{'='*70}")
+        print("HUMAN DECISION TIME")
+        print(f"{'='*70}")
+        print("Review the memes above. Pick which ones to generate images for.")
+        print("Intentionally absurd memes (low accuracy, high humor) might still be great!")
+
+    def run_two_stage(
+        self,
+        topic: str,
+        num_concepts: int | None = None,
+        num_to_review: int | None = None,
+    ) -> list[EvaluatedMeme]:
+        """
+        Run two-stage generation: generate freely, then evaluate.
+        Returns evaluated memes for human selection.
+
+        Args:
+            topic: Meme topic/theme
+            num_concepts: Override number of concepts to generate
+            num_to_review: Override number to surface for review
+
+        Returns:
+            List of EvaluatedMeme for human review
+        """
+        num_concepts = num_concepts or self.config.num_concepts
+        num_to_review = num_to_review or self.config.num_to_review
+
+        print(f"\n{'='*70}")
+        print(f"TWO-STAGE MEME GENERATION: {topic}")
+        print(f"{'='*70}")
+
+        # Get context
+        context = self.rag.get_context(topic, k=self.config.num_context_chunks)
+        context_text = "\n\n".join([
+            f"[{c['metadata'].get('source', 'Unknown')}]\n{c['text'][:600]}"
+            for c in context
+        ])
+
+        template_catalog = self.catalog.get_prompt_catalog(limit=50, randomize=True)
+
+        # Stage 1: Generate freely
+        print(f"\n{'='*70}")
+        print("STAGE 1: FREE GENERATION (no explanation required)")
+        print(f"{'='*70}")
+
+        all_memes = []
+        batches_needed = (num_concepts + self.config.concepts_per_batch - 1) // self.config.concepts_per_batch
+
+        for batch_num in range(batches_needed):
+            remaining = num_concepts - len(all_memes)
+            batch_size = min(self.config.concepts_per_batch, remaining)
+            if batch_size <= 0:
+                break
+
+            memes = self.generate_freely(
+                topic=topic,
+                context_text=context_text,
+                template_catalog=template_catalog,
+                num_ideas=batch_size,
+            )
+            all_memes.extend(memes)
+            print(f"  Batch {batch_num + 1}/{batches_needed}: {len(memes)} memes")
+
+        print(f"\nGenerated {len(all_memes)} memes")
+
+        # Stage 2: Evaluate
+        print(f"\n{'='*70}")
+        print("STAGE 2: EVALUATION (scores as guidance, not filter)")
+        print(f"{'='*70}")
+
+        evaluated = self.evaluate_for_review(all_memes, context_text)
+        print(f"Evaluated {len(evaluated)} memes")
+
+        # Present for review
+        self.review_candidates(evaluated, num_to_review)
+
+        return evaluated
+
+    def generate_selected(
+        self,
+        evaluated: list[EvaluatedMeme],
+        indices: list[int],
+    ) -> list[GeneratedMeme]:
+        """
+        Generate images for human-selected memes.
+
+        Args:
+            evaluated: List of evaluated memes from run_two_stage
+            indices: 1-based indices of memes to generate (from review_candidates output)
+
+        Returns:
+            List of GeneratedMeme with local file paths
+        """
+        selected = [evaluated[i - 1].idea for i in indices if 0 < i <= len(evaluated)]
+
+        if not selected:
+            print("No valid memes selected.")
+            return []
+
+        print(f"\nGenerating {len(selected)} selected memes...")
+        return self.generate_images_from_concepts(selected, num_images=len(selected))

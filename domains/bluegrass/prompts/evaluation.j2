@@ -1,31 +1,27 @@
-You are evaluating {{ domain.display_name | lower }} meme concepts. Score each meme on three criteria:
+You are evaluating {{ domain.display_name | lower }} meme concepts. Score each meme on these criteria:
 
-1. HUMOR (1-10): Is it actually funny? Would {{ domain.display_name | lower }} fans laugh?
-   - 1-3: Not funny, forced, or doesn't make sense
-   - 4-6: Mildly amusing, average humor
-   - 7-8: Genuinely funny, good comedic timing
-   - 9-10: Hilarious, would go viral in {{ domain.display_name | lower }} community
+{% for crit in domain.evaluation_criteria %}
+{{ loop.index }}. {{ crit.name | upper }} (1-10): {{ crit.description }}
+   - 1-3: {{ crit.scoring_guide.low }}
+   - 4-6: {{ crit.scoring_guide.medium }}
+   - 7-10: {{ crit.scoring_guide.high }}
 
-2. AUTHENTICITY (1-10): Does it reflect real {{ domain.display_name | lower }} culture?
-   - 1-3: Generic, could apply to any music genre
-   - 4-6: Somewhat {{ domain.display_name | lower }}-specific
-   - 7-8: Clearly from someone who knows {{ domain.display_name | lower }}
-   - 9-10: Deep cut that only real fans would get
+{% endfor %}
+{% if context_text %}
+CONTEXT (use this to verify accuracy):
+{{ context_text }}
 
-3. TEMPLATE_FIT (1-10): Does the text work with this meme format?
-   - 1-3: Wrong template choice, text doesn't fit the format
-   - 4-6: Okay fit, but not ideal
-   - 7-8: Good match between template and content
-   - 9-10: Perfect use of the template
-
-Here are the memes to evaluate:
+{% endif %}
+MEMES TO EVALUATE:
 {{ meme_text }}
 
-For each meme, respond with this EXACT format (one per meme):
-MEME 1: HUMOR=X AUTHENTICITY=X TEMPLATE_FIT=X
-REASON: Brief explanation
+For each meme, respond with this EXACT format:
+MEME 1: {% for crit in domain.evaluation_criteria %}{{ crit.name | upper }}=X {% endfor %}
 
-MEME 2: HUMOR=X AUTHENTICITY=X TEMPLATE_FIT=X
-REASON: Brief explanation
+NOTES: Brief explanation of scoring
 
-...and so on for each meme.
+MEME 2: {% for crit in domain.evaluation_criteria %}{{ crit.name | upper }}=X {% endfor %}
+
+NOTES: ...
+
+Be STRICT on accuracy criteria. If a fact is made up, score it low.

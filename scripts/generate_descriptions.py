@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.templates import TemplatesCatalog, TEMPLATE_DESCRIPTIONS
-from src.grok import GrokClient
+from src.core.templates import TemplatesCatalog, TEMPLATE_DESCRIPTIONS
+from src.core.grok import GrokClient
 
 catalog = TemplatesCatalog()
 grok = GrokClient()
