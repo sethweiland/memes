@@ -1,0 +1,32 @@
+Evaluate this Bill Simmons meme concept. Score each category 1-10.
+
+MEME:
+Template: {{ meme.format }}
+Top text: {{ meme.top_text }}
+Bottom text: {{ meme.bottom_text }}
+{% if meme.explanation %}
+Intended humor: {{ meme.explanation }}
+{% endif %}
+
+SCORING CRITERIA:
+
+1. HUMOR (1-10): How funny is this to someone who listens to Bill Simmons podcasts?
+   - Does it land a specific joke that fans will recognize?
+   - Is the comedic timing/structure effective?
+   - Would this get shared in r/billsimmons?
+
+2. AUTHENTICITY (1-10): How true to Bill Simmons culture is this?
+   - Does it reference real moments, takes, or behaviors?
+   - Would fans say "that's so Bill"?
+   - Is it grounded in actual podcast/content knowledge?
+
+3. TEMPLATE_FIT (1-10): Does the text work with the chosen meme template?
+   - Is the joke structure appropriate for this template?
+   - Does the text length fit the format?
+   - Would this work visually?
+
+Respond in this exact format:
+HUMOR: [score]
+AUTHENTICITY: [score]
+TEMPLATE_FIT: [score]
+REASONING: [one sentence explaining the scores]

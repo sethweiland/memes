@@ -1,0 +1,104 @@
+name: billsimmons
+display_name: Bill Simmons
+description: Bill Simmons podcast and sports media memes
+
+# Content source metadata
+content_source_name: Bill Simmons Podcasts & Archives
+content_source_description: Bill Simmons Podcast transcripts, Grantland archives, The Ringer content, and community observations
+
+# Entity categories for metadata extraction
+entity_categories:
+  - name: recurring_guests
+    display_name: Recurring Guests
+    patterns:
+      cousin_sal: ["Cousin Sal", "Sal Iacono", "Sal"]
+      joe_house: ["Joe House", "House"]
+      ryen_russillo: ["Russillo", "Ryen Russillo"]
+      chris_ryan: ["Chris Ryan", "CR"]
+      sean_fennessey: ["Sean Fennessey", "Fennessey"]
+      van_lathan: ["Van Lathan"]
+      kevin_oconnor: ["Kevin O'Connor", "KOC"]
+
+  - name: sports_teams
+    display_name: Sports Teams
+    patterns:
+      celtics: ["Celtics", "Boston Celtics", "C's"]
+      patriots: ["Patriots", "Pats", "New England Patriots"]
+      red_sox: ["Red Sox", "Sox", "Boston Red Sox"]
+      lakers: ["Lakers", "Los Angeles Lakers"]
+      cowboys: ["Cowboys", "Dallas Cowboys"]
+
+  - name: athletes
+    display_name: Athletes Referenced
+    patterns:
+      lebron: ["LeBron", "LeBron James", "Bron"]
+      brady: ["Brady", "Tom Brady", "TB12"]
+      kobe: ["Kobe", "Kobe Bryant", "Mamba"]
+      jordan: ["Jordan", "Michael Jordan", "MJ"]
+      bird: ["Bird", "Larry Bird"]
+      tatum: ["Tatum", "Jayson Tatum"]
+
+  - name: podcast_segments
+    display_name: Podcast Segments
+    patterns:
+      guess_the_lines: ["Guess the Lines", "GTL"]
+      parent_corner: ["Parent Corner"]
+      rewatchables: ["Rewatchables", "Apex Mountain"]
+      trade_value: ["Trade Value", "trade machine"]
+
+# Topic classification
+topic_categories:
+  - name: nba
+    patterns: ["NBA", "basketball", "hoops", "trade", "draft", "playoff", "Finals"]
+  - name: nfl
+    patterns: ["NFL", "football", "Super Bowl", "playoffs", "gambling", "lines"]
+  - name: boston_sports
+    patterns: ["Boston", "Celtics", "Patriots", "Red Sox", "Bruins"]
+  - name: movies
+    patterns: ["movie", "film", "Rewatchables", "cast", "scene", "director"]
+  - name: parenting
+    patterns: ["parent", "kids", "Ben", "Zoe", "daughter", "son"]
+  - name: gambling
+    patterns: ["bet", "line", "odds", "pick", "parlay", "over/under"]
+  - name: hot_takes
+    patterns: ["take", "wrong", "prediction", "ranking", "pyramid"]
+
+# Tone detection
+tone_indicators:
+  - tone: homer
+    patterns: ["Celtics", "Patriots", "Boston", "we", "our team"]
+  - tone: analytical
+    patterns: ["trade value", "ceiling", "floor", "comp", "trajectory"]
+  - tone: nostalgic
+    patterns: ["remember", "back when", "peak", "prime", "2008"]
+  - tone: self_deprecating
+    patterns: ["I was wrong", "bad take", "aged poorly"]
+  - tone: hyperbolic
+    patterns: ["ever", "greatest", "worst", "unbelievable", "insane"]
+
+# Meme generation guidelines
+tone_guidelines:
+  - Be affectionate toward Bill's quirks, not mean-spirited
+  - Humor should come from recognition - fans nodding "that's so Bill"
+  - Reference specific moments, guests, and recurring bits
+  - Boston homerism jokes are fair game but should be playful
+  - Hot takes aging poorly are classic meme material
+
+style_guidelines:
+  - Use podcast/sports media language naturally
+  - Reference specific episodes, segments, or moments when possible
+  - Include Rewatchables categories when relevant (Apex Mountain, etc.)
+  - Capture his verbal tics and catchphrases authentically
+  - Mix sports analysis humor with pop culture references
+
+humor_focus:
+  - Boston sports homerism and bias
+  - Bad predictions and takes that aged poorly
+  - Obsession with trade assets and the trade machine
+  - Rewatchables categories (Apex Mountain, What's Aged the Worst)
+  - Parent Corner stories about Ben and Zoe
+  - Cousin Sal rivalry and Guess the Lines
+  - LeBron relitigations
+  - Book of Basketball pyramid debates
+  - Pronunciation quirks (Westbrook, etc.)
+  - "Top 11" style arbitrary rankings

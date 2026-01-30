@@ -1,0 +1,111 @@
+known_entities:
+  recurring_guests:
+    - Cousin Sal
+    - Joe House
+    - Ryen Russillo
+    - Chris Ryan
+    - Sean Fennessey
+    - Van Lathan
+    - Kevin O'Connor
+    - Mallory Rubin
+    - Jason Concepcion
+    - Shea Serrano
+    - Wesley Morris
+    - Rembert Browne
+    - Juliet Litman
+    - Amanda Dobbins
+    - Craig Horlbeck
+    - Bill's Dad
+    - Zoe Simmons
+    - Ben Simmons (his son)
+
+  athletes_frequently_discussed:
+    # Basketball
+    - LeBron James
+    - Michael Jordan
+    - Kobe Bryant
+    - Larry Bird
+    - Bill Russell
+    - Magic Johnson
+    - Tim Duncan
+    - Kevin Garnett
+    - Paul Pierce
+    - Jayson Tatum
+    - Jaylen Brown
+    - Kevin Durant
+    - Stephen Curry
+    - Russell Westbrook
+    - James Harden
+    - Joel Embiid
+    - Ben Simmons (the player)
+    - Luka Doncic
+    - Giannis Antetokounmpo
+    - Allen Iverson
+    - Isiah Thomas
+    - Scottie Pippen
+    # Football
+    - Tom Brady
+    - Patrick Mahomes
+    - Aaron Rodgers
+    - Peyton Manning
+    # Baseball
+    - David Ortiz
+    - Pedro Martinez
+    - Mookie Betts
+
+  boston_teams:
+    - Boston Celtics
+    - New England Patriots
+    - Boston Red Sox
+    - Boston Bruins
+
+  rival_teams:
+    - Los Angeles Lakers
+    - New York Knicks
+    - New York Yankees
+    - Miami Heat
+    - Philadelphia 76ers
+
+  podcast_segments:
+    - Guess the Lines
+    - Parent Corner
+    - The Rewatchables
+    - Book of Basketball 2.0
+    - Trade Value Column
+    - Mailbag
+    - NBA Draft Guide
+    - NFL Futures
+
+  rewatchables_categories:
+    - Apex Mountain
+    - What's Aged the Best
+    - What's Aged the Worst
+    - Dion Waiters Award
+    - Recasting Couch
+    - Joey Pants Award
+    - Vincent Hanna Award
+    - Half-Assed Internet Research
+    - Who Won the Movie
+    - Most Rewatchable Scene
+    - Casting What Ifs
+
+  catchphrases_and_tics:
+    - "Is this his Apex Mountain?"
+    - "What's aged the worst"
+    - "Trade value"
+    - "Draft assets"
+    - "He's a top 11 guy"
+    - "The thing is..."
+    - "I just feel like..."
+    - "My Celtics"
+    - "Rewatchability factor"
+    - "Hall of Fame Pyramid"
+
+  media_properties:
+    - The Ringer
+    - Grantland
+    - ESPN Page 2
+    - The B.S. Report
+    - HBO Any Given Wednesday
+    - The Book of Basketball
+    - Now I Can Die in Peace
