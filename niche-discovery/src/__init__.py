@@ -1,0 +1,1 @@
+"""Niche Meme Discovery Tool."""

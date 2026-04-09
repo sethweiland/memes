@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Meme Pipeline{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav>
+        <a href="/" class="brand">Meme Pipeline</a>
+        <a href="{{ url_for('generate.start') }}" class="{{ 'active' if active_page == 'generate' }}">Generate</a>
+        <a href="{{ url_for('gallery.index') }}" class="{{ 'active' if active_page == 'gallery' }}">Gallery</a>
+        <a href="{{ url_for('templates_review.review_page') }}" class="{{ 'active' if active_page == 'templates' }}">Templates</a>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,394 @@
+[
+  {
+    "session_id": "887004f11aa6",
+    "timestamp": "2026-02-01T20:39:23",
+    "topic": "david grisman",
+    "stage": "review",
+    "memes": [
+      {
+        "index": 1,
+        "format": "Distracted Boyfriend TEXT1 (Boyfriend): Steve Martin at IBMA Awards TEXT2 (Girlfriend): Banjo TEXT3 (Other Woman): David Grisman's mandolin stealing the show",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "cultural_legitimacy": 9,
+          "humor": 7,
+          "source_accuracy": 9
+        },
+        "overall_score": 8.3,
+        "selected": false,
+        "user_rating": null,
+        "user_feedback": "why is Steve Martin at IBMA awards showing up every time. Maybe this is from the web serch. "
+      },
+      {
+        "index": 6,
+        "format": "This Is Fine",
+        "top_text": "Me ignoring my banjo practice",
+        "bottom_text": "While David Grisman invents a new genre in the next room",
+        "scores": {
+          "cultural_legitimacy": 8,
+          "humor": 6,
+          "source_accuracy": 8
+        },
+        "overall_score": 7.3,
+        "selected": false,
+        "user_rating": 3,
+        "user_feedback": "close but mandolin would maybe be more appropriate givenyed.  that is what Grisman pla"
+      },
+      {
+        "index": 7,
+        "format": "Surprised Pikachu",
+        "top_text": "Bluegrass fans when David Grisman collaborates with aliens",
+        "bottom_text": "Wait, that's just his regular Dawg music",
+        "scores": {
+          "cultural_legitimacy": 7,
+          "humor": 8,
+          "source_accuracy": 6
+        },
+        "overall_score": 7,
+        "selected": false,
+        "user_rating": 4,
+        "user_feedback": "alien collab/made up stuff is funny"
+      },
+      {
+        "index": 8,
+        "format": "One Does Not Simply",
+        "top_text": "One does not simply out-mandolin David Grisman",
+        "bottom_text": "Unless you're a robot from the future disguised as a possum",
+        "scores": {
+          "cultural_legitimacy": 7,
+          "humor": 7,
+          "source_accuracy": 6
+        },
+        "overall_score": 6.6,
+        "selected": false,
+        "user_rating": null,
+        "user_feedback": "possum random and not funny. random could be funny why the robit disiguised as a possum. "
+      },
+      {
+        "index": 10,
+        "format": "Expanding Brain TEXT1: Listening to basic bluegrass TEXT2: Appreciating David Grisman's Dawg style TEXT3: Realizing Grisman invented bluegrass in a parallel universe TEXT4: Convincing aliens that Grisman's mandolin is the key to world peace",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "cultural_legitimacy": 7,
+          "humor": 8,
+          "source_accuracy": 4
+        },
+        "overall_score": 6.3,
+        "selected": false,
+        "user_rating": null,
+        "user_feedback": "good catch by the reviewer that the historical accuracy is pretty severely poor. "
+      },
+      {
+        "index": 12,
+        "format": "Tuxedo Winnie The Pooh",
+        "top_text": "Listening to basic bluegrass",
+        "bottom_text": "Listening to David Grisman's mandolin solos that bend time and space into pretzels",
+        "scores": {
+          "cultural_legitimacy": 7,
+          "humor": 7,
+          "source_accuracy": 5
+        },
+        "overall_score": 6.3,
+        "selected": true,
+        "user_rating": 4,
+        "user_feedback": "i like it, fits the format well. "
+      },
+      {
+        "index": 14,
+        "format": "Batman Slapping Robin",
+        "top_text": "Robin: Let's play some basic bluegrass",
+        "bottom_text": "Batman: No, we're doing David Grisman covers with laser beams",
+        "scores": {
+          "cultural_legitimacy": 5,
+          "humor": 7,
+          "source_accuracy": 3
+        },
+        "overall_score": 3.5,
+        "selected": false,
+        "user_rating": null,
+        "user_feedback": "laser beams makes it too ridiclious and not make sense"
+      },
+      {
+        "index": 18,
+        "format": "Epic Handshake TEXT1 (Arm 1): David Grisman TEXT2 (Arm 2): Alien from Ancient Aliens TEXT3 (Handshake): Agreeing that mandolins were gifted by extraterrestrials",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "cultural_legitimacy": 5,
+          "humor": 7,
+          "source_accuracy": 1
+        },
+        "overall_score": 3,
+        "selected": true,
+        "user_rating": null,
+        "user_feedback": "i like this one "
+      }
+    ]
+  },
+  {
+    "session_id": "0839e7aa4222",
+    "timestamp": "2026-02-22T21:55:43",
+    "topic": "androgenic looksmaxxer",
+    "stage": "review",
+    "memes": [
+      {
+        "index": 1,
+        "format": "Surprised Pikachu",
+        "top_text": "Androgenic recreates viral wig-snatch video for clout MIDDLE_TEXT: Stranger actually snatches it for real",
+        "bottom_text": "Shocked Androgenic face",
+        "scores": {
+          "humor": 7,
+          "relevance": 10,
+          "template_fit": 9
+        },
+        "overall_score": 8.1,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": "none of these are funny"
+      },
+      {
+        "index": 2,
+        "format": "Panik Kalm Panik PANIK1_TEXT: Clavicular gets frame mogged by ASU frat leader KALM_TEXT: Androgenic arrives to avenge with height and bonesmashing PANIK2_TEXT: But then his wig gets snatched mid-mission",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 10,
+          "template_fit": 9
+        },
+        "overall_score": 8.1,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 3,
+        "format": "Panik Kalm Panik PANIK1_TEXT: Your bro Clavicular gets brutally frame-mogged at ASU KALM_TEXT: You, a 6'5 chad, fly in for the ultimate revenge mog-off PANIK2_TEXT: Mid-battle, a toddler in the crowd mistakes your hat for a frisbee and exposes the emergency toupee",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 9,
+          "template_fit": 9
+        },
+        "overall_score": 7.8,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 4,
+        "format": "Tuxedo Winnie The Pooh REGULAR_POOH_TEXT: Brushing hair for 5 minutes TUXEDO_POOH_TEXT: Flying to the US for a bonesmashmaxxing mog-off to avenge your bro's frame humiliation at ASU",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 9,
+          "template_fit": 8
+        },
+        "overall_score": 7.7,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 5,
+        "format": "Tuxedo Winnie The Pooh REGULAR_POOH_TEXT: Complaining about bad lighting in selfies TUXEDO_POOH_TEXT: Engineering a cross-hemisphere vendetta involving ritualistic bonesmashing to restore honor in the sacred looksmaxxing coliseum",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 9,
+          "template_fit": 8
+        },
+        "overall_score": 7.7,
+        "selected": true,
+        "user_rating": 4,
+        "user_feedback": ""
+      },
+      {
+        "index": 6,
+        "format": "Expanding Brain BRAIN1_TEXT: Basic skincare routine BRAIN2_TEXT: Gym and diet for looksmaxxing BRAIN3_TEXT: Bonesmashing your skull to reshape it BRAIN4_TEXT: Androgenic hunting frat leaders like a 6'5 Australian terminator for a public mog battle",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 6,
+          "relevance": 9,
+          "template_fit": 9
+        },
+        "overall_score": 7.2,
+        "selected": false,
+        "user_rating": 2,
+        "user_feedback": ""
+      },
+      {
+        "index": 9,
+        "format": "Expanding Brain BRAIN1_TEXT: Skipping leg day for upper body gains BRAIN2_TEXT: Injecting synthol for instant bicep mogs BRAIN3_TEXT: Flying cross-continent to fistfight fate in a bonesmash ritual BRAIN4_TEXT: Androgenic summoning ancient Aboriginal spirits via didgeridoo to curse wig-snatchers with perpetual hat hair",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 6,
+          "template_fit": 9
+        },
+        "overall_score": 7,
+        "selected": false,
+        "user_rating": 2,
+        "user_feedback": ""
+      },
+      {
+        "index": 11,
+        "format": "Bad Bunny Grammy WTF",
+        "top_text": "Androgenic bonesmashmaxxing his own face to mog a frat bro",
+        "bottom_text": "Because flying from Australia wasn't extreme enough",
+        "scores": {
+          "humor": 6,
+          "relevance": 9,
+          "template_fit": 7
+        },
+        "overall_score": 6.9,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 12,
+        "format": "Bad Bunny Grammy WTF",
+        "top_text": "Androgenic explaining how snatching his wig is basically declaring war on the entire looksmaxxing community",
+        "bottom_text": "Fans: But bro, we can see the hat tan lines from space",
+        "scores": {
+          "humor": 6,
+          "relevance": 9,
+          "template_fit": 7
+        },
+        "overall_score": 6.9,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 13,
+        "format": "Trade Offer I_RECEIVE: Your eternal loyalty in the mog wars YOU_RECEIVE: A 6'5 Australian terminator bonesmashing his way through frat houses just to publicly humiliate one ASU leader who dared frame-mog Clavicular",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 6,
+          "relevance": 8,
+          "template_fit": 8
+        },
+        "overall_score": 6.8,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 14,
+        "format": "This Is Fine DOG_TEXT: Androgenic streaming live while a random dude yanks his wig off in public CAPTION_TEXT: This is just next-level jestermaxxing, everything's under control",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 5,
+          "relevance": 9,
+          "template_fit": 8
+        },
+        "overall_score": 6.5,
+        "selected": false,
+        "user_rating": 4,
+        "user_feedback": "good use of jestermaxxing"
+      }
+    ]
+  },
+  {
+    "session_id": "82bf02441846",
+    "timestamp": "2026-02-24T21:50:35",
+    "topic": "looksmaxxing",
+    "stage": "review",
+    "memes": [
+      {
+        "index": 1,
+        "format": "Expanding Brain PANEL1_TEXT: Using a free Looksmax AI app to edit selfies PANEL2_TEXT: Flying to Turkey for budget rhinoplasty PANEL3_TEXT: Hacking the forum database to change everyone's ratings to make yourself a gigachad by default PANEL4_TEXT: Convincing aliens to abduct all better-looking people so you're the default apex mogger on Earth",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 9,
+          "template_fit": 9
+        },
+        "overall_score": 7.8,
+        "selected": true,
+        "user_rating": 3,
+        "user_feedback": ""
+      },
+      {
+        "index": 9,
+        "format": "Nihilistic penguin",
+        "top_text": "Me, a MTN, after 5 years of mewing, chewing mastic gum, and thumbpulling",
+        "bottom_text": "Still getting height-mogged by my grandma's corgi in family photos",
+        "scores": {
+          "humor": 6,
+          "relevance": 8,
+          "template_fit": 7
+        },
+        "overall_score": 6.6,
+        "selected": true,
+        "user_rating": 4,
+        "user_feedback": ""
+      }
+    ]
+  },
+  {
+    "session_id": "7d1e58ef3895",
+    "timestamp": "2026-02-24T23:05:56",
+    "topic": "trump state of the union somali pirates",
+    "stage": "review",
+    "memes": [
+      {
+        "index": 3,
+        "format": "Anakin Padme 4 Panel PANEL1 (Anakin): We're gonna secure the borders from Somali pirates PANEL2 (Padme): For real? Like actual pirates with ships? PANEL3 (Anakin): Nah, just hyperbole about immigrants in Minnesota PANEL4 (Padme): ...for real?",
+        "top_text": "",
+        "bottom_text": "",
+        "scores": {
+          "humor": 7,
+          "relevance": 10,
+          "template_fit": 10
+        },
+        "overall_score": 8.2,
+        "selected": false,
+        "user_rating": 1,
+        "user_feedback": ""
+      },
+      {
+        "index": 4,
+        "format": "Drake Hotline Bling",
+        "top_text": "Biden-era immigration: boring visa paperwork",
+        "bottom_text": "Trump SOTU: \"Somali pirates hijacking Minneapolis, arrr you kidding me?\"",
+        "scores": {
+          "humor": 7,
+          "relevance": 9,
+          "template_fit": 9
+        },
+        "overall_score": 7.8,
+        "selected": true,
+        "user_rating": 4,
+        "user_feedback": ""
+      },
+      {
+        "index": 12,
+        "format": "Bernie I Am Once Again Asking For Your Support",
+        "top_text": "Bernie at podium",
+        "bottom_text": "I am once again asking for your support to stop Trump's Somali pirate invasion before they board my socialist yacht",
+        "scores": {
+          "humor": 5,
+          "relevance": 6,
+          "template_fit": 7
+        },
+        "overall_score": 5.5,
+        "selected": true,
+        "user_rating": 4,
+        "user_feedback": ""
+      }
+    ]
+  }
+]

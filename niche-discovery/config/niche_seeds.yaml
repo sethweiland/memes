@@ -1,0 +1,48 @@
+categories:
+  - name: trades_and_professions
+    hint: "Specific trades, blue collar jobs, medical specialties, niche tech roles, service industry jobs"
+    count: 80
+
+  - name: hobbies_and_crafts
+    hint: "Collecting hobbies, crafting, DIY, niche creative pursuits, maker culture"
+    count: 80
+
+  - name: music_and_instruments
+    hint: "Specific instruments, genres, playing styles, music production niches, regional music scenes"
+    count: 60
+
+  - name: sports_and_fitness
+    hint: "Niche sports, specific workout styles, recreational leagues, outdoor activities"
+    count: 60
+
+  - name: self_improvement
+    hint: "Looksmaxxing, productivity systems, biohacking, dating strategies, social skills, nofap, cold plunge communities"
+    count: 50
+
+  - name: animals_and_pets
+    hint: "Specific dog/cat breeds, exotic pets, wildlife enthusiasts, animal husbandry"
+    count: 50
+
+  - name: academic_and_science
+    hint: "Niche research fields, specific academic disciplines, lab culture, grad school life"
+    count: 50
+
+  - name: gaming
+    hint: "Specific game communities, retro gaming, tabletop, niche genres, speedrunning"
+    count: 50
+
+  - name: food_and_drink
+    hint: "Specific cuisines, brewing/distilling, cooking techniques, dietary communities, regional food"
+    count: 50
+
+  - name: vehicles_and_transport
+    hint: "Specific car models/eras, motorcycles, aviation, boating, trains, trucking"
+    count: 40
+
+  - name: regional_and_cultural
+    hint: "Specific regional identities, diaspora communities, local culture, rural vs urban subcultures"
+    count: 40
+
+  - name: online_subcultures
+    hint: "Terminally online communities, specific meme cultures, forum cultures, influencer fandoms"
+    count: 40

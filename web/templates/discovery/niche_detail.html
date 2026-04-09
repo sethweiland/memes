@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ niche.niche_name }} - Niche Details</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .back-link { color: #60a5fa; text-decoration: none; margin-bottom: 1rem; display: inline-block; }
+
+        h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .subtitle { color: #888; margin-bottom: 2rem; }
+
+        .scores {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .score-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .score-value { font-size: 2.5rem; font-weight: bold; }
+        .score-label { color: #888; font-size: 0.9rem; }
+        .score-high { color: #22c55e; }
+        .score-mid { color: #eab308; }
+        .score-low { color: #888; }
+
+        .section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .section-title { font-size: 1.1rem; margin-bottom: 1rem; color: #fff; }
+
+        .rating-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        .rating-item { text-align: center; }
+        .rating-value { font-size: 1.5rem; font-weight: bold; color: #60a5fa; }
+        .rating-label { font-size: 0.8rem; color: #888; }
+
+        .themes { margin-top: 1rem; }
+        .theme-tag {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin: 0.25rem;
+        }
+
+        .meme-list { list-style: none; }
+        .meme-list li {
+            padding: 0.75rem;
+            background: #252525;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .risks { color: #f87171; }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-secondary { background: #333; color: #fff; }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        .meta-item { }
+        .meta-label { color: #888; font-size: 0.85rem; }
+        .meta-value { color: #fff; }
+
+        a { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('discovery.review') }}" class="back-link">← Back to Review</a>
+
+        <h1>{{ niche.niche_name }}</h1>
+        <p class="subtitle">{{ niche.category }} · <a href="https://reddit.com/r/{{ niche.subreddit }}" target="_blank">r/{{ niche.subreddit }}</a> · {{ "{:,}".format(niche.subscribers) }} subscribers</p>
+
+        <div class="scores">
+            <div class="score-card">
+                <div class="score-value {% if niche.final_score >= 5 %}score-high{% elif niche.final_score >= 3 %}score-mid{% else %}score-low{% endif %}">
+                    {{ "%.1f"|format(niche.final_score) }}
+                </div>
+                <div class="score-label">Final Score</div>
+            </div>
+            <div class="score-card">
+                <div class="score-value">{{ "%.1f"|format(niche.quantitative_score) }}</div>
+                <div class="score-label">Quantitative</div>
+            </div>
+            <div class="score-card">
+                <div class="score-value">{{ "%.1f"|format(niche.qualitative_score) }}</div>
+                <div class="score-label">Qualitative</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Qualitative Ratings</h2>
+            <div class="rating-grid">
+                <div class="rating-item">
+                    <div class="rating-value">{{ niche.inside_joke_density }}</div>
+                    <div class="rating-label">Inside Jokes</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{{ niche.visual_meme_potential }}</div>
+                    <div class="rating-label">Visual Potential</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{{ niche.identity_strength }}</div>
+                    <div class="rating-label">Identity Strength</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{{ niche.engagement_likelihood }}</div>
+                    <div class="rating-label">Engagement</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{{ niche.content_sustainability }}</div>
+                    <div class="rating-label">Sustainability</div>
+                </div>
+            </div>
+        </div>
+
+        {% if niche.top_themes %}
+        <div class="section">
+            <h2 class="section-title">Top Meme-able Themes</h2>
+            <div class="themes">
+                {% for theme in niche.top_themes %}
+                <span class="theme-tag">{{ theme }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if niche.sample_meme_concepts %}
+        <div class="section">
+            <h2 class="section-title">Sample Meme Concepts</h2>
+            <ul class="meme-list">
+                {% for concept in niche.sample_meme_concepts %}
+                <li>{{ concept }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if niche.risks %}
+        <div class="section">
+            <h2 class="section-title">Risks</h2>
+            <p class="risks">⚠️ {{ niche.risks }}</p>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <h2 class="section-title">Metadata</h2>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Status</div>
+                    <div class="meta-value">{{ niche.status }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Instagram Page</div>
+                    <div class="meta-value">
+                        {% if niche.instagram_page_exists == true %}✅ Yes
+                        {% elif niche.instagram_page_exists == false %}❌ No
+                        {% else %}❓ Unknown{% endif %}
+                        {% if niche.instagram_page_url %}
+                        <a href="{{ niche.instagram_page_url }}" target="_blank">{{ niche.instagram_page_url }}</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">First Discovered</div>
+                    <div class="meta-value">{{ niche.first_discovered[:10] if niche.first_discovered else 'Unknown' }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Notes</div>
+                    <div class="meta-value">{{ niche.notes or 'None' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('generate.start') }}?topic={{ niche.niche_name | urlencode }}+memes" class="btn btn-primary">🎨 Generate Test Memes</a>
+            <a href="https://www.instagram.com/explore/search/keyword/?q={{ niche.niche_name | urlencode }}" target="_blank" class="btn btn-secondary">🔍 Search Instagram</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Niches</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-group { display: flex; align-items: center; gap: 0.5rem; }
+        .filter-group label { color: #888; font-size: 0.9rem; }
+        select, input[type="number"] {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-secondary { background: #333; color: #fff; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-warning { background: #ca8a04; color: white; }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1rem;
+        }
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .card-score {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .score-high { color: #22c55e; }
+        .score-mid { color: #eab308; }
+        .score-low { color: #888; }
+
+        .card-meta {
+            display: flex;
+            gap: 1rem;
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+        .card-meta a { color: #60a5fa; }
+
+        .themes {
+            margin-bottom: 0.75rem;
+        }
+        .theme-tag {
+            display: inline-block;
+            background: #2a2a2a;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 0.2rem;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #333;
+        }
+
+        .ig-buttons { display: flex; gap: 0.25rem; }
+
+        .status-select {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .meme-concepts {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-top: 0.5rem;
+        }
+        .meme-concepts strong { color: #888; }
+
+        .risks {
+            font-size: 0.8rem;
+            color: #f87171;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .badge-new { background: #1e3a5f; color: #60a5fa; }
+        .badge-researching { background: #3f3f00; color: #facc15; }
+        .badge-launched { background: #14532d; color: #4ade80; }
+        .badge-skipped { background: #333; color: #888; }
+
+        .back-link { color: #60a5fa; text-decoration: none; margin-bottom: 1rem; display: inline-block; }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #22c55e;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            display: none;
+        }
+        .toast.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('discovery.dashboard') }}" class="back-link">← Back to Dashboard</a>
+        <h1>Review Niches</h1>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Status:</label>
+                <select id="status-filter" onchange="applyFilters()">
+                    <option value="all" {% if current_status == 'all' %}selected{% endif %}>All</option>
+                    <option value="new" {% if current_status == 'new' %}selected{% endif %}>New</option>
+                    <option value="researching" {% if current_status == 'researching' %}selected{% endif %}>Researching</option>
+                    <option value="launched" {% if current_status == 'launched' %}selected{% endif %}>Launched</option>
+                    <option value="skipped" {% if current_status == 'skipped' %}selected{% endif %}>Skipped</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Category:</label>
+                <select id="category-filter" onchange="applyFilters()">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Min Score:</label>
+                <input type="number" id="min-score" value="{{ current_min_score }}" min="0" max="10" step="0.5" style="width: 60px;" onchange="applyFilters()">
+            </div>
+        </div>
+
+        <div class="cards">
+            {% for niche in niches %}
+            <div class="card" data-niche="{{ niche.niche_name }}">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">{{ niche.niche_name }}</div>
+                        <span class="badge badge-{{ niche.status }}">{{ niche.status }}</span>
+                    </div>
+                    <div class="card-score {% if niche.final_score >= 5 %}score-high{% elif niche.final_score >= 3 %}score-mid{% else %}score-low{% endif %}">
+                        {{ "%.1f"|format(niche.final_score) }}
+                    </div>
+                </div>
+
+                <div class="card-meta">
+                    <span><a href="https://reddit.com/r/{{ niche.subreddit }}" target="_blank">r/{{ niche.subreddit }}</a></span>
+                    <span>{{ "{:,}".format(niche.subscribers) }} subs</span>
+                    <span>Q: {{ "%.1f"|format(niche.qualitative_score) }}</span>
+                </div>
+
+                {% if niche.top_themes %}
+                <div class="themes">
+                    {% for theme in niche.top_themes %}
+                    <span class="theme-tag">{{ theme }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if niche.sample_meme_concepts %}
+                <div class="meme-concepts">
+                    <strong>Meme ideas:</strong> {{ niche.sample_meme_concepts | join("; ") | truncate(100) }}
+                </div>
+                {% endif %}
+
+                {% if niche.risks %}
+                <div class="risks">⚠️ {{ niche.risks | truncate(80) }}</div>
+                {% endif %}
+
+                <div class="card-actions">
+                    <div class="ig-buttons">
+                        <button class="btn btn-sm btn-success" onclick="markInstagram('{{ niche.niche_name }}', true)" title="Has Instagram page">✅ IG</button>
+                        <button class="btn btn-sm btn-danger" onclick="markInstagram('{{ niche.niche_name }}', false)" title="No Instagram page">❌ No IG</button>
+                        <a href="https://www.instagram.com/explore/search/keyword/?q={{ niche.niche_name | urlencode }}" target="_blank" class="btn btn-sm btn-secondary" title="Manual Search">🔍</a>
+                        <button class="btn btn-sm btn-primary" onclick="autoSearchInstagram('{{ niche.niche_name }}')" title="Auto-search via Apify">🤖</button>
+                    </div>
+                    <select class="status-select" onchange="updateStatus('{{ niche.niche_name }}', this.value)">
+                        <option value="new" {% if niche.status == 'new' %}selected{% endif %}>New</option>
+                        <option value="researching" {% if niche.status == 'researching' %}selected{% endif %}>Researching</option>
+                        <option value="launched" {% if niche.status == 'launched' %}selected{% endif %}>Launched</option>
+                        <option value="skipped" {% if niche.status == 'skipped' %}selected{% endif %}>Skipped</option>
+                    </select>
+                    <a href="{{ url_for('generate.start') }}?topic={{ niche.niche_name | urlencode }}+memes" class="btn btn-sm btn-primary">🎨 Test Memes</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Saved!</div>
+
+    <script>
+        function applyFilters() {
+            const status = document.getElementById('status-filter').value;
+            const category = document.getElementById('category-filter').value;
+            const minScore = document.getElementById('min-score').value;
+
+            let url = '{{ url_for("discovery.review") }}?';
+            if (status) url += `status=${status}&`;
+            if (category) url += `category=${category}&`;
+            if (minScore) url += `min_score=${minScore}&`;
+
+            window.location.href = url;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        async function markInstagram(nicheName, exists) {
+            try {
+                const resp = await fetch(`/discovery/api/niche/${encodeURIComponent(nicheName)}/instagram`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({exists: exists})
+                });
+                if (resp.ok) {
+                    showToast(exists ? '✅ Marked as has IG' : '❌ Marked as no IG');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function updateStatus(nicheName, status) {
+            try {
+                const resp = await fetch(`/discovery/api/niche/${encodeURIComponent(nicheName)}/status`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({status: status})
+                });
+                if (resp.ok) {
+                    showToast(`Status: ${status}`);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function autoSearchInstagram(nicheName) {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            try {
+                const resp = await fetch(`/discovery/api/instagram/search/${encodeURIComponent(nicheName)}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                });
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    if (data.meme_pages_found > 0) {
+                        showToast(`Found ${data.meme_pages_found} pages! Largest: @${data.largest_competitor} (${data.largest_competitor_followers.toLocaleString()})`);
+                    } else {
+                        showToast('No meme pages found - opportunity!');
+                    }
+                    // Refresh the page to show updated data
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alert(data.error || 'Search failed');
+                    btn.disabled = false;
+                    btn.textContent = '🤖';
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Search failed: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = '🤖';
+            }
+        }
+    </script>
+</body>
+</html>

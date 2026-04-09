@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% set active_page = "templates" %}
+{% block title %}Template Stats{% endblock %}
+
+{% block content %}
+<h1>Template Stats</h1>
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="number">{{ total }}</div>
+        <div class="label">Total in Catalog</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ handwritten }}</div>
+        <div class="label">Hand-written</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ ai_approved }}</div>
+        <div class="label">AI Approved</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ review_queue }}</div>
+        <div class="label">Review Queue</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ undescribed }}</div>
+        <div class="label">Undescribed</div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+Topic: {{ topic }}
+
+═══════════════════════════════════════════════════════════════════════════════
+CONTEXT FROM {{ domain.content_source_description | upper }}:
+═══════════════════════════════════════════════════════════════════════════════
+{{ context_text }}
+
+═══════════════════════════════════════════════════════════════════════════════
+AVAILABLE TEMPLATES:
+═══════════════════════════════════════════════════════════════════════════════
+{{ template_catalog }}
+
+{% if trending_section %}
+═══════════════════════════════════════════════════════════════════════════════
+{{ trending_section }}
+═══════════════════════════════════════════════════════════════════════════════
+{% endif %}
+
+═══════════════════════════════════════════════════════════════════════════════
+VIRAL FORMATS & STRUCTURES (mix these in):
+═══════════════════════════════════════════════════════════════════════════════
+- "I'm just a [person] standing in front of [thing], asking [absurd request]"
+- "POV: You're the [hyper-specific scenario]"
+- "The [X] to [Y] pipeline is real" (showing unlikely progression)
+- "Corporate needs you to find the difference" (two things that are actually the same)
+- "My [toxic trait / roman empire / 13th reason]" formats
+- Screenshot-style text conversations or notifications
+- "How it started vs How it's going"
+- Fake documentary/movie title cards
+- "Tell me you're a [X] without telling me you're a [X]"
+
+═══════════════════════════════════════════════════════════════════════════════
+GENERATE {{ num_ideas }} MEMES
+═══════════════════════════════════════════════════════════════════════════════
+
+TEMPLATE GUIDANCE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Prioritize templates from the TRENDING TEMPLATES section above — they're hot
+• Mix in some ✨ FRESH FORMATS (new templates) for variety
+• Each meme should use a DIFFERENT template
+• Use templates from AVAILABLE TEMPLATES for anything not in trending
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STYLE REQUIREMENTS:
+- Each meme must use a DIFFERENT template
+- At least 2 should be UNHINGED/ABSURDIST (intentionally weird)
+- At least 2 should be HYPER-SPECIFIC deep cuts
+- Aim for actual laughs, not polite smiles
+- NO explanations needed — if you have to explain it, rewrite it
+
+Mix of approaches:
+- Some safe crowd-pleasers (widely relatable)
+- Some deep cuts (only hardcore fans get it)
+- Some completely unhinged (absurdist, surreal)
+
+═══════════════════════════════════════════════════════════════════════════════
+EXAMPLES OF GOOD VS BAD:
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ BAD (generic, obvious):
+FORMAT: Drake
+TOP_TEXT: Playing guitar
+BOTTOM_TEXT: Playing banjo
+
+✅ GOOD (specific, subverts expectations):
+FORMAT: Drake
+TOP_TEXT: Learning music theory to understand chord progressions
+BOTTOM_TEXT: Learning 47 ways to play G so you can pretend each jam is different
+
+❌ BAD (explains the joke):
+FORMAT: Expanding Brain
+TOP_TEXT: Liking bluegrass
+BOTTOM_TEXT: Really liking bluegrass / Being obsessed with bluegrass / This is funny because bluegrass fans are dedicated
+
+✅ GOOD (escalates absurdly):
+FORMAT: Expanding Brain
+TOP_TEXT: Learning one Earl Scruggs song
+BOTTOM_TEXT: Learning the entire Foggy Mountain catalog / Practicing until your fingers bleed / Your banjo legally changes its name to Scruggs Jr.
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT FORMAT (use EXACTLY):
+═══════════════════════════════════════════════════════════════════════════════
+
+FORMAT: exact template name from list above
+TOP_TEXT: the top text
+BOTTOM_TEXT: the bottom text
+
+---
+
+FORMAT: next template...
+
+FOR MULTI-PANEL TEMPLATES (3+ boxes):
+- Put panel 1 in TOP_TEXT
+- Put remaining panels in BOTTOM_TEXT, separated by " / "

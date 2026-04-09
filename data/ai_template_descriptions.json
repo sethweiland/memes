@@ -1,0 +1,92 @@
+{
+  "217743513": {
+    "id": "217743513",
+    "name": "UNO Draw 25 Cards",
+    "description": "This template has two panels: the left panel shows a modified UNO card with the text \"OR draw 25\" written on it, and the right panel shows a person holding UNO cards with a neutral expression. Use the left panel for the exaggerated or absurd option and the right panel for the reaction or context. Use for [exaggerated consequences].",
+    "confidence": 9,
+    "panel_structure": "2 panels side by side",
+    "comedic_pattern": "exaggerated consequences",
+    "generated_at": "2026-01-31T23:31:48.980470"
+  },
+  "131087935": {
+    "id": "131087935",
+    "name": "Running Away Balloon",
+    "description": "This template has two panels, top and bottom. In the top panel, a character reaches out excitedly for a yellow balloon. In the bottom panel, a pink character holds back the same character, who still reaches for the balloon. Use for [pattern].",
+    "confidence": 8,
+    "panel_structure": "2 panels top/bottom",
+    "comedic_pattern": "thwarted desire",
+    "generated_at": "2026-01-31T23:31:51.356360"
+  },
+  "161865971": {
+    "id": "161865971",
+    "name": "Marked Safe From",
+    "description": "This template has a single panel with a blue flag icon and a person icon. The text \"Marked Safe From\" is placed below the icon, and \"Today\" is at the bottom. Use this template by replacing \"Today\" with a humorous situation or event. Use for [pattern].",
+    "confidence": 9,
+    "panel_structure": "single image with top/bottom text",
+    "comedic_pattern": "marked safe from",
+    "generated_at": "2026-01-31T23:31:53.922059"
+  },
+  "322841258": {
+    "id": "322841258",
+    "name": "Anakin Padme 4 Panel",
+    "description": "This template has 4 panels in a 2x2 grid layout. It features two characters, Anakin Skywalker and Padm\u00e9 Amidala, with neutral expressions. Text is typically added above or below each character's face to create humorous dialogue. Use for [dialogue contrast].",
+    "confidence": 9,
+    "panel_structure": "4 panels grid",
+    "comedic_pattern": "dialogue contrast",
+    "generated_at": "2026-01-31T23:31:56.689048"
+  },
+  "61544": {
+    "id": "61544",
+    "name": "Success Kid",
+    "description": "This template features a single image of a baby with a determined expression, raising one fist. There are no panels or sections; text is typically added at the top and bottom. Use for [celebrating small victories].",
+    "confidence": 10,
+    "panel_structure": "single image with top/bottom text",
+    "comedic_pattern": "small victory",
+    "generated_at": "2026-01-31T23:33:17.790525"
+  },
+  "309868304": {
+    "id": "309868304",
+    "name": "Trade Offer",
+    "description": "This template features a single image of a man with a serious expression, hands forming a triangle. There are two text sections: \"i receive:\" on the left and \"you receive:\" on the right. Use for [unequal trade scenarios].",
+    "confidence": 9,
+    "panel_structure": "single image with left/right text",
+    "comedic_pattern": "unequal trade",
+    "generated_at": "2026-01-31T23:33:10.724464"
+  },
+  "102156234": {
+    "id": "102156234",
+    "name": "Mocking Spongebob",
+    "description": "This is a single-panel image featuring SpongeBob SquarePants with a mocking expression, wide eyes, and a smug smile. Text is typically added at the top or bottom to convey a mocking or sarcastic tone. Use for [pattern].",
+    "confidence": 9,
+    "panel_structure": "single image with top/bottom text",
+    "comedic_pattern": "mocking sarcasm",
+    "generated_at": "2026-01-31T23:33:13.001128"
+  },
+  "124055727": {
+    "id": "124055727",
+    "name": "Y'all Got Any More Of That",
+    "description": "This is a single-panel meme template featuring a person wearing a red beanie and a jacket, with a pleading expression. The person is typically asking for more of something, with the text placed at the top or bottom of the image. Use for [desperation or craving].",
+    "confidence": 9,
+    "panel_structure": "single image with top/bottom text",
+    "comedic_pattern": "desperate request",
+    "generated_at": "2026-01-31T23:33:15.440093"
+  },
+  "91538330": {
+    "id": "91538330",
+    "name": "X, X Everywhere",
+    "description": "This template features two characters, Woody and Buzz Lightyear from Toy Story. Woody looks concerned while Buzz Lightyear points upwards with a confident expression. There are no text areas; the humor comes from the characters' expressions and actions. Use for [pattern].",
+    "confidence": 9,
+    "panel_structure": "single image",
+    "comedic_pattern": "X, X Everywhere",
+    "generated_at": "2026-01-31T23:33:20.176556"
+  },
+  "222403160": {
+    "id": "222403160",
+    "name": "Bernie I Am Once Again Asking For Your Support",
+    "description": "This template features a single image of Bernie Sanders wearing a winter coat, with a serious expression. The text is placed at the bottom, with the example text \"I am once again asking\". Use for [pattern].",
+    "confidence": 9,
+    "panel_structure": "single image with bottom text",
+    "comedic_pattern": "repeated request",
+    "generated_at": "2026-01-31T23:31:46.492603"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "categories": {
+    "animals": [
+      "dog", "cat", "bird", "bear", "monkey",
+      "penguin", "frog", "fish", "snake", "owl",
+      "spider", "chicken", "cow", "horse", "rabbit"
+    ],
+    "emotions": [
+      "happy", "sad", "angry", "confused", "surprised",
+      "scared", "excited", "disappointed", "proud", "embarrassed",
+      "tired", "anxious", "smug", "crying", "laughing"
+    ],
+    "reactions": [
+      "shocked", "thinking", "waiting", "running", "hiding",
+      "pointing", "yelling", "sleeping", "dancing", "falling",
+      "fighting", "winning", "losing", "celebrating", "suffering"
+    ],
+    "pop_culture": [
+      "star wars", "marvel", "anime", "spongebob", "simpsons",
+      "office", "friends", "breaking bad", "game of thrones",
+      "lord of rings", "harry potter", "disney"
+    ],
+    "situations": [
+      "work", "school", "boss", "meeting", "family",
+      "relationship", "breakup", "party", "food", "money",
+      "study", "exam", "homework", "traffic", "weather"
+    ],
+    "tech": [
+      "computer", "phone", "internet", "wifi", "gaming",
+      "coding", "bug", "update", "loading", "crash"
+    ],
+    "actions": [
+      "explaining", "arguing", "choosing", "refusing", "accepting",
+      "ignoring", "avoiding", "confronting", "questioning", "realizing"
+    ],
+    "abstract": [
+      "irony", "hypocrisy", "double standard", "contradiction",
+      "excuse", "solution", "problem", "mistake"
+    ]
+  }
+}

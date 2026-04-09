@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% set active_page = "templates" %}
+{% block title %}Review Queue{% endblock %}
+
+{% block content %}
+<h1>Review Queue</h1>
+<div class="counter" id="counter" data-total="{{ total }}">0 of {{ total }} reviewed</div>
+<div id="cards">
+{% if items %}
+    {% for item in items %}
+    <div class="card" id="card-{{ item.id }}">
+        <img src="{{ item.img_url }}" alt="{{ item.name }}" loading="lazy">
+        <div class="card-body">
+            <h3>{{ item.name }}</h3>
+            <div class="meta">
+                <span>ID: {{ item.id }}</span>
+                <span>Boxes: {{ item.box_count }}</span>
+                <span>Confidence: {{ item.confidence }}</span>
+            </div>
+            <div class="meta">
+                <span>Panel: {{ item.panel_structure }}</span>
+                <span>Pattern: {{ item.comedic_pattern }}</span>
+            </div>
+            <textarea>{{ item.description }}</textarea>
+            <div class="actions">
+                <button class="btn btn-approve"
+                    onclick="doAction('{{ item.id }}','approve',document.getElementById('card-{{ item.id }}'))">
+                    Approve
+                </button>
+                <button class="btn btn-reject"
+                    onclick="doAction('{{ item.id }}','reject',document.getElementById('card-{{ item.id }}'))">
+                    Reject
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty">Review queue is empty.</div>
+{% endif %}
+</div>
+{% endblock %}

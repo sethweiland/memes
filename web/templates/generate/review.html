@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% set active_page = "generate" %}
+{% block title %}Review Memes{% endblock %}
+
+{% block content %}
+{% if expired %}
+<div class="error-box">
+    <h2>Session Expired</h2>
+    <p>This generation session is no longer available.</p>
+    <a href="{{ url_for('generate.start') }}" class="btn btn-primary" style="margin-top:12px;">Start New Generation</a>
+</div>
+{% else %}
+<div id="progress-box" class="progress-box">
+    <div class="spinner"></div>
+    <div class="progress-text" id="progress-text">Starting generation...</div>
+</div>
+<div id="cards-container"></div>
+<div id="selection-bar" class="selection-bar">
+    <span class="count" id="selection-count">0 selected</span>
+    <button class="btn btn-primary" id="generate-selected-btn">Generate Selected</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not expired %}
+<script>initReviewPage('{{ job_id }}');</script>
+{% endif %}
+{% endblock %}

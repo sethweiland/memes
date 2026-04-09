@@ -1,0 +1,392 @@
+[
+  {
+    "niche_name": "Gym Addicts",
+    "category": "self_improvement",
+    "subreddit": "Fitness",
+    "subscribers": 12474059,
+    "quantitative_score": 100.0,
+    "community_strength": 783.4,
+    "supply_gap": 1.0,
+    "inside_joke_density": 7,
+    "visual_meme_potential": 8,
+    "identity_strength": 9,
+    "engagement_likelihood": 7,
+    "content_sustainability": 8,
+    "top_themes": [
+      "Beginner mistakes",
+      "Fitness victories",
+      "Gym stories"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme about skipping leg day vs. actually going to the gym",
+      "Expanding brain meme about evolving from 'couch potato' to 'gym addict'"
+    ],
+    "risks": "Community may prioritize serious advice and self-improvement over humor, potentially leading to low engagement if memes are seen as too frivolous or niche",
+    "qualitative_score": 7.8,
+    "final_score": 8.68
+  },
+  {
+    "niche_name": "Rock Climbing Crew",
+    "category": "sports_and_fitness",
+    "subreddit": "RockClimbing",
+    "subscribers": 48921,
+    "quantitative_score": 25.2,
+    "community_strength": 26.07,
+    "supply_gap": 1.0,
+    "inside_joke_density": 6,
+    "visual_meme_potential": 8,
+    "identity_strength": 9,
+    "engagement_likelihood": 7,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Climbing Grades and Difficulties",
+      "Scenic Climbing Spots",
+      "Personal Climbing Challenges"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left panel shows easy climb (e.g., 5.4) as 'approved', right panel shows hard climb (e.g., 8b) as 'not for me'",
+      "Expanding Brain meme: Starts with 'thinks climbing is just hiking', progresses to 'sends a 5.10 after breaking a foot'"
+    ],
+    "risks": "Community might be too focused on safety and serious discussions, making humor about risks or failures seem insensitive; also, niche jargon could limit broader appeal",
+    "qualitative_score": 7.2,
+    "final_score": 5.33
+  },
+  {
+    "niche_name": "Soap Making Wizards",
+    "category": "hobbies_and_crafts",
+    "subreddit": "soapmaking",
+    "subscribers": 77977,
+    "quantitative_score": 21.3,
+    "community_strength": 54.01,
+    "supply_gap": 0.5,
+    "inside_joke_density": 7,
+    "visual_meme_potential": 8,
+    "identity_strength": 9,
+    "engagement_likelihood": 7,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Glycerin rivers and gel issues",
+      "Soap hardening failures",
+      "Recipe experiments"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme comparing a perfect soap batch to a disastrous one with glycerin rivers",
+      "Expanding brain meme showing levels of soapmaking expertise from beginner mistakes to pro techniques"
+    ],
+    "risks": "Community may be too focused on practical advice and education, potentially viewing humor as secondary; the niche topic could limit broader appeal and engagement outside dedicated members",
+    "qualitative_score": 7.4,
+    "final_score": 5.29
+  },
+  {
+    "niche_name": "Tesla Electric Vehicle Owners",
+    "category": "vehicles_and_transport",
+    "subreddit": "Tesla",
+    "subscribers": 62934,
+    "quantitative_score": 44.1,
+    "community_strength": 79.28,
+    "supply_gap": 0.5,
+    "inside_joke_density": 4,
+    "visual_meme_potential": 7,
+    "identity_strength": 7,
+    "engagement_likelihood": 6,
+    "content_sustainability": 5,
+    "top_themes": [
+      "Nikola Tesla's inventions",
+      "Wireless energy and power",
+      "Historical Tesla mishaps"
+    ],
+    "sample_meme_concepts": [
+      "Distracted Boyfriend meme with Tesla ignoring Edison's DC current in favor of his own AC system",
+      "Expanding Brain meme showing progression from Edison's ideas to Tesla's wireless power as the ultimate enlightenment"
+    ],
+    "risks": "Community may be too niche and serious, focusing on historical education rather than humor, making memes feel out of place; potential confusion with Tesla the company versus Nikola Tesla the inventor could dilute relevance",
+    "qualitative_score": 5.8,
+    "final_score": 5.24
+  },
+  {
+    "niche_name": "Slackline Balancers",
+    "category": "sports_and_fitness",
+    "subreddit": "Slackline",
+    "subscribers": 22337,
+    "quantitative_score": 22.3,
+    "community_strength": 48.19,
+    "supply_gap": 0.5,
+    "inside_joke_density": 6,
+    "visual_meme_potential": 8,
+    "identity_strength": 8,
+    "engagement_likelihood": 7,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Beginner struggles",
+      "High lining exposure",
+      "Trick fails or successes"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left panel showing someone falling off a slackline as 'beginner attempts', right panel showing mastering a high line as 'pro level'",
+      "Expanding brain meme: First panel 'Thinks slacklining is easy', middle 'Realizes the exposure fear', last 'Balances perfectly while juggling'"
+    ],
+    "risks": "The community is niche and often serious about safety and technique, so memes might be seen as trivializing risks; low subscriber base could limit engagement and viral potential",
+    "qualitative_score": 7.0,
+    "final_score": 5.09
+  },
+  {
+    "niche_name": "Spice Mix Creators",
+    "category": "online_subcultures",
+    "subreddit": "homecooking",
+    "subscribers": 140474,
+    "quantitative_score": 25.7,
+    "community_strength": 75.98,
+    "supply_gap": 1.0,
+    "inside_joke_density": 5,
+    "visual_meme_potential": 8,
+    "identity_strength": 7,
+    "engagement_likelihood": 7,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Cooking successes and failures",
+      "Ethnic or family recipes",
+      "Specific dish attempts like ribs or sandwiches"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left side showing a failed home-cooked meal, right side showing a successful one",
+      "Distracted Boyfriend meme: Boyfriend as a home cook eyeing takeout instead of their own dish"
+    ],
+    "risks": "Community may be too focused on practical advice and sharing experiences, making it less receptive to humor if memes are seen as unserious or off-topic; humor could be too niche for broader appeal",
+    "qualitative_score": 6.6,
+    "final_score": 4.99
+  },
+  {
+    "niche_name": "Orienteering Navigators",
+    "category": "sports_and_fitness",
+    "subreddit": "orienteering",
+    "subscribers": 5977,
+    "quantitative_score": 19.6,
+    "community_strength": 37.31,
+    "supply_gap": 1.0,
+    "inside_joke_density": 6,
+    "visual_meme_potential": 7,
+    "identity_strength": 8,
+    "engagement_likelihood": 7,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Navigation errors",
+      "Equipment failures",
+      "Age-related challenges"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left side showing perfect map reading, right side showing mispunching the finish control",
+      "Expanding brain: First panel - Using a basic compass, middle - Mastering orienteering, last - Getting lost in your own backyard"
+    ],
+    "risks": "Community is niche and relatively small (under 6,000 subscribers), with a focus on practical advice that might make it too serious for widespread meme engagement; humor could be too specific to orienteering lingo, alienating outsiders",
+    "qualitative_score": 6.8,
+    "final_score": 4.86
+  },
+  {
+    "niche_name": "Hot yoga warriors",
+    "category": "sports_and_fitness",
+    "subreddit": "HotYoga",
+    "subscribers": 12509,
+    "quantitative_score": 30.6,
+    "community_strength": 82.27,
+    "supply_gap": 1.0,
+    "inside_joke_density": 4,
+    "visual_meme_potential": 8,
+    "identity_strength": 7,
+    "engagement_likelihood": 6,
+    "content_sustainability": 5,
+    "top_themes": [
+      "Headstands",
+      "Yoga poses and challenges",
+      "Mat cleaning and maintenance"
+    ],
+    "sample_meme_concepts": [
+      "Distracted Boyfriend meme where the boyfriend is a yogi ignoring daily life for headstands at high altitude",
+      "Expanding Brain meme showing levels from basic yoga to mastering headstands while fasting during Ramadan"
+    ],
+    "risks": "Community might be too serious and wellness-focused, with humor appearing niche or spammy (e.g., 'gyatt babe' titles), potentially limiting broader appeal and engagement due to small subscriber base",
+    "qualitative_score": 6.0,
+    "final_score": 4.82
+  },
+  {
+    "niche_name": "Slacklining Balance Artists",
+    "category": "sports_and_fitness",
+    "subreddit": "Slackline",
+    "subscribers": 22337,
+    "quantitative_score": 23.0,
+    "community_strength": 48.19,
+    "supply_gap": 0.5,
+    "inside_joke_density": 5,
+    "visual_meme_potential": 8,
+    "identity_strength": 7,
+    "engagement_likelihood": 6,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Beginner struggles",
+      "High lining exposure",
+      "Slackline tricks and challenges"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left side showing 'Disliking beginner falls' vs Right side 'Loving the thrill of high lining'",
+      "Expanding Brain meme: From 'Standing on a backyard slackline' to 'Juggling on a highline in exposure'"
+    ],
+    "risks": "Community may be too focused on safety, education, and skill-building, making humor feel niche or inappropriate; small subscriber base could limit viral potential and engagement",
+    "qualitative_score": 6.4,
+    "final_score": 4.76
+  },
+  {
+    "niche_name": "British Expats in the US",
+    "category": "regional_and_cultural",
+    "subreddit": "BritishExpats",
+    "subscribers": 2288,
+    "quantitative_score": 25.4,
+    "community_strength": 173.75,
+    "supply_gap": 1.0,
+    "inside_joke_density": 4,
+    "visual_meme_potential": 7,
+    "identity_strength": 8,
+    "engagement_likelihood": 6,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Passport and visa bureaucracy",
+      "Expat life struggles (e.g., mental health and relocation)",
+      "Cultural adaptation and dual nationality challenges"
+    ],
+    "sample_meme_concepts": [
+      "Distracted Boyfriend meme showing a British expat torn between UK traditions and new country customs",
+      "This is Fine meme depicting someone calmly dealing with UK passport rule changes while everything burns around them"
+    ],
+    "risks": "Community is relatively small with only 2,288 subscribers and focuses on serious topics like advice and bureaucracy, so it may not engage with humor; existing content is practical rather than joke-oriented, making memes feel out of place or too niche",
+    "qualitative_score": 6.2,
+    "final_score": 4.74
+  },
+  {
+    "niche_name": "Ethnobotanists",
+    "category": "academic_and_science",
+    "subreddit": "Ethnobotany",
+    "subscribers": 8405,
+    "quantitative_score": 19.0,
+    "community_strength": 26.22,
+    "supply_gap": 1.0,
+    "inside_joke_density": 4,
+    "visual_meme_potential": 7,
+    "identity_strength": 7,
+    "engagement_likelihood": 6,
+    "content_sustainability": 7,
+    "top_themes": [
+      "Psychoactive Plants",
+      "Seed Sourcing and Identification",
+      "Cultural or Traditional Uses"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left panel dislikes synthetic drugs, right panel likes ethnobotanical plants like Kratom",
+      "Expanding Brain meme: Starts with everyday herbs, progresses to psychoactive seeds, ends with mastering ethnobotany mysteries"
+    ],
+    "risks": "Community may be too serious and education-focused, with topics involving legal or safety-sensitive substances like psychoactive plants, making humor hard to package without offending members",
+    "qualitative_score": 6.2,
+    "final_score": 4.48
+  },
+  {
+    "niche_name": "Soap Crafters",
+    "category": "hobbies_and_crafts",
+    "subreddit": "soapmaking",
+    "subscribers": 77977,
+    "quantitative_score": 21.3,
+    "community_strength": 54.01,
+    "supply_gap": 0.5,
+    "inside_joke_density": 5,
+    "visual_meme_potential": 7,
+    "identity_strength": 6,
+    "engagement_likelihood": 6,
+    "content_sustainability": 6,
+    "top_themes": [
+      "Soap hardening failures",
+      "Recipe experimentation outcomes",
+      "Ingredient and supplier quirks"
+    ],
+    "sample_meme_concepts": [
+      "Distracted Boyfriend meme with a soapmaker ignoring a failed batch for a perfect one, captioned 'Me with my soap recipes vs. reality'",
+      "This is Fine dog meme in a kitchen with melting soap, captioned 'Hot process soap gone wrong'"
+    ],
+    "risks": "Community may be too focused on practical advice and education, making humor feel out of place; niche audience could limit viral potential and engagement",
+    "qualitative_score": 6.0,
+    "final_score": 4.45
+  },
+  {
+    "niche_name": "Cold Plunge Advocates",
+    "category": "self_improvement",
+    "subreddit": "Biohacking",
+    "subscribers": 20643,
+    "quantitative_score": 23.5,
+    "community_strength": 142.91,
+    "supply_gap": 1.0,
+    "inside_joke_density": 4,
+    "visual_meme_potential": 7,
+    "identity_strength": 6,
+    "engagement_likelihood": 5,
+    "content_sustainability": 7,
+    "top_themes": [
+      "Peptides",
+      "Health Optimization Experiments",
+      "Blood and Oxygen Metrics"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left side - Regular gym workout, Right side - Biohacking with peptides for gains",
+      "Expanding brain meme: First panel - Drink coffee for energy, Last panel - Use hyperbaric chamber for optimal oxygenation"
+    ],
+    "risks": "Community might be too serious and science-focused, making humor feel out of place; topics are niche, limiting broader appeal and viral potential",
+    "qualitative_score": 5.8,
+    "final_score": 4.42
+  },
+  {
+    "niche_name": "Vintage Camera Restorers",
+    "category": "hobbies_and_crafts",
+    "subreddit": "vintagecameras",
+    "subscribers": 17027,
+    "quantitative_score": 19.1,
+    "community_strength": 26.57,
+    "supply_gap": 1.0,
+    "inside_joke_density": 4,
+    "visual_meme_potential": 7,
+    "identity_strength": 7,
+    "engagement_likelihood": 6,
+    "content_sustainability": 5,
+    "top_themes": [
+      "Struggles with old camera parts and restoration",
+      "Authenticity and identification of vintage cameras",
+      "Nostalgia for historical photography gear"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left panel rejecting a modern smartphone camera, right panel approving a vintage Brownie",
+      "Expanding brain meme: First panel thinking new cameras are best, last panel realizing the charm of fixing a 1920s Zeiss"
+    ],
+    "risks": "Community may be too focused on serious discussions and restoration advice, making humor feel out of place or alienating members who prefer factual content over memes",
+    "qualitative_score": 5.8,
+    "final_score": 4.24
+  },
+  {
+    "niche_name": "Inline Skating Fitness Group",
+    "category": "sports_and_fitness",
+    "subreddit": "inlineskating",
+    "subscribers": 8786,
+    "quantitative_score": 21.4,
+    "community_strength": 30.13,
+    "supply_gap": 1.0,
+    "inside_joke_density": 3,
+    "visual_meme_potential": 7,
+    "identity_strength": 7,
+    "engagement_likelihood": 6,
+    "content_sustainability": 5,
+    "top_themes": [
+      "Gear and equipment struggles",
+      "Skating technique mishaps",
+      "Event and location hunting"
+    ],
+    "sample_meme_concepts": [
+      "Drake meme: Left panel showing someone falling from bad knee bend, right panel showing perfect 'knees over toes' form for smooth skating",
+      "Expanding brain meme: First panel thinking inline skates are easy, middle panel dealing with wheel setup issues, last panel mastering urban commuting like a pro"
+    ],
+    "risks": "Community appears more focused on serious advice and information sharing than humor, which could make memes feel out of place; the niche topic might limit broader appeal and engagement beyond the small subscriber base",
+    "qualitative_score": 5.6,
+    "final_score": 4.22
+  }
+]

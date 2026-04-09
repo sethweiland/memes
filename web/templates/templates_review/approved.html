@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set active_page = "templates" %}
+{% block title %}Approved Descriptions{% endblock %}
+
+{% block content %}
+<h1>Approved Descriptions</h1>
+<div class="counter">{{ count }} approved templates</div>
+<div id="cards">
+{% if items %}
+    {% for item in items %}
+    <div class="card" id="card-{{ item.id }}">
+        <img src="{{ item.img_url }}" alt="{{ item.name }}" loading="lazy">
+        <div class="card-body">
+            <h3>{{ item.name }}</h3>
+            <div class="meta">
+                <span>ID: {{ item.id }}</span>
+                <span>Confidence: {{ item.confidence }}</span>
+            </div>
+            <div class="meta">
+                <span>Panel: {{ item.panel_structure }}</span>
+                <span>Pattern: {{ item.comedic_pattern }}</span>
+            </div>
+            <p style="margin-top:8px;">{{ item.description }}</p>
+            <div class="actions">
+                <button class="btn btn-unapprove"
+                    onclick="unapproveTemplate('{{ item.id }}',document.getElementById('card-{{ item.id }}'))">
+                    Move to Review
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty">No approved descriptions yet.</div>
+{% endif %}
+</div>
+{% endblock %}

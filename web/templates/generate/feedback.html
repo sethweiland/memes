@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% set active_page = "generate" %}
+{% block title %}Feedback History{% endblock %}
+
+{% block content %}
+<h1>Feedback History</h1>
+
+{% if not sessions %}
+<div class="empty">No feedback recorded yet. Generate some memes and rate them!</div>
+{% else %}
+<p style="color:#666;margin-bottom:16px;">{{ sessions|length }} feedback session{{ 's' if sessions|length != 1 }} recorded.</p>
+
+<table class="feedback-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Topic</th>
+            <th>Stage</th>
+            <th>Rated</th>
+            <th>Avg Rating</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for s in sessions %}
+        <tr>
+            <td>{{ s.timestamp[:16].replace('T', ' ') }}</td>
+            <td>{{ s.topic or '—' }}</td>
+            <td><span class="stage-badge {{ s.stage }}">{{ s.stage }}</span></td>
+            <td>{{ s.num_rated }}</td>
+            <td>
+                {% if s.avg_rating is not none %}
+                <span class="rating-stars">
+                    {% for i in range(s.avg_rating|round|int) %}&#9733;{% endfor %}{% for i in range(5 - s.avg_rating|round|int) %}&#9734;{% endfor %}
+                </span>
+                {{ s.avg_rating }}
+                {% else %}
+                —
+                {% endif %}
+            </td>
+            <td>
+                {% if s.memes %}
+                <span class="expand-toggle" onclick="toggleDetail('detail-{{ loop.index }}')">Details</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% if s.memes %}
+        <tr>
+            <td colspan="6" style="padding:0;">
+                <div class="meme-feedback-detail" id="detail-{{ loop.index }}">
+                    {% for m in s.memes %}
+                    <div style="padding:6px 0;border-bottom:1px solid #eee;">
+                        <strong>{{ m.format or m.get('format', '?') }}</strong>
+                        {% if m.user_rating %}
+                            — <span class="rating-stars">{% for i in range(m.user_rating) %}&#9733;{% endfor %}</span>
+                        {% endif %}
+                        {% if m.user_feedback %}
+                            <br><em style="color:#666;">"{{ m.user_feedback }}"</em>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </td>
+        </tr>
+        {% endif %}
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<div style="margin-top:24px;">
+    <a href="{{ url_for('generate.start') }}" class="btn btn-primary">Generate Memes</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleDetail(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle('show');
+}
+</script>
+{% endblock %}

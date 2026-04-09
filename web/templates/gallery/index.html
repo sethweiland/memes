@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% set active_page = "gallery" %}
+{% block title %}Gallery{% endblock %}
+
+{% block content %}
+<h1>Meme Gallery</h1>
+{% if memes %}
+<div class="counter">{{ memes|length }} memes</div>
+<div class="gallery-grid">
+    {% for meme in memes %}
+    <div class="gallery-item" title="{{ meme.metadata.get('template', meme.filename) }}">
+        <img src="{{ url_for('gallery.serve_image', filename=meme.filename) }}" alt="{{ meme.filename }}" loading="lazy">
+        <div class="overlay">
+            <span>{{ meme.metadata.get('template', meme.filename) }}</span>
+            <a class="btn btn-download btn-download-ig overlay-download" href="{{ url_for('gallery.download', filename=meme.filename, format='instagram') }}" download title="Download for Instagram" onclick="event.stopPropagation();">&#8595;</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="lightbox" class="lightbox">
+    <span class="close">&times;</span>
+    <img id="lightbox-img" src="" alt="">
+</div>
+{% else %}
+<div class="empty">
+    <p>No memes yet. <a href="{{ url_for('generate.start') }}">Generate some!</a></p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>initGalleryLightbox();</script>
+{% endblock %}
