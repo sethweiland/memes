@@ -73,7 +73,8 @@
         background: #fff;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,.12);
-        overflow: hidden;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     .spend-table table {
         width: 100%;
@@ -242,11 +243,15 @@
         display: grid;
         grid-template-columns: 160px 1fr;
         gap: 24px;
-        align-items: center;
+        align-items: start;
         background: #fff;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,.12);
         padding: 20px;
+        overflow-x: auto;
+    }
+    .project-layout .spend-table table {
+        min-width: 640px;
     }
     .project-pie {
         width: 140px;
@@ -275,7 +280,10 @@
     @media (max-width: 720px) {
         .project-layout {
             grid-template-columns: 1fr;
-            justify-items: center;
+            justify-items: stretch;
+        }
+        .project-pie {
+            margin: 0 auto 8px;
         }
     }
 </style>
