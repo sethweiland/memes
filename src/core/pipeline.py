@@ -392,10 +392,14 @@ Just write the caption, nothing else."""
         if not query:
             return ""
 
+        # Honor daily/light path: skip retrieval when context chunks disabled
+        if self.config.num_context_chunks <= 0:
+            return ""
+
         try:
             context = self.rag.get_context(
                 query,
-                k=3,
+                k=min(3, self.config.num_context_chunks),
                 expand_query=False,
             )
         except Exception as e:

@@ -245,6 +245,8 @@ class DomainRAG:
         Returns:
             List of dicts with text, metadata, score, and id
         """
+        if k <= 0:
+            return []
         results = self.search(topic, k=k, filters=filters, expand_query=expand_query, exclude_ids=exclude_ids)
         return [
             {

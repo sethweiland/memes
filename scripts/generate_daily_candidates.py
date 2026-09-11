@@ -6,8 +6,8 @@ Creates a batch of meme candidates with local paths, captions, and metadata.
 Candidates are saved to data/daily_candidates/{date}.json with status=pending.
 
 Usage:
-    python scripts/generate_daily_candidates.py                     # Generate default count (10)
-    python scripts/generate_daily_candidates.py --count 15         # Generate 15 candidates
+    python scripts/generate_daily_candidates.py                     # Generate default count (5)
+    python scripts/generate_daily_candidates.py --count 10         # Generate 10 candidates
     python scripts/generate_daily_candidates.py --topic "banjos"   # Specific topic
     python scripts/generate_daily_candidates.py --domain bluegrass # Specific domain
 """
@@ -41,7 +41,7 @@ DAILY_CANDIDATES_DIR = Path("data/daily_candidates")
 
 
 def generate_candidates(
-    count: int = 10,
+    count: int = 5,
     domain: str = "bluegrass",
     topic: str = None,
     creativity: float = 1.2,
@@ -63,34 +63,29 @@ def generate_candidates(
     # Load domain config
     config = load_domain(domain)
     
-    # Set up pipeline
+    # Daily path: a few solid concepts from topic + model taste.
+    # Skip RAG context (keep the code, just don't lean on it).
     pipeline = MemePipeline(config, PipelineConfig(
-        num_concepts=max(count * 2, 10),  # Light oversample for small daily batches
+        num_concepts=count,
         num_images=count,
+        num_context_chunks=0,
+        expand_queries=False,
         creativity=creativity,
     ))
     
-    # Determine topic
+    # Determine topic from Grok general knowledge (not RAG brainstorm)
     if topic is None:
-        try:
-            topics = pipeline.rag.brainstorm_topics(
-                seed_query=f"funny {config.display_name}",
-                num_topics=1,
-            )
-            topic = topics[0]
-        except Exception as e:
-            logger.warning(f"Brainstorm failed ({e}), asking Grok for a topic...")
-            from src.core.grok import GrokClient
-            grok = GrokClient()
-            response = grok._chat([
-                {"role": "user", "content": (
-                    f"Suggest ONE specific, funny meme topic about {config.display_name}. "
-                    "Be creative and specific — pick a particular artist, instrument quirk, "
-                    "festival moment, or genre debate. Just return the topic, nothing else."
-                )}
-            ], temperature=1.0)
-            grok.close()
-            topic = response.strip()
+        from src.core.grok import GrokClient
+        grok = GrokClient()
+        response = grok._chat([
+            {"role": "user", "content": (
+                f"Suggest ONE specific, funny meme topic about {config.display_name}. "
+                "Be creative and specific — pick a particular artist, instrument quirk, "
+                "festival moment, or genre debate. Just return the topic, nothing else."
+            )}
+        ], temperature=1.0)
+        grok.close()
+        topic = response.strip()
     
     logger.info(f"Topic: {topic}")
     
@@ -192,7 +187,7 @@ def main():
     parser.add_argument(
         "--count",
         type=int,
-        default=10,
+        default=5,
         help="Number of candidates to generate (default: 10)"
     )
     parser.add_argument(
