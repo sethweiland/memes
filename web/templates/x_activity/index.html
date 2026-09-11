@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% set active_page = "x_activity" %}
+{% block title %}X Activity{% endblock %}
+
+{% block content %}
+<h1>X Activity</h1>
+<p class="gallery-counts" style="margin-bottom:12px;">
+    Review Stevie drafts. Approve or skip only — this app never posts to X.
+</p>
+
+<div class="gallery-toolbar">
+    <div>
+        <div class="counter">
+            {{ summary.pending_count }} pending ·
+            {{ summary.approved_count }} approved ·
+            {{ summary.skipped_count }} skipped ·
+            {{ summary.posted_count }} posted ·
+            {{ summary.total_count }} total
+        </div>
+        <div class="gallery-counts" style="margin-top:4px;">
+            Follow {{ summary.kind_counts.follow }} ·
+            Post {{ summary.kind_counts.post }} ·
+            Reply {{ summary.kind_counts.reply }}
+        </div>
+    </div>
+    <div class="gallery-filters">
+        <form method="get" action="{{ url_for('x_activity.index') }}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()">
+            {% if selected_kind != 'all' %}
+            <input type="hidden" name="kind" value="{{ selected_kind }}">
+            {% endif %}
+        </form>
+        {% for d in available_dates[:10] %}
+        <a href="{{ url_for('x_activity.index', date=d.date, kind=selected_kind if selected_kind != 'all' else none) }}"
+           class="{{ 'active' if selected_date == d.date }}">
+            {{ d.date }} ({{ d.pending_count }} pending)
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="gallery-type-tabs">
+    <a href="{{ url_for('x_activity.index', date=selected_date) }}"
+       class="{{ 'active' if selected_kind == 'all' }}">All</a>
+    {% for kind in kinds %}
+    <a href="{{ url_for('x_activity.index', date=selected_date, kind=kind) }}"
+       class="{{ 'active' if selected_kind == kind }}">{{ kind|capitalize }}</a>
+    {% endfor %}
+</div>
+
+{% if summary.pending_count == 0 %}
+<div class="empty">
+    <p>No pending X drafts for this date — Stevie writes to ops/queue/x-activity/</p>
+</div>
+{% elif not grouped %}
+<div class="empty">
+    <p>No {{ selected_kind }} drafts for this date.</p>
+</div>
+{% endif %}
+
+{% if grouped %}
+{% for section, candidates in grouped %}
+<section class="x-activity-section">
+    <h2>{{ section|capitalize }}</h2>
+    <div class="x-activity-grid">
+        {% for candidate in candidates %}
+        {% set is_pending = candidate.status == 'pending' %}
+        {% set is_approved = candidate.status == 'approved' %}
+        {% set is_skipped = candidate.status == 'skipped' %}
+        {% set is_posted = candidate.status == 'posted' %}
+        {% set handle = (candidate.target.handle if candidate.target else '') %}
+        {% set tweet_id = (candidate.target.tweet_id if candidate.target else '') %}
+        <div class="x-card candidate-{{ candidate.status }}" data-id="{{ candidate.id }}">
+            <div class="x-card-top">
+                <span class="x-kind-badge kind-{{ candidate.kind }}">{{ candidate.kind|default('draft') }}</span>
+                <span class="candidate-status-badge {{ candidate.status }}">
+                    {% if is_approved %}Approved{% elif is_skipped %}Skipped{% elif is_posted %}Posted{% else %}Pending{% endif %}
+                </span>
+            </div>
+            <div class="x-card-handle">{{ handle or '—' }}</div>
+            {% if tweet_id %}
+            <div class="meta">tweet {{ tweet_id }}</div>
+            {% endif %}
+            <label class="x-body-label" for="body-{{ candidate.id }}">Body</label>
+            <textarea
+                id="body-{{ candidate.id }}"
+                class="candidate-body"
+                rows="4"
+                {% if not is_pending %}disabled{% endif %}
+            >{{ candidate.body or '' }}</textarea>
+            {% if candidate.media_urls %}
+            <ul class="x-media">
+                {% for url in candidate.media_urls %}
+                <li><a href="{{ url }}" target="_blank" rel="noopener">{{ url }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <div class="meta">{{ candidate.source or 'stevie' }} · {{ candidate.project or 'x' }}</div>
+            <div class="candidate-actions">
+                {% if is_pending %}
+                <button class="btn btn-approve btn-approve-x" type="button"
+                        onclick="approveCandidate('{{ selected_date }}', '{{ candidate.id }}')">
+                    Approve
+                </button>
+                <button class="btn btn-secondary btn-skip" type="button"
+                        onclick="skipCandidate('{{ selected_date }}', '{{ candidate.id }}')">
+                    Skip
+                </button>
+                {% endif %}
+            </div>
+            <div class="candidate-status" id="status-{{ candidate.id }}"></div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.x-activity-section { margin-bottom: 28px; }
+.x-activity-section h2 { font-size: 18px; margin-bottom: 12px; }
+.x-activity-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 720px) {
+    .x-activity-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+}
+.x-card {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.x-card.candidate-pending { border-color: #3b82f6; }
+.x-card.candidate-approved { border-color: #10b981; opacity: 0.85; }
+.x-card.candidate-skipped { border-color: #9ca3af; opacity: 0.6; }
+.x-card.candidate-posted { border-color: #6366f1; opacity: 0.85; }
+.x-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.x-kind-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize;
+    background: #eef2ff;
+    color: #33418a;
+}
+.x-kind-badge.kind-follow { background: #e3f2fd; color: #1565c0; }
+.x-kind-badge.kind-post { background: #f3e5f5; color: #7b1fa2; }
+.x-kind-badge.kind-reply { background: #e8f5e9; color: #2e7d32; }
+.candidate-status-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+    background: #fff;
+    border: 1px solid #ddd;
+}
+.candidate-status-badge.pending { color: #3b82f6; border-color: #3b82f6; }
+.candidate-status-badge.approved { color: #10b981; border-color: #10b981; }
+.candidate-status-badge.skipped { color: #9ca3af; border-color: #9ca3af; }
+.candidate-status-badge.posted { color: #6366f1; border-color: #6366f1; }
+.x-card-handle { font-size: 18px; font-weight: 700; margin-bottom: 6px; word-break: break-word; }
+.x-body-label { display: block; font-weight: 600; margin: 10px 0 4px; font-size: 13px; }
+.candidate-body {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 96px;
+}
+.candidate-body:disabled { background: #f3f4f6; color: #6b7280; }
+.x-media { margin: 8px 0 0; padding-left: 18px; font-size: 13px; word-break: break-all; }
+.candidate-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.candidate-actions .btn { flex: 1 1 140px; min-height: 44px; justify-content: center; }
+.candidate-status { margin-top: 8px; min-height: 24px; }
+.x-msg { border-radius: 6px; padding: 10px; font-size: 14px; }
+.x-msg.ok { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+.x-msg.info { background: #e3f2fd; border: 1px solid #90caf9; color: #1565c0; }
+.x-msg.err { background: #ffebee; border: 1px solid #ef9a9a; color: #c62828; }
+</style>
+
+<script>
+function approveCandidate(date, candidateId) {
+    var card = document.querySelector('.x-card[data-id="' + candidateId + '"]');
+    var bodyEl = document.getElementById('body-' + candidateId);
+    var statusEl = document.getElementById('status-' + candidateId);
+    var approveBtn = card.querySelector('.btn-approve-x');
+    var skipBtn = card.querySelector('.btn-skip');
+
+    approveBtn.disabled = true;
+    if (skipBtn) skipBtn.disabled = true;
+    approveBtn.textContent = 'Saving…';
+
+    fetch('/x/api/candidates/' + date + '/approve/' + candidateId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: bodyEl.value }),
+    })
+    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(res) {
+        if (res.data.success) {
+            statusEl.innerHTML = '<div class="x-msg ok">Approved — Stevie can post this. Not sent to X.</div>';
+            markResolved(card, bodyEl, 'approved', 'Approved');
+        } else {
+            statusEl.innerHTML = '<div class="x-msg err">' + escapeHtml(res.data.error || 'Approve failed') + '</div>';
+            approveBtn.disabled = false;
+            if (skipBtn) skipBtn.disabled = false;
+            approveBtn.textContent = 'Approve';
+        }
+    })
+    .catch(function(err) {
+        statusEl.innerHTML = '<div class="x-msg err">Request failed: ' + escapeHtml(String(err)) + '</div>';
+        approveBtn.disabled = false;
+        if (skipBtn) skipBtn.disabled = false;
+        approveBtn.textContent = 'Approve';
+    });
+}
+
+function skipCandidate(date, candidateId) {
+    var card = document.querySelector('.x-card[data-id="' + candidateId + '"]');
+    var bodyEl = document.getElementById('body-' + candidateId);
+    var statusEl = document.getElementById('status-' + candidateId);
+    var approveBtn = card.querySelector('.btn-approve-x');
+    var skipBtn = card.querySelector('.btn-skip');
+
+    if (approveBtn) approveBtn.disabled = true;
+    skipBtn.disabled = true;
+    skipBtn.textContent = 'Skipping…';
+
+    fetch('/x/api/candidates/' + date + '/skip/' + candidateId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(res) {
+        if (res.data.success) {
+            statusEl.innerHTML = '<div class="x-msg info">Skipped</div>';
+            markResolved(card, bodyEl, 'skipped', 'Skipped');
+        } else {
+            statusEl.innerHTML = '<div class="x-msg err">Failed to skip</div>';
+            if (approveBtn) approveBtn.disabled = false;
+            skipBtn.disabled = false;
+            skipBtn.textContent = 'Skip';
+        }
+    })
+    .catch(function() {
+        statusEl.innerHTML = '<div class="x-msg err">Request failed</div>';
+        if (approveBtn) approveBtn.disabled = false;
+        skipBtn.disabled = false;
+        skipBtn.textContent = 'Skip';
+    });
+}
+
+function markResolved(card, bodyEl, status, label) {
+    card.classList.remove('candidate-pending');
+    card.classList.add('candidate-' + status);
+    var badge = card.querySelector('.candidate-status-badge');
+    badge.textContent = label;
+    badge.className = 'candidate-status-badge ' + status;
+    bodyEl.disabled = true;
+    card.querySelector('.candidate-actions').innerHTML = '';
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var el = document.createElement('span');
+    el.textContent = text;
+    return el.innerHTML;
+}
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 """
 Dashboard blueprint — Master ops home for the meme pipeline.
-Displays stats, daily candidate queue, and quick links to all tools.
+Displays stats, daily candidate queue, X drafts, and quick links to all tools.
 """
 
 import json
@@ -66,6 +66,16 @@ def _get_daily_candidates_count():
         return None
 
 
+def _get_x_activity_count():
+    """Count pending X drafts for today."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    try:
+        from src.core.x_activity import get_x_activity_queue
+        return get_x_activity_queue().pending_count(today)
+    except Exception:
+        return None
+
+
 def _get_gallery_count():
     """Count memes in the gallery."""
     memes_dir = Path("output/memes")
@@ -109,6 +119,7 @@ def index():
     stats = {
         "template_count": _get_template_count(),
         "daily_candidates": _get_daily_candidates_count(),
+        "x_activity": _get_x_activity_count(),
         "gallery_count": _get_gallery_count(),
         "s3_configured": _has_s3_configured(),
     }

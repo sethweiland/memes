@@ -97,6 +97,7 @@ python web/run.py
 - **Generate**: Create memes with custom topics and settings
 - **Gallery**: Browse and filter generated memes
 - **Daily Queue**: Review daily candidate memes for Instagram
+- **X**: Review Stevie's X drafts (follow / post / reply). Approve or skip only — this app never posts to X. Spend project tag `x` is tracked separately.
 - **Templates**: Review and manage template descriptions
 - **Video Memes**: Generate and edit video content
 - **Discovery**: Find new niches and trending topics
@@ -117,6 +118,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 
 **Queue Storage:**
 - Candidate queue JSON stored in S3 under `ops/queue/daily-candidates/{date}.json` (private)
+- X activity drafts at `ops/queue/x-activity/{date}.json` (private; local fallback `data/x_activity/`)
 - Local cache in `data/daily_candidates/` when S3 is unset or unreachable
 - Web UI loads from S3 with local fallback
 
@@ -148,6 +150,7 @@ python scripts/generate_daily_candidates.py
 2. Images load from S3 public URLs
 3. Approve publishes to Instagram using S3 URL directly
 4. No shared filesystem required between generation and web host
+5. X drafts: `/x/` — approve or skip only (Stevie posts; Flask never talks to X)
 
 **S3 Configuration Required:**
 - `MEME_ASSETS_BUCKET`: S3 bucket name (see `infra/meme-assets/README.md`)

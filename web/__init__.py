@@ -34,6 +34,7 @@ def create_app() -> Flask:
     from .blueprints.discovery import bp as discovery_bp
     from .blueprints.video import bp as video_bp
     from .blueprints.daily_candidates import bp as daily_candidates_bp
+    from .blueprints.x_activity import bp as x_activity_bp
 
     app.register_blueprint(dashboard_bp, url_prefix="/")
     app.register_blueprint(spend_bp, url_prefix="/spend")
@@ -43,5 +44,6 @@ def create_app() -> Flask:
     app.register_blueprint(templates_bp, url_prefix="/templates")
     app.register_blueprint(discovery_bp, url_prefix="/discovery")
     app.register_blueprint(daily_candidates_bp)
+    app.register_blueprint(x_activity_bp)
 
     return app
