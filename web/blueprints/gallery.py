@@ -320,12 +320,3 @@ def api_instagram_history():
         "history": log,
         "count": len(log),
     })
-
-
-@bp.route("/daily-candidates")
-def daily_candidates():
-    """Daily candidates review queue (placeholder)."""
-    return render_template(
-        "gallery/daily_candidates.html",
-        active_page="gallery",
-    )
