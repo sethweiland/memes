@@ -85,6 +85,20 @@ python web/run.py
 - **Quick Links**: Direct access to Generate, Gallery, Templates Review, Discovery, and Video tools
 - **Recent Memes Strip**: Preview of your latest generated content
 
+**Pages:**
+- **Dashboard**: Ops overview with stats and quick links
+- **Spend**: Tech spending tracker for subscriptions and API costs
+  - Tracks subscriptions (Imgflip, Vercel, etc.)
+  - Shows API/usage costs (AWS Cost Explorer integration when AWS credentials available)
+  - Monthly total with active/cancelled breakdown
+  - Data sourced from `data/tech_spend.json`
+- **Generate**: Create memes with custom topics and settings
+- **Gallery**: Browse and filter generated memes
+- **Daily Queue**: Review daily candidate memes for Instagram
+- **Templates**: Review and manage template descriptions
+- **Video Memes**: Generate and edit video content
+- **Discovery**: Find new niches and trending topics
+
 **Multi-Brand Setup (Optional):**
 
 Copy the example brands file and customize:
@@ -129,7 +143,7 @@ python scripts/generate_daily_candidates.py
 
 If S3 is not configured, the system falls back to local-only storage (queue and images on disk).
 
-### Generate Memes
+### Generate Memes (Python API)
 
 ```python
 from src.config import load_domain

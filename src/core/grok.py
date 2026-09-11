@@ -85,6 +85,23 @@ class GrokClient:
                 f"for model '{request_json['model']}': {detail}"
             ) from e
         data = response.json()
+        
+        # Log token usage for spend tracking
+        try:
+            usage = data.get("usage", {})
+            if usage:
+                from .token_tracker import log_token_usage
+                log_token_usage(
+                    provider="xai",
+                    model=request_json["model"],
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=usage.get("completion_tokens", 0),
+                    estimated_cost_usd=None,  # xAI doesn't provide cost in response
+                )
+        except Exception:
+            # Don't break generation if logging fails
+            pass
+        
         return data["choices"][0]["message"]["content"]
 
     @staticmethod

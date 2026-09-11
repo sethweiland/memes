@@ -1,0 +1,106 @@
+{
+  "$schema": "Tech spend ledger for meme ops / engineering infrastructure",
+  "last_updated": "2026-09-11",
+  "note": "Amounts from Sep 2026 statement/Gmail audit unless noted otherwise",
+  "subscriptions": [
+    {
+      "id": "imgflip-premium",
+      "name": "Imgflip API Premium",
+      "vendor": "Imgflip",
+      "category": "fixed",
+      "amount_usd": 9.99,
+      "cadence": "monthly",
+      "status": "active",
+      "notes": "Premium API - templates banked, can cancel later",
+      "url": "https://imgflip.com",
+      "env_secret_hint": null
+    },
+    {
+      "id": "vercel-pro",
+      "name": "Vercel Pro",
+      "vendor": "Vercel",
+      "category": "fixed",
+      "amount_usd": 21.78,
+      "cadence": "monthly",
+      "status": "active",
+      "notes": "From Gmail; not always on Chase windows",
+      "url": "https://vercel.com",
+      "env_secret_hint": null
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "vendor": "Cursor",
+      "category": "fixed",
+      "amount_usd": 60.00,
+      "cadence": "monthly",
+      "status": "active",
+      "notes": "Cursor $60/mo plan (user-confirmed Sep 2026)",
+      "url": "https://cursor.com",
+      "env_secret_hint": null
+    },
+    {
+      "id": "aws",
+      "name": "AWS",
+      "vendor": "Amazon Web Services",
+      "category": "variable",
+      "amount_usd": 1.31,
+      "cadence": "usage",
+      "status": "active",
+      "notes": "Variable usage - use Cost Explorer for real-time if AWS creds exist",
+      "url": "https://aws.amazon.com",
+      "env_secret_hint": "AWS_ACCESS_KEY_ID"
+    },
+    {
+      "id": "xai-tokens",
+      "name": "xAI / Grok API",
+      "vendor": "xAI",
+      "category": "variable",
+      "amount_usd": 0.0,
+      "cadence": "usage",
+      "status": "active",
+      "notes": "Token usage from meme generation - tracked locally in data/token_usage.jsonl",
+      "url": "https://x.ai",
+      "env_secret_hint": "XAI_API_KEY"
+    },
+    {
+      "id": "supergrok-xai",
+      "name": "SuperGrok Lite",
+      "vendor": "xAI",
+      "category": "fixed",
+      "amount_usd": 10.00,
+      "cadence": "monthly",
+      "status": "cancelling",
+      "notes": "User set cancel ~Sep 13 2026",
+      "url": "https://x.ai",
+      "env_secret_hint": null
+    },
+    {
+      "id": "x-premium",
+      "name": "X Premium",
+      "vendor": "Twitter/X",
+      "category": "fixed",
+      "amount_usd": 84.00,
+      "cadence": "yearly",
+      "status": "cancelling",
+      "notes": "Orphaned Stripe - more social than infra; support cancel+refund started Sep 11 2026",
+      "url": "https://x.com",
+      "env_secret_hint": null
+    }
+  ],
+  "cancelled": [
+    {
+      "id": "chatgpt-plus",
+      "name": "ChatGPT Plus",
+      "vendor": "OpenAI",
+      "category": "fixed",
+      "amount_usd": 100.00,
+      "cadence": "monthly",
+      "status": "cancelled",
+      "notes": "Was $100/mo on United Explorer ~24th - USER CANCELLED mid-September 2026; last paid period Aug 24–Sep 24 (remainder may run through ~Sep 24)",
+      "last_charge_date": "2026-08-24",
+      "url": "https://openai.com",
+      "env_secret_hint": null
+    }
+  ]
+}
