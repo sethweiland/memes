@@ -17,6 +17,7 @@
         <a href="{{ url_for('projects.index') }}" class="{{ 'active' if _section == 'projects' }}">Projects</a>
         <a href="{{ url_for('spend.index') }}" class="{{ 'active' if _section == 'spend' }}">Spend</a>
         <a href="{{ url_for('x_activity.index') }}" class="{{ 'active' if _section == 'x' }}">X</a>
+        <a href="{{ url_for('grok_bot.index') }}" class="{{ 'active' if _section == 'grok_bot' }}">Grok Bot</a>
         <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if _section == 'memes' }}">Memes</a>
     </nav>
     {% if _section == 'memes' %}

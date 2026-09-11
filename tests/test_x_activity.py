@@ -86,6 +86,7 @@ def _nav_app(*blueprints):
         ("templates_review", "review_page", "/memes/templates/"),
         ("discovery", "dashboard", "/memes/discovery/"),
         ("x_activity", "index", "/x/"),
+        ("grok_bot", "index", "/grok-bot/"),
     ]
     registered = {bp.name for bp in blueprints}
     for name, endpoint, path in nav:
@@ -354,13 +355,15 @@ class DashboardXBadgeTests(unittest.TestCase):
         nav = (_WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
         spend_at = nav.find("url_for('spend.index')")
         x_at = nav.find("url_for('x_activity.index')")
+        grok_at = nav.find("url_for('grok_bot.index')")
         memes_at = nav.find("url_for('dashboard.index')")
         subnav_at = nav.find('class="subnav"')
         generate_at = nav.find("url_for('generate.start')")
         self.assertGreater(spend_at, 0)
         self.assertGreater(x_at, spend_at)
-        self.assertGreater(memes_at, x_at)
-        self.assertGreater(subnav_at, x_at)
+        self.assertGreater(grok_at, x_at)
+        self.assertGreater(memes_at, grok_at)
+        self.assertGreater(subnav_at, grok_at)
         self.assertGreater(generate_at, subnav_at)
 
 

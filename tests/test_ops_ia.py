@@ -14,6 +14,7 @@ import tests.bootstrap  # noqa: F401
 from src.core.x_activity import XActivityQueue, reset_x_activity_queue
 from tests.fakes import MemoryS3Store
 from web.blueprints.dashboard import bp as dashboard_bp
+from web.blueprints.grok_bot import bp as grok_bot_bp
 from web.blueprints.home import bp as home_bp
 from web.blueprints.legacy import register_legacy_redirects
 from web.blueprints.projects import bp as projects_bp
@@ -53,6 +54,7 @@ def _ops_app() -> Flask:
     app.register_blueprint(home_bp)
     app.register_blueprint(projects_bp, url_prefix="/projects")
     app.register_blueprint(x_activity_bp)
+    app.register_blueprint(grok_bot_bp, url_prefix="/grok-bot")
     app.register_blueprint(dashboard_bp, url_prefix="/memes")
     register_legacy_redirects(app)
     return app
@@ -89,6 +91,7 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("Projects", html)
         self.assertIn("Spend", html)
         self.assertIn(">X<", html)
+        self.assertIn("Grok Bot", html)
         self.assertIn("Memes", html)
         self.assertIn("Waiting on you", html)
         self.assertIn("Cloudflare Access", html)
@@ -122,6 +125,12 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("Approve or skip", html)
         self.assertIn("ops/queue/x-activity/", html)
         self.assertNotIn("X drafts land here", html)
+
+        grok = self.client.get("/grok-bot/")
+        self.assertEqual(grok.status_code, 200)
+        grok_html = grok.get_data(as_text=True)
+        self.assertIn("Routines catalog landing in a follow-up.", grok_html)
+        self.assertNotIn("<tr", grok_html)
 
     def test_old_meme_paths_redirect(self):
         cases = (

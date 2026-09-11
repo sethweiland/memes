@@ -36,6 +36,7 @@ def _spend_app() -> Flask:
         ("home", "index", "/"),
         ("projects", "index", "/projects/"),
         ("x_activity", "index", "/x/"),
+        ("grok_bot", "index", "/grok-bot/"),
         ("dashboard", "index", "/memes/"),
         ("generate", "start", "/memes/generate/"),
         ("video", "start", "/memes/video/"),

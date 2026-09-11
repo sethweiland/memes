@@ -29,6 +29,7 @@ def create_app() -> Flask:
     from .blueprints.projects import bp as projects_bp
     from .blueprints.spend import bp as spend_bp
     from .blueprints.x_activity import bp as x_activity_bp
+    from .blueprints.grok_bot import bp as grok_bot_bp
     from .blueprints.dashboard import bp as dashboard_bp
     from .blueprints.generate import bp as generate_bp
     from .blueprints.gallery import bp as gallery_bp
@@ -42,6 +43,7 @@ def create_app() -> Flask:
     app.register_blueprint(projects_bp, url_prefix="/projects")
     app.register_blueprint(spend_bp, url_prefix="/spend")
     app.register_blueprint(x_activity_bp)
+    app.register_blueprint(grok_bot_bp, url_prefix="/grok-bot")
     app.register_blueprint(dashboard_bp, url_prefix="/memes")
     app.register_blueprint(generate_bp, url_prefix="/memes/generate")
     app.register_blueprint(video_bp, url_prefix="/memes/video")

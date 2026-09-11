@@ -89,10 +89,11 @@ python web/run.py
 
 | Section | Path | What it is |
 |---|---|---|
-| **Home** | `/` | Life overview — cards to Projects, Spend, X, Memes |
+| **Home** | `/` | Life overview — cards to Projects, Spend, X, Grok Bot, Memes |
 | **Projects** | `/projects/` | Placeholder until kanban (lanes: `idea`, `active`, `blocked`, `waiting_on_seth`, `parked`) |
 | **Spend** | `/spend/` | Tech spending tracker (unchanged path) |
 | **X** | `/x/` | Real X Activity tab — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Queue is `ops/queue/x-activity/` |
+| **Grok Bot** | `/grok-bot/` | Placeholder — routines catalog landing in a follow-up (`ops/grok-bot/routines.json`) |
 | **Memes** | `/memes/` | Meme pipeline dashboard (the old `/` page) |
 
 **Spend:**
