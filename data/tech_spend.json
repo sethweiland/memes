@@ -73,7 +73,7 @@
       "status": "active",
       "notes": "App meme-ops: shared-cpu-1x 512MB, iad, auto_stop_machines=stop, min_machines_running=0. Signed up 2026-09-11. $0 now (trial / no invoice yet). Seth initially thought this was a 30-day trial; ledger uses official published terms, not that assumption.",
       "trial_note": "Published trial (https://fly.io/docs/about/free-trial/): 2 total VM-hours or 7 days, whichever comes first. Adding a payment method ends the trial and starts pay-as-you-go.",
-      "post_trial_note": "After trial: pay-as-you-go. Official always-on ceiling for shared-cpu-1x 512MB is ~$3.32 / 30 days (https://fly.io/docs/about/pricing/). Auto-stop should keep actual $ lower. No hobby-plan minimum.",
+      "post_trial_note": "Pay-as-you-go. Official always-on ceiling for shared-cpu-1x 512MB is ~$3.32 / 30 days (https://fly.io/docs/about/pricing/). Auto-stop should keep actual $ lower. No hobby-plan minimum.",
       "url": "https://fly.io",
       "env_secret_hint": null
     },
