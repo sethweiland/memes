@@ -39,7 +39,10 @@
         </div>
         <div class="overlay">
             <span>{{ meme.template_name }}</span>
-            <a class="btn btn-download btn-download-ig overlay-download" href="{{ url_for('gallery.download', filename=meme.filename, format='instagram') }}" download title="Download for Instagram" onclick="event.stopPropagation();">&#8595;</a>
+            <div class="overlay-actions">
+                <button class="btn btn-instagram" onclick="showInstagramModal(event, '{{ meme.filename }}', '{{ meme.metadata.get('caption', '') }}');" title="Post to Instagram">📸 Instagram</button>
+                <a class="btn btn-download btn-download-ig overlay-download" href="{{ url_for('gallery.download', filename=meme.filename, format='instagram') }}" download title="Download for Instagram" onclick="event.stopPropagation();">&#8595;</a>
+            </div>
         </div>
     </div>
     {% endfor %}
@@ -48,6 +51,30 @@
 <div id="lightbox" class="lightbox">
     <span class="close">&times;</span>
     <img id="lightbox-img" src="" alt="">
+</div>
+
+<div id="instagram-modal" class="instagram-modal">
+    <div class="instagram-modal-content">
+        <span class="instagram-modal-close">&times;</span>
+        <h2>Post to Instagram</h2>
+        <div class="instagram-modal-body">
+            <img id="instagram-preview-img" src="" alt="Preview">
+            <div class="instagram-caption-section">
+                <label for="instagram-caption">Edit Caption:</label>
+                <textarea id="instagram-caption" rows="6" placeholder="Enter caption for Instagram post..."></textarea>
+                <div class="instagram-help">
+                    ⚠️ <strong>Public Image URL Required:</strong> Instagram Graph API requires a publicly accessible image URL. Make sure your image is hosted publicly before posting.
+                </div>
+                <label for="instagram-image-url">Public Image URL:</label>
+                <input type="text" id="instagram-image-url" placeholder="https://example.com/meme.jpg">
+            </div>
+        </div>
+        <div class="instagram-modal-footer">
+            <button class="btn btn-secondary" onclick="closeInstagramModal();">Cancel</button>
+            <button class="btn btn-primary" id="instagram-post-btn" onclick="publishToInstagram();">Post to Instagram</button>
+        </div>
+        <div id="instagram-status" class="instagram-status"></div>
+    </div>
 </div>
 {% else %}
 <div class="empty">
