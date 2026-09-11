@@ -19,6 +19,7 @@ env/
 # Environment variables (contains API keys)
 .env
 secrets.local.json
+instagram_brands.json
 
 # Terraform local state and plans
 .terraform/

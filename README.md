@@ -70,6 +70,31 @@ rag.index_articles("articles/bluegrass_unlimited_archives.json")
 
 ## Usage
 
+### Web UI (Recommended)
+
+The meme pipeline includes a web interface with a Master Dashboard for managing the full workflow:
+
+```bash
+python web/run.py
+# Open http://localhost:5050 in your browser
+```
+
+**Dashboard Features:**
+- **Stats Overview**: Template catalog size, pending daily candidates, gallery count, S3 configuration
+- **Brand/Page Selector**: Switch between multiple Instagram pages (configured via `instagram_brands.json`)
+- **Quick Links**: Direct access to Generate, Gallery, Templates Review, Discovery, and Video tools
+- **Recent Memes Strip**: Preview of your latest generated content
+
+**Multi-Brand Setup (Optional):**
+
+Copy the example brands file and customize:
+```bash
+cp instagram_brands.example.json instagram_brands.json
+# Edit instagram_brands.json to add your Instagram pages
+```
+
+The brand selector appears automatically when multiple brands are configured.
+
 ### Generate Memes
 
 ```python
