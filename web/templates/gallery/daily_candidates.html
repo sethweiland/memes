@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Candidates - Gallery{% endblock %}
+
+{% block content %}
+<h1>Daily Candidates Queue</h1>
+
+<div class="empty" style="background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; padding: 40px;">
+    <h2 style="color: #e65100; margin-bottom: 12px;">Coming Soon</h2>
+    <p style="color: #666;">The daily candidates review queue will allow you to approve memes for Instagram publishing.</p>
+    <p style="color: #666; margin-top: 8px;">This feature is currently in development.</p>
+</div>
+
+<div style="margin-top: 24px;">
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    <a href="{{ url_for('gallery.index') }}" class="btn btn-primary" style="margin-left: 8px;">Browse Gallery</a>
+</div>
+{% endblock %}

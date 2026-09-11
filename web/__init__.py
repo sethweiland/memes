@@ -26,6 +26,7 @@ def create_app() -> Flask:
     app.secret_key = os.urandom(24)
 
     # Register blueprints
+    from .blueprints.dashboard import bp as dashboard_bp
     from .blueprints.generate import bp as generate_bp
     from .blueprints.gallery import bp as gallery_bp
     from .blueprints.templates_review import bp as templates_bp
@@ -33,15 +34,12 @@ def create_app() -> Flask:
     from .blueprints.video import bp as video_bp
     from .blueprints.daily_candidates import bp as daily_candidates_bp
 
+    app.register_blueprint(dashboard_bp, url_prefix="/")
     app.register_blueprint(generate_bp, url_prefix="/generate")
     app.register_blueprint(video_bp, url_prefix="/video")
     app.register_blueprint(gallery_bp, url_prefix="/gallery")
     app.register_blueprint(templates_bp, url_prefix="/templates")
     app.register_blueprint(discovery_bp, url_prefix="/discovery")
     app.register_blueprint(daily_candidates_bp)
-
-    @app.route("/")
-    def index():
-        return redirect(url_for("generate.start"))
 
     return app

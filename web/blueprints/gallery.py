@@ -4,12 +4,15 @@ Gallery blueprint — browse past meme output and serve images.
 
 import os
 import json
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import Blueprint, render_template, send_from_directory, send_file, request, abort, jsonify
 
 from web.image_export import resize_for_instagram
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("gallery", __name__)
 
@@ -317,3 +320,12 @@ def api_instagram_history():
         "history": log,
         "count": len(log),
     })
+
+
+@bp.route("/daily-candidates")
+def daily_candidates():
+    """Daily candidates review queue (placeholder)."""
+    return render_template(
+        "gallery/daily_candidates.html",
+        active_page="gallery",
+    )

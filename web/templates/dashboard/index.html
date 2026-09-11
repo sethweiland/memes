@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Meme Pipeline{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .dashboard-header h1 {
+        margin: 0;
+        font-size: 28px;
+    }
+    .brand-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+    .brand-selector label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+    }
+    .brand-selector select {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .stat-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+    .stat-card .number {
+        font-size: 36px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .stat-card .number.pending {
+        color: #ff9800;
+    }
+    .stat-card .number.success {
+        color: #4caf50;
+    }
+    .stat-card .label {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+    }
+    .stat-card .sublabel {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+    .cta-section {
+        background: linear-gradient(135deg, #1a73e8 0%, #1565c0 100%);
+        border-radius: 8px;
+        padding: 32px;
+        margin-bottom: 32px;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(26,115,232,.3);
+    }
+    .cta-section h2 {
+        margin: 0 0 8px;
+        font-size: 22px;
+    }
+    .cta-section p {
+        margin: 0 0 16px;
+        opacity: 0.9;
+    }
+    .cta-section .btn {
+        background: #fff;
+        color: #1a73e8;
+        padding: 12px 24px;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    .cta-section .btn:hover {
+        background: #f5f5f5;
+        transform: translateY(-1px);
+    }
+    .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .tool-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+        text-decoration: none;
+        color: #333;
+        transition: box-shadow .2s, transform .2s;
+    }
+    .tool-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,.15);
+        transform: translateY(-2px);
+    }
+    .tool-card h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        color: #1a1a2e;
+    }
+    .tool-card p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+    }
+    .recent-strip {
+        margin-top: 32px;
+    }
+    .recent-strip h2 {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+    .recent-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+    }
+    .recent-item {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+        cursor: pointer;
+        transition: transform .2s;
+    }
+    .recent-item:hover {
+        transform: scale(1.05);
+    }
+    .recent-item img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+        font-size: 14px;
+    }
+</style>
+
+<div class="dashboard-header">
+    <h1>Meme Ops Dashboard</h1>
+    
+    {% if brands|length > 1 %}
+    <div class="brand-selector">
+        <label for="brand-select">Instagram Page:</label>
+        <select id="brand-select" onchange="window.location.href='/?brand='+this.value">
+            {% for brand in brands %}
+            <option value="{{ brand.id }}" {% if brand.id == selected_brand.id %}selected{% endif %}>
+                {{ brand.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% else %}
+    <div class="brand-selector">
+        <label>Page:</label>
+        <span style="font-weight: 600;">{{ selected_brand.name }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Stats -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="number">{{ stats.template_count if stats.template_count is not none else '—' }}</div>
+        <div class="label">Template Catalog</div>
+        {% if stats.template_count is none %}
+        <div class="sublabel">Not indexed</div>
+        {% endif %}
+    </div>
+    
+    <div class="stat-card">
+        {% if stats.daily_candidates is not none and stats.daily_candidates > 0 %}
+        <div class="number pending">{{ stats.daily_candidates }}</div>
+        <div class="label">Pending Today</div>
+        {% else %}
+        <div class="number">{{ stats.daily_candidates if stats.daily_candidates is not none else '—' }}</div>
+        <div class="label">Pending Today</div>
+        {% if stats.daily_candidates is none %}
+        <div class="sublabel">No queue file</div>
+        {% endif %}
+        {% endif %}
+    </div>
+    
+    <div class="stat-card">
+        <div class="number success">{{ stats.gallery_count }}</div>
+        <div class="label">Gallery Memes</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="number">{{ '✓' if stats.s3_configured else '—' }}</div>
+        <div class="label">S3 Bucket</div>
+        <div class="sublabel">{{ 'Configured' if stats.s3_configured else 'Not configured' }}</div>
+    </div>
+</div>
+
+<!-- Primary CTA -->
+{% if stats.daily_candidates is not none and stats.daily_candidates > 0 %}
+<div class="cta-section">
+    <h2>📋 Daily Candidates Ready</h2>
+    <p>{{ stats.daily_candidates }} meme{{ 's' if stats.daily_candidates != 1 else '' }} waiting for review before Instagram publish</p>
+    <a href="{{ url_for('gallery.daily_candidates') }}" class="btn">Review Candidates →</a>
+</div>
+{% endif %}
+
+<!-- Tool Links -->
+<h2 style="margin-bottom: 16px;">Tools</h2>
+<div class="tools-grid">
+    <a href="{{ url_for('gallery.index') }}" class="tool-card">
+        <h3>🖼️ Gallery</h3>
+        <p>Browse {{ stats.gallery_count }} generated meme{{ 's' if stats.gallery_count != 1 else '' }}</p>
+    </a>
+    
+    <a href="{{ url_for('generate.start') }}" class="tool-card">
+        <h3>✨ Generate</h3>
+        <p>Create new memes with AI-powered generation</p>
+    </a>
+    
+    <a href="{{ url_for('templates_review.review_page') }}" class="tool-card">
+        <h3>📝 Templates</h3>
+        <p>Review and manage template descriptions</p>
+    </a>
+    
+    <a href="{{ url_for('discovery.index') }}" class="tool-card">
+        <h3>🔍 Discovery</h3>
+        <p>Find new niches and trending topics</p>
+    </a>
+    
+    <a href="{{ url_for('video.start') }}" class="tool-card">
+        <h3>🎬 Video Memes</h3>
+        <p>Generate and edit video content</p>
+    </a>
+    
+    {% if stats.daily_candidates is not none %}
+    <a href="{{ url_for('gallery.daily_candidates') }}" class="tool-card">
+        <h3>📅 Daily Candidates</h3>
+        <p>Review queue for Instagram publishing</p>
+    </a>
+    {% endif %}
+</div>
+
+<!-- Recent Memes -->
+{% if recent_memes %}
+<div class="recent-strip">
+    <h2>Recent Memes</h2>
+    <div class="recent-grid">
+        {% for meme in recent_memes %}
+        <div class="recent-item" onclick="window.location.href='{{ url_for('gallery.index') }}'">
+            <img src="{{ url_for('gallery.serve_image', filename=meme.filename) }}" alt="Meme">
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% elif stats.gallery_count == 0 %}
+<div class="empty-state">
+    <p><strong>No memes yet!</strong></p>
+    <p>Generate your first meme to get started</p>
+</div>
+{% endif %}
+
+{% endblock %}
