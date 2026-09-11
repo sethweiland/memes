@@ -33,6 +33,20 @@ def require_date(date_str: str) -> str:
     return date_str
 
 
+def normalize_loaded(data, date_str: str) -> Optional[dict]:
+    """
+    Canonical queue shape is ``{date, candidates}``.
+
+    On READ only: a bare JSON array is treated as that date's candidates.
+    Writes must stay an object — never persist a list.
+    """
+    if isinstance(data, list):
+        return {"date": date_str, "candidates": data}
+    if isinstance(data, dict):
+        return data
+    return None
+
+
 def summarize(data: Optional[dict], date_str: str) -> dict:
     candidates = list((data or {}).get("candidates") or [])
     pending = sum(1 for c in candidates if c.get("status") == "pending")
@@ -81,6 +95,10 @@ class XActivityQueue:
     def save(self, date_str: str, data: dict) -> bool:
         """Save queue JSON to S3 and local cache. Returns True if S3 write succeeded."""
         require_date(date_str)
+        if not isinstance(data, dict):
+            raise TypeError(
+                "X activity writes must be {date, candidates}, not a bare array"
+            )
         json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
 
         self.local_dir.mkdir(parents=True, exist_ok=True)
@@ -115,8 +133,10 @@ class XActivityQueue:
                 result = self.store.get_json(s3_key)
                 if result:
                     data, _etag = result
-                    logger.info(f"Loaded X activity from S3: s3://{self.store.bucket}/{s3_key}")
-                    return data
+                    normalized = normalize_loaded(data, date_str)
+                    if normalized is not None:
+                        logger.info(f"Loaded X activity from S3: s3://{self.store.bucket}/{s3_key}")
+                        return normalized
             except Exception as e:
                 logger.warning(f"Failed to load X activity from S3 ({s3_key}): {e}")
 
@@ -124,8 +144,10 @@ class XActivityQueue:
         if local_path.exists():
             try:
                 data = json.loads(local_path.read_text(encoding="utf-8"))
-                logger.info(f"Loaded X activity from local: {local_path}")
-                return data
+                normalized = normalize_loaded(data, date_str)
+                if normalized is not None:
+                    logger.info(f"Loaded X activity from local: {local_path}")
+                    return normalized
             except Exception as e:
                 logger.error(f"Failed to load local X activity: {e}")
 
