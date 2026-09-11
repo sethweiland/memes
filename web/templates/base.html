@@ -13,6 +13,7 @@
         <a href="{{ url_for('generate.start') }}" class="{{ 'active' if active_page == 'generate' }}">Generate</a>
         <a href="{{ url_for('video.start') }}" class="{{ 'active' if active_page == 'video' }}">Video Memes</a>
         <a href="{{ url_for('gallery.index') }}" class="{{ 'active' if active_page == 'gallery' }}">Gallery</a>
+        <a href="{{ url_for('daily_candidates.index') }}" class="{{ 'active' if active_page == 'daily_candidates' }}">Daily Queue</a>
         <a href="{{ url_for('templates_review.review_page') }}" class="{{ 'active' if active_page == 'templates' }}">Templates</a>
     </nav>
     <div class="container">

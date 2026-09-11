@@ -181,9 +181,9 @@ def api_instagram_publish():
     
     Expects JSON:
     {
-        "public_image_url": "https://...",  # Publicly accessible image URL
+        "public_image_url": "https://...",  # Optional - auto-uploads to S3 if not provided
         "caption": "Your caption here",
-        "filename": "optional-for-logging.jpg"
+        "filename": "meme.jpg"  # Required if public_image_url not provided
     }
     
     Returns:
@@ -191,6 +191,7 @@ def api_instagram_publish():
         "success": true,
         "post_id": "...",
         "permalink": "https://instagram.com/p/...",
+        "public_url": "...",  # S3 URL if auto-uploaded
         "error": null
     }
     """
@@ -200,17 +201,57 @@ def api_instagram_publish():
     caption = data.get("caption", "").strip()
     filename = data.get("filename", "")
     
-    if not public_image_url:
-        return jsonify({
-            "success": False,
-            "error": "public_image_url is required (must be a publicly accessible JPEG URL)"
-        }), 400
-    
     if not caption:
         return jsonify({
             "success": False,
             "error": "caption is required"
         }), 400
+    
+    # Auto-upload to S3 if no public URL provided
+    if not public_image_url:
+        if not filename:
+            return jsonify({
+                "success": False,
+                "error": "filename is required when public_image_url is not provided"
+            }), 400
+        
+        # Check if file exists
+        filepath = MEMES_DIR / filename
+        if not filepath.is_file():
+            return jsonify({
+                "success": False,
+                "error": f"File not found: {filename}"
+            }), 404
+        
+        # Upload to S3
+        try:
+            from src.core.meme_assets import upload_meme_to_s3
+            
+            logger.info(f"Auto-uploading {filename} to S3 for Instagram...")
+            upload_result = upload_meme_to_s3(str(filepath), filename)
+            
+            if not upload_result.success:
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to upload to S3: {upload_result.error}"
+                }), 500
+            
+            public_image_url = upload_result.public_url
+            logger.info(f"Auto-upload successful: {public_image_url}")
+            
+        except ValueError as e:
+            # Missing S3 configuration
+            return jsonify({
+                "success": False,
+                "error": f"S3 upload not configured: {str(e)}. Set MEME_ASSETS_BUCKET in .env or provide public_image_url."
+            }), 400
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "success": False,
+                "error": f"S3 upload failed: {str(e)}"
+            }), 500
     
     # Validate that credentials are available
     try:
@@ -226,6 +267,7 @@ def api_instagram_publish():
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "filename": filename,
             "caption": caption[:100] + ("..." if len(caption) > 100 else ""),
+            "public_url": public_image_url,
             "success": result.success,
             "post_id": result.post_id,
             "permalink": result.permalink,
@@ -239,6 +281,7 @@ def api_instagram_publish():
                 "success": True,
                 "post_id": result.post_id,
                 "permalink": result.permalink,
+                "public_url": public_image_url,
                 "error": None,
             })
         else:
@@ -246,6 +289,7 @@ def api_instagram_publish():
                 "success": False,
                 "post_id": None,
                 "permalink": None,
+                "public_url": public_image_url if 's3.amazonaws.com' in public_image_url else None,
                 "error": result.error,
             }), 500
             
