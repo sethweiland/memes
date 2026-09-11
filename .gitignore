@@ -43,6 +43,10 @@ data/*/bm25_index.pkl
 # Template cache
 data/meme_templates.json
 data/meme_templates_expanded.json
+# Local S3 fallbacks (canonical copies live in the bucket under ops/)
+data/usage/
+data/token_usage.jsonl
+data/daily_candidates/
 
 # Output files (generated memes)
 output/

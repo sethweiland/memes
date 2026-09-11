@@ -17,9 +17,15 @@ variable "bucket_name_suffix" {
 }
 
 variable "public_prefix" {
-  description = "S3 prefix that will be publicly readable"
+  description = "S3 prefix that will be publicly readable (Instagram-safe JPEGs + template catalog)"
   type        = string
   default     = "public/memes/"
+}
+
+variable "ops_prefix" {
+  description = "Private prefix for queue JSON and token usage. Not in the public bucket policy. App IAM must allow Get/Put/List on this prefix."
+  type        = string
+  default     = "ops/"
 }
 
 variable "tags" {

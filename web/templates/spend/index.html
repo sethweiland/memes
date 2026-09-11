@@ -352,6 +352,7 @@
                         <div class="amount live">${{ "%.2f"|format(xai_usage.amount) }}</div>
                         <div class="source-indicator live">
                             ✓ {{ "{:,}".format(xai_usage.tokens) }} tokens ({{ xai_usage.calls }} calls, {{ xai_usage.period }})
+                            {% if xai_usage.source == 's3' %}· S3{% elif xai_usage.source == 'local' %}· local{% elif xai_usage.source == 'local_legacy_jsonl' %}· local jsonl{% endif %}
                         </div>
                         {% else %}
                         <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>

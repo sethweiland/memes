@@ -1,19 +1,47 @@
 # Meme Assets S3 Bucket
 
-Terraform module for creating an S3 bucket to host meme images with public HTTPS access for Instagram publishing.
+Terraform module for the shared meme-ops bucket: public Instagram JPEGs plus private ops JSON (daily queue and token usage).
+
+All application writes go through `src/core/s3_store.py` (`S3Store` + `BucketLayout`).
+
+## Layout
+
+```
+s3://bluegrass-meme-pipeline-dev-meme-assets/
+├── public/memes/                         # PUBLIC GetObject (Instagram)
+│   ├── templates/{id}.{ext}              # existing catalog (~3195 objects) — do not rename
+│   └── generated/{hash}_{stem}.jpg       # new IG-ready JPEGs from MemeAssetUploader
+└── ops/                                  # PRIVATE (no public GET)
+    ├── queue/daily-candidates/{YYYY-MM-DD}.json
+    └── usage/{provider}/{YYYY}/{MM}.json
+```
+
+| Prefix | Visibility | Writer | Notes |
+|--------|------------|--------|--------|
+| `public/memes/templates/` | public | catalog harvest (existing) | Keep in place; no migration |
+| `public/memes/generated/` | public | `MemeAssetUploader` | Default `MEME_ASSETS_PUBLIC_PREFIX` |
+| `ops/queue/` | private | `QueueStorage` | Daily candidate metadata |
+| `ops/usage/` | private | `token_tracker` | Monthly JSON, ETag concurrency |
+
+Legacy (read-only fallback, not written by current code):
+
+- `queue/daily-candidates/{date}.json` — PR #7 path
+- `data/token_usage.jsonl` — local-only token log
+
+**Never** put queue or usage JSON under `public/memes/`. That prefix is world-readable.
 
 ## Architecture
 
-- **S3 bucket** with public read access restricted to `public/memes/*` prefix
-- **Versioning** enabled for asset management
+- **S3 bucket** with public read access restricted to `public/memes/*`
+- **Versioning** enabled
 - **Lifecycle rules** to clean up old versions and incomplete uploads
-- **CORS** configuration for potential browser uploads
+- **CORS** for GET/HEAD (ETag exposed for conditional writes)
 
 ## Security
 
 - Public access is limited to the `public/memes/` prefix only
 - No public ACLs allowed (bucket policy controls access)
-- Objects outside the public prefix remain private
+- Everything under `ops/` remains private
 
 ## Setup
 
@@ -63,13 +91,14 @@ aws secretsmanager put-secret-value \
 
 ## IAM Permissions Required
 
-The application runtime identity (EC2 instance profile, Lambda role, or local AWS credentials) needs:
+The application runtime identity (Mac generate, Fly Spend, or any host with AWS creds) needs **both** the public meme prefix and the private `ops/` prefix. Queue and usage writes fail if IAM only allows `public/memes/*`.
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "PublicMemeObjects",
       "Effect": "Allow",
       "Action": [
         "s3:PutObject",
@@ -79,20 +108,44 @@ The application runtime identity (EC2 instance profile, Lambda role, or local AW
       "Resource": "arn:aws:s3:::bluegrass-meme-pipeline-dev-meme-assets/public/memes/*"
     },
     {
+      "Sid": "PrivateOpsObjects",
       "Effect": "Allow",
       "Action": [
-        "s3:ListBucket"
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
       ],
+      "Resource": "arn:aws:s3:::bluegrass-meme-pipeline-dev-meme-assets/ops/*"
+    },
+    {
+      "Sid": "LegacyQueueRead",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::bluegrass-meme-pipeline-dev-meme-assets/queue/*"
+    },
+    {
+      "Sid": "ListPublicAndOps",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
       "Resource": "arn:aws:s3:::bluegrass-meme-pipeline-dev-meme-assets",
       "Condition": {
         "StringLike": {
-          "s3:prefix": "public/memes/*"
+          "s3:prefix": [
+            "public/memes/",
+            "public/memes/*",
+            "ops/",
+            "ops/*",
+            "queue/",
+            "queue/*"
+          ]
         }
       }
     }
   ]
 }
 ```
+
+Attach the same policy (or equivalent role) to every machine that generates memes **and** to the Fly app that serves Spend. Token usage is shared only if both can read/write `ops/usage/*`.
 
 ## Variables
 
@@ -102,6 +155,7 @@ The application runtime identity (EC2 instance profile, Lambda role, or local AW
 | `environment` | Environment name | `dev` |
 | `bucket_name_suffix` | Optional bucket name suffix | `""` |
 | `public_prefix` | Public readable prefix | `public/memes/` |
+| `ops_prefix` | Private ops prefix (documented; not in the public bucket policy) | `ops/` |
 
 ## Outputs
 
@@ -111,6 +165,7 @@ The application runtime identity (EC2 instance profile, Lambda role, or local AW
 | `bucket_arn` | S3 bucket ARN |
 | `public_base_url` | Base HTTPS URL for public objects |
 | `public_prefix` | Public prefix path |
+| `ops_prefix` | Private ops prefix |
 | `public_url_template` | URL template for objects |
 
 ## Testing Public Access

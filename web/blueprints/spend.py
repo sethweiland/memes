@@ -39,46 +39,35 @@ def _load_tech_spend() -> Dict[str, Any]:
 
 def _get_xai_token_usage() -> Optional[Dict[str, Any]]:
     """
-    Get current month xAI token usage from local tracking.
-    Returns dict with amount, tokens, and call_count, or None if no data.
+    Get current month xAI token usage from the shared S3 monthly object
+    (ops/usage/xai/{YYYY}/{MM}.json), with local fallback.
     """
     try:
-        from datetime import datetime
-        from pathlib import Path
-        import sys
-        
-        # Add project root to path for token_tracker import
-        project_root = Path(__file__).parent.parent.parent
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
-        
-        from src.core.token_tracker import get_month_usage
-        
+        from src.core.token_tracker import HEURISTIC_USD_PER_MILLION_TOKENS, get_month_usage
+
         now = datetime.now()
         usage = get_month_usage("xai", now.year, now.month)
-        
-        if usage['call_count'] == 0:
+
+        if usage["call_count"] == 0:
             return None
-        
-        # Estimate cost: rough approximation based on grok-4.6 pricing
-        # Real pricing varies by model, but this gives ballpark
-        # grok-4.6: ~$0.015/1M input tokens, ~$0.075/1M output tokens (example rates)
-        estimated_cost = usage.get('total_cost_usd', 0.0)
-        if estimated_cost == 0 and usage['total_tokens'] > 0:
-            # Rough estimate if not tracked: assume 50/50 split, use average rate
-            estimated_cost = (usage['total_tokens'] / 1_000_000) * 0.045
-        
+
+        # Heuristic only — not xAI billing. See token_tracker.estimate_cost_usd.
+        estimated_cost = usage.get("total_cost_usd", 0.0)
+        if estimated_cost == 0 and usage["total_tokens"] > 0:
+            estimated_cost = (usage["total_tokens"] / 1_000_000) * HEURISTIC_USD_PER_MILLION_TOKENS
+
+        source = usage.get("source") or "local"
         return {
-            'amount': round(estimated_cost, 2),
-            'tokens': usage['total_tokens'],
-            'calls': usage['call_count'],
-            'source': 'local_log',
-            'period': f"{now.year}-{now.month:02d}"
+            "amount": round(estimated_cost, 2),
+            "tokens": usage["total_tokens"],
+            "calls": usage["call_count"],
+            "source": source,
+            "period": f"{now.year}-{now.month:02d}",
         }
     except Exception as e:
         return {
-            'error': str(e),
-            'source': 'local_log_failed'
+            "error": str(e),
+            "source": "usage_read_failed",
         }
 
 

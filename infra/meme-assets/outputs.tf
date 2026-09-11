@@ -23,6 +23,11 @@ output "public_prefix" {
   value       = var.public_prefix
 }
 
+output "ops_prefix" {
+  description = "Private prefix for queue JSON and token usage (not publicly readable)"
+  value       = var.ops_prefix
+}
+
 output "public_url_template" {
   description = "Template for public object URLs (replace {filename} with actual filename)"
   value       = "https://${aws_s3_bucket.meme_assets.bucket}.s3.amazonaws.com/${var.public_prefix}{filename}"

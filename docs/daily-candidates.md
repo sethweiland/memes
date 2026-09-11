@@ -11,7 +11,7 @@ The daily candidate queue provides a structured workflow for:
 
 **S3-Backed Storage (Fly/Container-Friendly):**
 - Candidate images uploaded to S3 at generation time
-- Queue metadata stored in S3 (`queue/daily-candidates/{date}.json`)
+- Queue metadata stored in S3 (`ops/queue/daily-candidates/{date}.json`, private)
 - Local cache maintained for backward compatibility
 - No shared filesystem required between generation and web host
 
@@ -28,7 +28,7 @@ python scripts/generate_daily_candidates.py
 This:
 - Generates ~10 candidate memes
 - Uploads each image to S3 (if configured)
-- Saves queue JSON to S3 under `queue/daily-candidates/{YYYY-MM-DD}.json`
+- Saves queue JSON to S3 under `ops/queue/daily-candidates/{YYYY-MM-DD}.json`
 - Also saves a local cache copy in `data/daily_candidates/` for backward compatibility
 
 ### 2. Review in Web UI
@@ -95,7 +95,7 @@ This generates 12 fresh candidates Monday–Friday for daily review and posting 
 
 ## Data Structure
 
-Candidates are stored in S3 (`queue/daily-candidates/{date}.json`) with local cache fallback:
+Candidates are stored in S3 (`ops/queue/daily-candidates/{date}.json`) with local cache fallback:
 
 ```json
 {
@@ -158,7 +158,7 @@ See `infra/meme-assets/README.md` for full setup.
 ```bash
 MEME_ASSETS_BUCKET=bluegrass-meme-pipeline-dev-meme-assets
 MEME_ASSETS_PUBLIC_BASE_URL=https://bluegrass-meme-pipeline-dev-meme-assets.s3.amazonaws.com
-MEME_ASSETS_PUBLIC_PREFIX=public/memes/
+MEME_ASSETS_PUBLIC_PREFIX=public/memes/generated/
 AWS_DEFAULT_REGION=us-east-1
 ```
 
@@ -194,9 +194,8 @@ aws secretsmanager put-secret-value \
 3. **Verify IAM permissions:**
 
 The runtime identity needs:
-- `s3:PutObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*` and `arn:aws:s3:::BUCKET_NAME/queue/daily-candidates/*`
-- `s3:GetObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*` and `arn:aws:s3:::BUCKET_NAME/queue/daily-candidates/*`
-- `s3:ListBucket` on `arn:aws:s3:::BUCKET_NAME` with prefix filter
+- `s3:PutObject` / `s3:GetObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*` and `arn:aws:s3:::BUCKET_NAME/ops/*`
+- `s3:ListBucket` on `arn:aws:s3:::BUCKET_NAME` with prefix filters for `public/memes/` and `ops/`
 
 See `infra/meme-assets/README.md` for IAM policy example.
 
@@ -245,7 +244,7 @@ If the image doesn't display:
 The web UI loads queue data from S3 first, then falls back to local cache. If S3 is configured but the queue isn't loading:
 1. Check that `MEME_ASSETS_BUCKET` is set on the web host
 2. Verify AWS credentials are available (IAM role, environment variables, or credentials file)
-3. Check S3 bucket permissions for `queue/daily-candidates/*` prefix
+3. Check S3 bucket permissions for `ops/queue/daily-candidates/*` (and legacy `queue/daily-candidates/*` reads)
 
 ## Integration with Existing Workflow
 

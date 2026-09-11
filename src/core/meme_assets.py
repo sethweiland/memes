@@ -3,6 +3,9 @@ S3 asset hosting for meme images.
 
 Uploads memes to S3 with public HTTPS URLs for Instagram Graph API.
 Automatically converts images to JPEG format if needed.
+
+Generated JPEGs go under ``public/memes/generated/``. Queue JSON uses the
+shared ``S3Store`` and lives under ``ops/queue/`` (see ``src/core/s3_store.py``).
 """
 
 from __future__ import annotations
@@ -11,13 +14,13 @@ import hashlib
 import io
 import json
 import logging
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
 
 from PIL import Image
 
+from src.core.s3_store import BucketLayout, S3Store, get_s3_store
 from src.core.secrets import get_secret_value
 
 
@@ -40,7 +43,8 @@ class MemeAssetUploader:
     Configuration (via environment or AWS Secrets Manager):
     - MEME_ASSETS_BUCKET: S3 bucket name
     - MEME_ASSETS_PUBLIC_BASE_URL: Base HTTPS URL for public objects
-    - MEME_ASSETS_PUBLIC_PREFIX: Prefix for uploaded objects (default: public/memes/)
+    - MEME_ASSETS_PUBLIC_PREFIX: Prefix for generated JPEGs
+      (default: public/memes/generated/)
     - AWS_DEFAULT_REGION: AWS region (default: us-east-1)
     """
     
@@ -50,6 +54,7 @@ class MemeAssetUploader:
         public_base_url: Optional[str] = None,
         public_prefix: Optional[str] = None,
         region: Optional[str] = None,
+        store: Optional[S3Store] = None,
     ):
         """
         Initialize uploader with optional config overrides.
@@ -59,50 +64,42 @@ class MemeAssetUploader:
             public_base_url: Base HTTPS URL (defaults to MEME_ASSETS_PUBLIC_BASE_URL env)
             public_prefix: Object key prefix (defaults to MEME_ASSETS_PUBLIC_PREFIX env)
             region: AWS region (defaults to AWS_DEFAULT_REGION env)
+            store: Shared S3Store (defaults to env-configured store)
         """
-        self.bucket = bucket or get_secret_value(
-            "MEME_ASSETS_BUCKET",
-            secret_keys=["MEME_ASSETS_BUCKET"],
+        self.store = store or S3Store(
+            bucket=bucket,
+            region=region,
+            public_base_url=public_base_url,
         )
-        
-        self.public_base_url = public_base_url or get_secret_value(
-            "MEME_ASSETS_PUBLIC_BASE_URL",
-            secret_keys=["MEME_ASSETS_PUBLIC_BASE_URL"],
-        )
-        
-        self.public_prefix = public_prefix or get_secret_value(
+        self.bucket = self.store.bucket
+        self.public_base_url = self.store.public_base_url
+        self.region = self.store.region
+
+        configured_prefix = public_prefix or get_secret_value(
             "MEME_ASSETS_PUBLIC_PREFIX",
             secret_keys=["MEME_ASSETS_PUBLIC_PREFIX"],
-            default="public/memes/",
+            default="",
         )
-        
-        self.region = region or get_secret_value(
-            "AWS_DEFAULT_REGION",
-            secret_keys=["AWS_DEFAULT_REGION", "AWS_REGION"],
-            default="us-east-1",
+        self.public_prefix = BucketLayout.normalize_prefix(
+            configured_prefix or BucketLayout.GENERATED_PREFIX
         )
-        
-        if not self.bucket:
+        if not self.public_prefix.startswith(BucketLayout.PUBLIC_PREFIX):
+            raise ValueError(
+                "MEME_ASSETS_PUBLIC_PREFIX must stay under "
+                f"{BucketLayout.PUBLIC_PREFIX} (got {self.public_prefix!r})"
+            )
+
+        if not self.store.configured:
             raise ValueError(
                 "MEME_ASSETS_BUCKET is required. "
                 "Set it in .env or AWS Secrets Manager. "
                 "See infra/meme-assets/README.md for setup."
             )
-        
-        if not self.public_base_url:
-            # Default to standard S3 URL format
-            self.public_base_url = f"https://{self.bucket}.s3.amazonaws.com"
-            logger.info(f"Using default public base URL: {self.public_base_url}")
-        
-        self._s3_client = None
     
     @property
     def s3_client(self):
-        """Lazy-load boto3 S3 client."""
-        if self._s3_client is None:
-            import boto3
-            self._s3_client = boto3.client("s3", region_name=self.region)
-        return self._s3_client
+        """Shared boto3 S3 client (via S3Store)."""
+        return self.store.client
     
     def _ensure_jpeg(
         self,
@@ -205,16 +202,16 @@ class MemeAssetUploader:
             
             # Upload to S3
             logger.info(f"Uploading to S3: s3://{self.bucket}/{s3_key}")
-            self.s3_client.put_object(
-                Bucket=self.bucket,
-                Key=s3_key,
-                Body=jpeg_bytes,
-                ContentType="image/jpeg",
-                CacheControl="public, max-age=31536000",  # 1 year cache
+            self.store.put_object(
+                s3_key,
+                jpeg_bytes,
+                kind="public_meme",
+                content_type="image/jpeg",
+                cache_control="public, max-age=31536000",  # 1 year cache
             )
             
             # Generate public URL
-            public_url = f"{self.public_base_url.rstrip('/')}/{s3_key}"
+            public_url = self.store.public_url(s3_key)
             
             logger.info(f"Upload successful: {public_url}")
             return UploadResult(
@@ -262,50 +259,49 @@ class QueueStorage:
     """
     S3-backed storage for daily candidate queue JSON.
     
-    Stores queue metadata in S3 with local file fallback for compatibility.
-    Queue files are stored under a non-public prefix: queue/daily-candidates/{date}.json
+    Writes ``ops/queue/daily-candidates/{date}.json`` (private). Reads the same
+    key first, then the PR #7 legacy prefix ``queue/daily-candidates/``, then
+    the local cache.
     """
     
     def __init__(
         self,
         bucket: Optional[str] = None,
-        queue_prefix: str = "queue/daily-candidates/",
+        queue_prefix: str = BucketLayout.QUEUE_PREFIX,
         local_dir: Optional[Path] = None,
+        store: Optional[S3Store] = None,
     ):
         """
         Initialize queue storage.
         
         Args:
             bucket: S3 bucket name (defaults to MEME_ASSETS_BUCKET env)
-            queue_prefix: S3 prefix for queue files (default: queue/daily-candidates/)
+            queue_prefix: S3 prefix for new writes (default: ops/queue/daily-candidates/)
             local_dir: Local directory for cache/fallback (default: data/daily_candidates)
+            store: Shared S3Store (defaults to env-configured store)
         """
-        self.bucket = bucket or get_secret_value(
-            "MEME_ASSETS_BUCKET",
-            secret_keys=["MEME_ASSETS_BUCKET"],
+        self.store = store or S3Store(bucket=bucket)
+        self.bucket = self.store.bucket
+        self.queue_prefix = BucketLayout.normalize_prefix(
+            queue_prefix or BucketLayout.QUEUE_PREFIX
         )
-        self.queue_prefix = queue_prefix
+        self.legacy_prefix = BucketLayout.QUEUE_LEGACY_PREFIX
         self.local_dir = local_dir or Path("data/daily_candidates")
-        
-        self.region = get_secret_value(
-            "AWS_DEFAULT_REGION",
-            secret_keys=["AWS_DEFAULT_REGION", "AWS_REGION"],
-            default="us-east-1",
-        )
-        
-        self._s3_client = None
+        self.region = self.store.region
     
     @property
     def s3_client(self):
-        """Lazy-load boto3 S3 client."""
-        if self._s3_client is None:
-            import boto3
-            self._s3_client = boto3.client("s3", region_name=self.region)
-        return self._s3_client
+        """Shared boto3 S3 client (via S3Store)."""
+        return self.store.client
     
     def _s3_key(self, date_str: str) -> str:
-        """Generate S3 key for a queue file."""
+        """Canonical S3 key for a queue file."""
+        if self.queue_prefix == BucketLayout.QUEUE_PREFIX:
+            return BucketLayout.queue_key(date_str)
         return f"{self.queue_prefix}{date_str}.json"
+    
+    def _legacy_key(self, date_str: str) -> str:
+        return BucketLayout.queue_legacy_key(date_str)
     
     def _local_path(self, date_str: str) -> Path:
         """Generate local file path for a queue file."""
@@ -330,18 +326,17 @@ class QueueStorage:
         local_path.write_bytes(json_bytes)
         logger.info(f"Saved queue to local: {local_path}")
         
-        # Try to save to S3 if bucket is configured
-        if not self.bucket:
+        if not self.store.configured:
             logger.warning("S3 bucket not configured, queue saved locally only")
             return False
         
         try:
             s3_key = self._s3_key(date_str)
-            self.s3_client.put_object(
-                Bucket=self.bucket,
-                Key=s3_key,
-                Body=json_bytes,
-                ContentType="application/json",
+            self.store.put_object(
+                s3_key,
+                json_bytes,
+                kind="private_ops",
+                content_type="application/json",
             )
             logger.info(f"Saved queue to S3: s3://{self.bucket}/{s3_key}")
             return True
@@ -359,21 +354,19 @@ class QueueStorage:
         Returns:
             Queue data dict, or None if not found
         """
-        # Try S3 first if bucket is configured
-        if self.bucket:
-            try:
-                s3_key = self._s3_key(date_str)
-                response = self.s3_client.get_object(
-                    Bucket=self.bucket,
-                    Key=s3_key,
-                )
-                data = json.loads(response["Body"].read().decode("utf-8"))
-                logger.info(f"Loaded queue from S3: s3://{self.bucket}/{s3_key}")
-                return data
-            except self.s3_client.exceptions.NoSuchKey:
-                logger.debug(f"Queue not found in S3: {s3_key}")
-            except Exception as e:
-                logger.warning(f"Failed to load queue from S3: {e}")
+        if self.store.configured:
+            keys = [self._s3_key(date_str)]
+            if self._legacy_key(date_str) not in keys:
+                keys.append(self._legacy_key(date_str))
+            for s3_key in keys:
+                try:
+                    result = self.store.get_json(s3_key)
+                    if result:
+                        data, _etag = result
+                        logger.info(f"Loaded queue from S3: s3://{self.bucket}/{s3_key}")
+                        return data
+                except Exception as e:
+                    logger.warning(f"Failed to load queue from S3 ({s3_key}): {e}")
         
         # Fall back to local file
         local_path = self._local_path(date_str)
@@ -396,18 +389,17 @@ class QueueStorage:
         """
         dates_map = {}
         
-        # Load from S3 if available
-        if self.bucket:
+        if self.store.configured:
+            prefixes = [self.queue_prefix]
+            if self.legacy_prefix not in prefixes:
+                prefixes.append(self.legacy_prefix)
             try:
-                response = self.s3_client.list_objects_v2(
-                    Bucket=self.bucket,
-                    Prefix=self.queue_prefix,
-                )
-                for obj in response.get("Contents", []):
-                    key = obj["Key"]
-                    if key.endswith(".json"):
-                        date_str = key.replace(self.queue_prefix, "").replace(".json", "")
-                        if date_str not in dates_map:
+                for prefix in prefixes:
+                    for key in self.store.list_keys(prefix):
+                        if not key.endswith(".json"):
+                            continue
+                        date_str = key[len(prefix):].removeprefix("/").replace(".json", "")
+                        if date_str and date_str not in dates_map:
                             data = self.load(date_str)
                             if data:
                                 dates_map[date_str] = self._date_info(date_str, data)
@@ -447,5 +439,11 @@ def get_queue_storage() -> QueueStorage:
     """Get the global queue storage instance."""
     global _queue_storage
     if _queue_storage is None:
-        _queue_storage = QueueStorage()
+        _queue_storage = QueueStorage(store=get_s3_store())
     return _queue_storage
+
+
+def reset_queue_storage() -> None:
+    """Clear the process-wide QueueStorage (tests)."""
+    global _queue_storage
+    _queue_storage = None
