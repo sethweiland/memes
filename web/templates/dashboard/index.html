@@ -226,7 +226,7 @@
 <div class="cta-section">
     <h2>📋 Daily Candidates Ready</h2>
     <p>{{ stats.daily_candidates }} meme{{ 's' if stats.daily_candidates != 1 else '' }} waiting for review before Instagram publish</p>
-    <a href="{{ url_for('gallery.daily_candidates') }}" class="btn">Review Candidates →</a>
+    <a href="{{ url_for('daily_candidates.index') }}" class="btn">Review Candidates →</a>
 </div>
 {% endif %}
 
@@ -258,12 +258,10 @@
         <p>Generate and edit video content</p>
     </a>
     
-    {% if stats.daily_candidates is not none %}
-    <a href="{{ url_for('gallery.daily_candidates') }}" class="tool-card">
+    <a href="{{ url_for('daily_candidates.index') }}" class="tool-card">
         <h3>📅 Daily Candidates</h3>
         <p>Review queue for Instagram publishing</p>
     </a>
-    {% endif %}
 </div>
 
 <!-- Recent Memes -->
