@@ -26,7 +26,7 @@ class GrokClient:
     """Client for xAI's Grok API."""
 
     BASE_URL = "https://api.x.ai/v1"
-    DEFAULT_MODEL = "grok-4-0709"
+    DEFAULT_MODEL = "grok-4.6"
 
     def __init__(self, api_key: str | None = None, default_model: str | None = None):
         """
@@ -47,7 +47,7 @@ class GrokClient:
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            timeout=180.0,  # Grok-4 needs longer timeout
+            timeout=600.0,  # grok-4.6 concept batches can be slow
         )
 
     def _chat(

@@ -453,7 +453,7 @@ def api_start():
     humor_edge = max(1, min(10, humor_edge))
 
     # Validate model
-    valid_models = {"gpt-5.4-mini", "gpt-5.5", "gpt-5.4", "grok-4-0709", "grok-4-1-fast-reasoning", "grok-3-mini"}
+    valid_models = {"gpt-5.4-mini", "gpt-5.5", "gpt-5.4", "grok-4.6", "grok-4-0709", "grok-4-1-fast-reasoning", "grok-3-mini"}
     if model not in valid_models:
         model = "gpt-5.4-mini"
     if critic_model not in valid_models:

@@ -5,7 +5,7 @@ Fetches and caches available templates with descriptions for Grok to choose from
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +22,8 @@ class MemeTemplate:
     height: int
     box_count: int
     description: str = ""
+    s3_url: str = ""
+    imgflip_url: str = ""
 
     def to_prompt_format(self) -> str:
         """Format for including in LLM prompt."""
@@ -270,7 +272,8 @@ class TemplatesCatalog:
                 # Add description if we have one
                 if not t.get('description'):
                     t['description'] = TEMPLATE_DESCRIPTIONS.get(t['name'], '')
-                template = MemeTemplate(**t)
+                known = {f.name for f in fields(MemeTemplate)}
+                template = MemeTemplate(**{k: v for k, v in t.items() if k in known})
                 self.templates[template.id] = template
 
     def _save_cache(self):

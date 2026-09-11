@@ -65,7 +65,7 @@ def generate_candidates(
     
     # Set up pipeline
     pipeline = MemePipeline(config, PipelineConfig(
-        num_concepts=max(count * 2, 20),  # Generate extra concepts for better selection
+        num_concepts=max(count * 2, 10),  # Light oversample for small daily batches
         num_images=count,
         creativity=creativity,
     ))
@@ -97,7 +97,7 @@ def generate_candidates(
     # Generate memes
     result = pipeline.run(topic)
     
-    logger.info(f"Generated {len(result.images)} images in {result.output_dir}")
+    logger.info(f"Generated {result.images_generated} images in {result.output_dir}")
     
     return {
         "topic": topic,
@@ -130,23 +130,25 @@ def save_daily_candidates(
     
     # Build candidate records
     candidates = []
-    for img in result.images:
+    for i, img in enumerate(result.top_memes, start=1):
         # Get metadata from .txt file if available
         metadata = {}
-        if img.get("local_path"):
-            txt_path = Path(img["local_path"]).with_suffix(".txt")
+        local_path = img.get("local_path") or img.get("filepath") or img.get("path") or ""
+        if local_path:
+            txt_path = Path(local_path).with_suffix(".txt")
             if txt_path.exists():
                 metadata = _parse_metadata(txt_path)
-        
+
+        idx = img.get("index", i)
         candidate = {
-            "id": f"{date_str}_{img['index']}",
-            "index": img["index"],
-            "template": img.get("template") or img.get("format", "Unknown"),
+            "id": f"{date_str}_{idx}",
+            "index": idx,
+            "template": img.get("template") or img.get("format") or img.get("name", "Unknown"),
             "top_text": img.get("top_text", ""),
             "bottom_text": img.get("bottom_text", ""),
             "caption": img.get("caption") or metadata.get("caption", ""),
-            "local_path": str(img.get("local_path", "")),
-            "filename": Path(img.get("local_path", "")).name if img.get("local_path") else "",
+            "local_path": str(local_path),
+            "filename": Path(local_path).name if local_path else "",
             "status": "pending",
             "created_at": datetime.now().isoformat(timespec="seconds"),
             "scores": img.get("scores", {}),
