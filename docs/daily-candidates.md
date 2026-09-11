@@ -7,7 +7,13 @@ Human-in-the-loop workflow for reviewing and approving daily meme candidates bef
 The daily candidate queue provides a structured workflow for:
 1. **Generating** a batch of meme candidates each day
 2. **Reviewing** candidates in a web UI
-3. **Approving** selected memes → auto-uploads to S3 → publishes to Instagram
+3. **Approving** selected memes → publishes to Instagram using pre-uploaded S3 URLs
+
+**S3-Backed Storage (Fly/Container-Friendly):**
+- Candidate images uploaded to S3 at generation time
+- Queue metadata stored in S3 (`queue/daily-candidates/{date}.json`)
+- Local cache maintained for backward compatibility
+- No shared filesystem required between generation and web host
 
 No memes post automatically. Every Instagram publish requires explicit human approval.
 
@@ -19,7 +25,11 @@ No memes post automatically. Every Instagram publish requires explicit human app
 python scripts/generate_daily_candidates.py
 ```
 
-This creates `data/daily_candidates/{YYYY-MM-DD}.json` with ~10 candidate memes.
+This:
+- Generates ~10 candidate memes
+- Uploads each image to S3 (if configured)
+- Saves queue JSON to S3 under `queue/daily-candidates/{YYYY-MM-DD}.json`
+- Also saves a local cache copy in `data/daily_candidates/` for backward compatibility
 
 ### 2. Review in Web UI
 
@@ -33,9 +43,10 @@ Navigate to: **http://localhost:5000/gallery/daily-candidates**
 ### 3. Approved Candidates
 
 Once approved:
-- Automatically uploaded to S3 (if `MEME_ASSETS_BUCKET` is configured)
-- Published to Instagram via Graph API
+- Uses existing S3 URL from generation (no upload needed at approve-time)
+- Published to Instagram via Graph API using S3 URL
 - Status updated to "approved" with Instagram post link
+- Queue JSON updated in S3 and local cache
 
 ## Script Usage
 
@@ -84,7 +95,7 @@ This generates 12 fresh candidates Monday–Friday for daily review and posting 
 
 ## Data Structure
 
-Candidates are stored in `data/daily_candidates/{date}.json`:
+Candidates are stored in S3 (`queue/daily-candidates/{date}.json`) with local cache fallback:
 
 ```json
 {
@@ -102,6 +113,8 @@ Candidates are stored in `data/daily_candidates/{date}.json`:
       "top_text": "Playing a guitar",
       "bottom_text": "Playing a mandolin (the superior instrument)",
       "caption": "Mandolin > Guitar, fight me 🎸🔥 #bluegrass #mandolin",
+      "public_url": "https://bucket.s3.amazonaws.com/public/memes/abc123_drake_hotline_0.jpg",
+      "s3_key": "public/memes/abc123_drake_hotline_0.jpg",
       "local_path": "output/memes/drake_hotline_0.jpg",
       "filename": "drake_hotline_0.jpg",
       "status": "pending",
@@ -125,13 +138,20 @@ Candidates are stored in `data/daily_candidates/{date}.json`:
 
 When approved, additional fields are added:
 - `approved_at`: ISO timestamp
-- `public_url`: S3 HTTPS URL
 - `instagram_post_id`: Instagram media ID
 - `instagram_permalink`: Instagram post URL
 
+### New Fields (S3-Backed Storage)
+
+- **`public_url`**: S3 HTTPS URL for the meme image (set at generation time)
+- **`s3_key`**: S3 object key (e.g. `public/memes/abc123_meme.jpg`)
+- **`local_path`**: Optional local cache path (may not exist on web host)
+
 ## S3 Setup
 
-Auto-upload requires S3 configuration. See `infra/meme-assets/README.md` for full setup.
+**Required for container deployments (Fly, Docker, etc.)** and recommended for all deployments. The queue and images are stored in S3 so generation can happen on one machine (e.g. Mac) and review/approve on another (e.g. Fly container).
+
+See `infra/meme-assets/README.md` for full setup.
 
 ### Required Environment Variables
 
@@ -174,8 +194,9 @@ aws secretsmanager put-secret-value \
 3. **Verify IAM permissions:**
 
 The runtime identity needs:
-- `s3:PutObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*`
-- `s3:GetObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*`
+- `s3:PutObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*` and `arn:aws:s3:::BUCKET_NAME/queue/daily-candidates/*`
+- `s3:GetObject` on `arn:aws:s3:::BUCKET_NAME/public/memes/*` and `arn:aws:s3:::BUCKET_NAME/queue/daily-candidates/*`
+- `s3:ListBucket` on `arn:aws:s3:::BUCKET_NAME` with prefix filter
 
 See `infra/meme-assets/README.md` for IAM policy example.
 
@@ -211,9 +232,20 @@ Check IAM permissions. The runtime identity needs `s3:PutObject` on the bucket's
 
 Verify `META_IG_ACCESS_TOKEN` is set and valid. See `docs/instagram-publishing.md`.
 
-### Local file not found
+### Image not loading in review UI
 
-The meme image may have been deleted. Check that `output/memes/` contains the expected files.
+If the image doesn't display:
+1. Check that `public_url` is set in the candidate record
+2. Verify the S3 bucket allows public reads for the `public/memes/*` prefix
+3. Test the URL directly in a browser
+4. If no `public_url`, regenerate candidates with S3 configured
+
+### Queue JSON not found on web host
+
+The web UI loads queue data from S3 first, then falls back to local cache. If S3 is configured but the queue isn't loading:
+1. Check that `MEME_ASSETS_BUCKET` is set on the web host
+2. Verify AWS credentials are available (IAM role, environment variables, or credentials file)
+3. Check S3 bucket permissions for `queue/daily-candidates/*` prefix
 
 ## Integration with Existing Workflow
 

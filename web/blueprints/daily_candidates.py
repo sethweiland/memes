@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flask import Blueprint, render_template, request, jsonify, abort
 
-from src.core.meme_assets import upload_meme_to_s3
+from src.core.meme_assets import upload_meme_to_s3, get_queue_storage
 from src.core.instagram_publisher import publish_to_instagram
 
 
@@ -17,53 +17,22 @@ bp = Blueprint("daily_candidates", __name__, url_prefix="/gallery/daily-candidat
 logger = logging.getLogger(__name__)
 
 
-DAILY_CANDIDATES_DIR = Path("data/daily_candidates")
-
-
 def _load_candidates_file(date_str: str) -> dict:
-    """Load candidates JSON for a specific date."""
-    file_path = DAILY_CANDIDATES_DIR / f"{date_str}.json"
-    if not file_path.exists():
-        return None
-    
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Failed to load candidates file {file_path}: {e}")
-        return None
+    """Load candidates JSON for a specific date from S3 (with local fallback)."""
+    queue_storage = get_queue_storage()
+    return queue_storage.load(date_str)
 
 
 def _save_candidates_file(date_str: str, data: dict):
-    """Save candidates JSON for a specific date."""
-    DAILY_CANDIDATES_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = DAILY_CANDIDATES_DIR / f"{date_str}.json"
-    
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    """Save candidates JSON for a specific date to S3 and local cache."""
+    queue_storage = get_queue_storage()
+    queue_storage.save(date_str, data)
 
 
 def _list_available_dates() -> list[dict]:
-    """List all available candidate dates, newest first."""
-    if not DAILY_CANDIDATES_DIR.exists():
-        return []
-    
-    dates = []
-    for file_path in DAILY_CANDIDATES_DIR.glob("*.json"):
-        date_str = file_path.stem
-        data = _load_candidates_file(date_str)
-        if data:
-            dates.append({
-                "date": date_str,
-                "topic": data.get("topic", ""),
-                "total_count": data.get("total_count", 0),
-                "pending_count": sum(1 for c in data.get("candidates", []) if c.get("status") == "pending"),
-                "approved_count": sum(1 for c in data.get("candidates", []) if c.get("status") == "approved"),
-            })
-    
-    # Sort by date descending
-    dates.sort(key=lambda x: x["date"], reverse=True)
-    return dates
+    """List all available candidate dates from S3 and local, newest first."""
+    queue_storage = get_queue_storage()
+    return queue_storage.list_dates()
 
 
 @bp.route("/")
@@ -125,7 +94,6 @@ def api_approve_candidate(date_str: str, candidate_id: str):
     # Get request data
     request_data = request.get_json(silent=True) or {}
     caption = request_data.get("caption", candidate.get("caption", "")).strip()
-    public_image_url = request_data.get("public_image_url", "").strip()
     
     if not caption:
         return jsonify({"error": "Caption is required"}), 400
@@ -134,11 +102,17 @@ def api_approve_candidate(date_str: str, candidate_id: str):
     if request_data.get("caption"):
         candidate["caption"] = caption
     
-    # Auto-upload to S3 if no public URL provided
+    # Use public_url from candidate if available, otherwise upload from local path
+    public_image_url = candidate.get("public_url") or request_data.get("public_image_url", "").strip()
+    
     if not public_image_url:
+        # Fall back to uploading from local path
         local_path = candidate.get("local_path")
         if not local_path or not Path(local_path).is_file():
-            return jsonify({"error": "Local file not found for auto-upload"}), 404
+            return jsonify({
+                "error": "No public URL available and local file not found. "
+                        "The image may need to be re-generated with S3 upload enabled."
+            }), 404
         
         try:
             logger.info(f"Auto-uploading {local_path} to S3...")
@@ -150,6 +124,8 @@ def api_approve_candidate(date_str: str, candidate_id: str):
                 }), 500
             
             public_image_url = upload_result.public_url
+            candidate["public_url"] = public_image_url
+            candidate["s3_key"] = upload_result.s3_key
             logger.info(f"Auto-upload successful: {public_image_url}")
             
         except ValueError as e:

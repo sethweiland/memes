@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -255,3 +256,196 @@ def upload_meme_to_s3(
     """
     uploader = MemeAssetUploader()
     return uploader.upload(image_source, filename)
+
+
+class QueueStorage:
+    """
+    S3-backed storage for daily candidate queue JSON.
+    
+    Stores queue metadata in S3 with local file fallback for compatibility.
+    Queue files are stored under a non-public prefix: queue/daily-candidates/{date}.json
+    """
+    
+    def __init__(
+        self,
+        bucket: Optional[str] = None,
+        queue_prefix: str = "queue/daily-candidates/",
+        local_dir: Optional[Path] = None,
+    ):
+        """
+        Initialize queue storage.
+        
+        Args:
+            bucket: S3 bucket name (defaults to MEME_ASSETS_BUCKET env)
+            queue_prefix: S3 prefix for queue files (default: queue/daily-candidates/)
+            local_dir: Local directory for cache/fallback (default: data/daily_candidates)
+        """
+        self.bucket = bucket or get_secret_value(
+            "MEME_ASSETS_BUCKET",
+            secret_keys=["MEME_ASSETS_BUCKET"],
+        )
+        self.queue_prefix = queue_prefix
+        self.local_dir = local_dir or Path("data/daily_candidates")
+        
+        self.region = get_secret_value(
+            "AWS_DEFAULT_REGION",
+            secret_keys=["AWS_DEFAULT_REGION", "AWS_REGION"],
+            default="us-east-1",
+        )
+        
+        self._s3_client = None
+    
+    @property
+    def s3_client(self):
+        """Lazy-load boto3 S3 client."""
+        if self._s3_client is None:
+            import boto3
+            self._s3_client = boto3.client("s3", region_name=self.region)
+        return self._s3_client
+    
+    def _s3_key(self, date_str: str) -> str:
+        """Generate S3 key for a queue file."""
+        return f"{self.queue_prefix}{date_str}.json"
+    
+    def _local_path(self, date_str: str) -> Path:
+        """Generate local file path for a queue file."""
+        return self.local_dir / f"{date_str}.json"
+    
+    def save(self, date_str: str, data: dict) -> bool:
+        """
+        Save queue data to S3 and local cache.
+        
+        Args:
+            date_str: Date string (YYYY-MM-DD)
+            data: Queue data dict
+        
+        Returns:
+            True if saved to S3, False if only local save succeeded
+        """
+        json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+        
+        # Always save local copy
+        self.local_dir.mkdir(parents=True, exist_ok=True)
+        local_path = self._local_path(date_str)
+        local_path.write_bytes(json_bytes)
+        logger.info(f"Saved queue to local: {local_path}")
+        
+        # Try to save to S3 if bucket is configured
+        if not self.bucket:
+            logger.warning("S3 bucket not configured, queue saved locally only")
+            return False
+        
+        try:
+            s3_key = self._s3_key(date_str)
+            self.s3_client.put_object(
+                Bucket=self.bucket,
+                Key=s3_key,
+                Body=json_bytes,
+                ContentType="application/json",
+            )
+            logger.info(f"Saved queue to S3: s3://{self.bucket}/{s3_key}")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to save queue to S3: {e}")
+            return False
+    
+    def load(self, date_str: str) -> Optional[dict]:
+        """
+        Load queue data from S3, with local fallback.
+        
+        Args:
+            date_str: Date string (YYYY-MM-DD)
+        
+        Returns:
+            Queue data dict, or None if not found
+        """
+        # Try S3 first if bucket is configured
+        if self.bucket:
+            try:
+                s3_key = self._s3_key(date_str)
+                response = self.s3_client.get_object(
+                    Bucket=self.bucket,
+                    Key=s3_key,
+                )
+                data = json.loads(response["Body"].read().decode("utf-8"))
+                logger.info(f"Loaded queue from S3: s3://{self.bucket}/{s3_key}")
+                return data
+            except self.s3_client.exceptions.NoSuchKey:
+                logger.debug(f"Queue not found in S3: {s3_key}")
+            except Exception as e:
+                logger.warning(f"Failed to load queue from S3: {e}")
+        
+        # Fall back to local file
+        local_path = self._local_path(date_str)
+        if local_path.exists():
+            try:
+                data = json.loads(local_path.read_text(encoding="utf-8"))
+                logger.info(f"Loaded queue from local: {local_path}")
+                return data
+            except Exception as e:
+                logger.error(f"Failed to load local queue: {e}")
+        
+        return None
+    
+    def list_dates(self) -> list[dict]:
+        """
+        List all available queue dates from S3 and local.
+        
+        Returns:
+            List of date info dicts with date, topic, counts, etc.
+        """
+        dates_map = {}
+        
+        # Load from S3 if available
+        if self.bucket:
+            try:
+                response = self.s3_client.list_objects_v2(
+                    Bucket=self.bucket,
+                    Prefix=self.queue_prefix,
+                )
+                for obj in response.get("Contents", []):
+                    key = obj["Key"]
+                    if key.endswith(".json"):
+                        date_str = key.replace(self.queue_prefix, "").replace(".json", "")
+                        if date_str not in dates_map:
+                            data = self.load(date_str)
+                            if data:
+                                dates_map[date_str] = self._date_info(date_str, data)
+            except Exception as e:
+                logger.warning(f"Failed to list S3 queue files: {e}")
+        
+        # Merge with local files
+        if self.local_dir.exists():
+            for file_path in self.local_dir.glob("*.json"):
+                date_str = file_path.stem
+                if date_str not in dates_map:
+                    data = self.load(date_str)
+                    if data:
+                        dates_map[date_str] = self._date_info(date_str, data)
+        
+        # Sort by date descending
+        dates = list(dates_map.values())
+        dates.sort(key=lambda x: x["date"], reverse=True)
+        return dates
+    
+    def _date_info(self, date_str: str, data: dict) -> dict:
+        """Extract date info from queue data."""
+        return {
+            "date": date_str,
+            "topic": data.get("topic", ""),
+            "total_count": data.get("total_count", 0),
+            "pending_count": sum(1 for c in data.get("candidates", []) if c.get("status") == "pending"),
+            "approved_count": sum(1 for c in data.get("candidates", []) if c.get("status") == "approved"),
+        }
+
+
+# Global queue storage instance
+_queue_storage = None
+
+
+def get_queue_storage() -> QueueStorage:
+    """Get the global queue storage instance."""
+    global _queue_storage
+    if _queue_storage is None:
+        _queue_storage = QueueStorage()
+    return _queue_storage

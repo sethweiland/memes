@@ -95,6 +95,40 @@ cp instagram_brands.example.json instagram_brands.json
 
 The brand selector appears automatically when multiple brands are configured.
 
+### Daily Candidate Queue & S3 Storage
+
+The daily candidate workflow uses S3-backed storage for both queue metadata and images, making it container-friendly (Fly, Docker, etc.):
+
+**Queue Storage:**
+- Candidate queue JSON files stored in S3 under `queue/daily-candidates/{date}.json`
+- Local cache maintained in `data/daily_candidates/` for backward compatibility
+- Web UI loads from S3 with local fallback
+
+**Image Storage:**
+- Each candidate image uploaded to S3 at generation time under `public/memes/`
+- Candidate records include `public_url` and `s3_key` fields
+- Review UI displays images directly from S3 public URLs
+- Approve flow uses existing `public_url` (no local file dependency)
+
+**Generation Flow:**
+```bash
+python scripts/generate_daily_candidates.py
+# Generates memes, uploads each to S3, saves queue to S3 + local cache
+```
+
+**Review & Approve:**
+1. Navigate to `/gallery/daily-candidates/` in the web UI
+2. Images load from S3 public URLs
+3. Approve publishes to Instagram using S3 URL directly
+4. No shared filesystem required between generation and web host
+
+**S3 Configuration Required:**
+- `MEME_ASSETS_BUCKET`: S3 bucket name (see `infra/meme-assets/README.md`)
+- `MEME_ASSETS_PUBLIC_BASE_URL`: Public HTTPS base URL for bucket
+- `AWS_DEFAULT_REGION`: AWS region
+
+If S3 is not configured, the system falls back to local-only storage (queue and images on disk).
+
 ### Generate Memes
 
 ```python

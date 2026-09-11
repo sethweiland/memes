@@ -28,6 +28,7 @@ load_dotenv()
 
 from src.config import load_domain
 from src.core.pipeline import MemePipeline, PipelineConfig
+from src.core.meme_assets import upload_meme_to_s3, get_queue_storage
 
 
 logging.basicConfig(
@@ -123,7 +124,7 @@ def save_daily_candidates(
     
     result = candidates_data["result"]
     
-    # Build candidate records
+    # Build candidate records and upload to S3
     candidates = []
     for i, img in enumerate(result.top_memes, start=1):
         # Get metadata from .txt file if available
@@ -135,6 +136,24 @@ def save_daily_candidates(
                 metadata = _parse_metadata(txt_path)
 
         idx = img.get("index", i)
+        
+        # Upload image to S3
+        public_url = None
+        s3_key = None
+        if local_path and Path(local_path).is_file():
+            filename = Path(local_path).name
+            logger.info(f"Uploading candidate #{idx} to S3: {filename}")
+            try:
+                upload_result = upload_meme_to_s3(local_path, filename)
+                if upload_result.success:
+                    public_url = upload_result.public_url
+                    s3_key = upload_result.s3_key
+                    logger.info(f"✅ Uploaded to S3: {public_url}")
+                else:
+                    logger.warning(f"⚠️ S3 upload failed for {filename}: {upload_result.error}")
+            except Exception as e:
+                logger.warning(f"⚠️ S3 upload exception for {filename}: {e}")
+        
         candidate = {
             "id": f"{date_str}_{idx}",
             "index": idx,
@@ -142,6 +161,8 @@ def save_daily_candidates(
             "top_text": img.get("top_text", ""),
             "bottom_text": img.get("bottom_text", ""),
             "caption": img.get("caption") or metadata.get("caption", ""),
+            "public_url": public_url,
+            "s3_key": s3_key,
             "local_path": str(local_path),
             "filename": Path(local_path).name if local_path else "",
             "status": "pending",
@@ -151,7 +172,7 @@ def save_daily_candidates(
         }
         candidates.append(candidate)
     
-    # Save to JSON
+    # Save to JSON (S3 + local)
     data = {
         "date": date_str,
         "topic": candidates_data["topic"],
@@ -162,10 +183,15 @@ def save_daily_candidates(
         "candidates": candidates,
     }
     
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    # Save to S3 and local via queue storage
+    queue_storage = get_queue_storage()
+    saved_to_s3 = queue_storage.save(date_str, data)
     
-    logger.info(f"Saved {len(candidates)} candidates to {output_path}")
+    if saved_to_s3:
+        logger.info(f"Saved {len(candidates)} candidates to S3 and local cache")
+    else:
+        logger.info(f"Saved {len(candidates)} candidates to local cache only")
+    
     return output_path
 
 
