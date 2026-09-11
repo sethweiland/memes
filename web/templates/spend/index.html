@@ -149,7 +149,36 @@
         font-size: 13px;
         color: #666;
         font-style: italic;
-        max-width: 300px;
+        max-width: 420px;
+    }
+    .phase-note {
+        font-style: normal;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        line-height: 1.4;
+        color: #333;
+    }
+    .phase-note.trial {
+        background: #e8f5e9;
+        border: 1px solid #c8e6c9;
+    }
+    .phase-note.post-trial {
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+    }
+    .phase-note strong {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .phase-note.trial strong {
+        color: #2e7d32;
+    }
+    .phase-note.post-trial strong {
+        color: #f57f17;
     }
     
     .source-indicator {
@@ -327,7 +356,7 @@
                         {% else %}
                         <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>
                         <div class="source-indicator">
-                            {% if item.id == 'xai-tokens' %}no usage yet{% else %}config{% endif %}
+                            {% if item.id == 'flyio' %}trial / $0 now{% elif item.id == 'xai-tokens' %}no usage yet{% else %}config{% endif %}
                         </div>
                         {% endif %}
                     </td>
@@ -335,7 +364,21 @@
                     <td>
                         <span class="status-badge {{ item.status }}">{{ item.status }}</span>
                     </td>
-                    <td class="notes">{{ item.notes or '—' }}</td>
+                    <td class="notes">
+                        {{ item.notes or '—' }}
+                        {% if item.trial_note %}
+                        <div class="phase-note trial">
+                            <strong>Trial</strong>
+                            {{ item.trial_note }}
+                        </div>
+                        {% endif %}
+                        {% if item.post_trial_note %}
+                        <div class="phase-note post-trial">
+                            <strong>After trial</strong>
+                            {{ item.post_trial_note }}
+                        </div>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

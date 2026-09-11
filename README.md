@@ -89,7 +89,7 @@ python web/run.py
 - **Dashboard**: Ops overview with stats and quick links
 - **Spend**: Tech spending tracker for subscriptions and API costs
   - Tracks subscriptions (Imgflip, Vercel, etc.)
-  - Shows API/usage costs (AWS Cost Explorer integration when AWS credentials available)
+  - Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
   - Monthly total with active/cancelled breakdown
   - Data sourced from `data/tech_spend.json`
 - **Generate**: Create memes with custom topics and settings
