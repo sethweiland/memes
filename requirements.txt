@@ -22,6 +22,9 @@ Pillow>=10.0.0
 # Review UI
 flask>=3.0.0
 
+# Production web server
+gunicorn>=21.2.0
+
 # Video ad pipeline
 moviepy>=2.0.0
 elevenlabs>=1.0.0

@@ -123,3 +123,9 @@ def index():
         recent_memes=recent_memes,
         active_page="dashboard",
     )
+
+
+@bp.route("/healthz")
+def healthz():
+    """Health check endpoint for container orchestration."""
+    return {"status": "ok"}, 200

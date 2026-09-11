@@ -328,6 +328,84 @@ config = load_domain("bluegrass")
 rag = DomainRAG(config)
 ```
 
+## Production Deployment
+
+The meme ops web UI can be deployed as a Docker container to Fly.io or any Docker host.
+
+### Fly.io Deployment
+
+1. **Install Fly CLI**: https://fly.io/docs/hands-on/install-flyctl/
+
+2. **Login to Fly.io**:
+   ```bash
+   fly auth login
+   ```
+
+3. **Deploy the app**:
+   ```bash
+   fly launch
+   # Or if already launched:
+   fly deploy
+   ```
+
+4. **Set secrets** (required environment variables):
+   ```bash
+   fly secrets set \
+     OPENAI_API_KEY=your_key \
+     XAI_API_KEY=your_key \
+     IMGFLIP_USERNAME=your_username \
+     IMGFLIP_PASSWORD=your_password \
+     MEME_ASSETS_BUCKET=bluegrass-meme-pipeline-dev-meme-assets \
+     AWS_DEFAULT_REGION=us-east-1 \
+     AWS_ACCESS_KEY_ID=your_key \
+     AWS_SECRET_ACCESS_KEY=your_secret
+   ```
+
+   **Optional secrets** (for Instagram publishing, video generation, etc.):
+   ```bash
+   fly secrets set \
+     META_IG_ACCESS_TOKEN=your_token \
+     META_IG_USER_ID=your_user_id \
+     META_APP_ID=your_app_id \
+     META_PAGE_ID=your_page_id \
+     ELEVENLABS_API_KEY=your_key \
+     KLING_API_KEY=your_key
+   ```
+
+5. **Configure Cloudflare Access** (optional):
+   - Point `ops.sethweiland.com` to your Fly.io app
+   - Configure Cloudflare Access to protect the app
+   - The app listens on `$PORT` (default 8080) and works behind reverse proxies
+
+### Docker Deployment
+
+Build and run locally:
+
+```bash
+# Build the image
+docker build -t meme-ops .
+
+# Run the container
+docker run -p 8080:8080 \
+  -e OPENAI_API_KEY=your_key \
+  -e XAI_API_KEY=your_key \
+  -e IMGFLIP_USERNAME=your_username \
+  -e IMGFLIP_PASSWORD=your_password \
+  meme-ops
+```
+
+### Health Check
+
+The app exposes a `/healthz` endpoint that returns `{"status": "ok"}` for container orchestration health checks.
+
+### Notes
+
+- The app runs on port 8080 by default (configurable via `$PORT`)
+- Uses gunicorn with 2 workers and 120s timeout
+- Data directories (`data/`, `output/`) are ephemeral in the container
+- For persistent storage, mount volumes or use S3 for asset storage
+- ChromaDB indexes are stored in `data/*/chroma/` and need to be pre-built or regenerated on startup
+
 ## License
 
 MIT
