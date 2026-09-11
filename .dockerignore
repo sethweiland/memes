@@ -1,0 +1,80 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.conda/
+
+# Environment variables and secrets
+.env
+secrets.local.json
+instagram_brands.json
+
+# Large data directories
+data/chroma/
+data/*/chroma/
+data/bm25_index.pkl
+data/*/bm25_index.pkl
+
+# Output files (generated memes)
+output/
+
+# Niche discovery data
+niche-discovery/data/
+niche-discovery/output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Logs
+*.log
+logs/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+terraform.tfvars.json
+
+# Documentation
+docs/
+CHANGELOG.md
+
+# Example files
+*.example
+*.example.*
+
+# Node modules (if any)
+node_modules/
