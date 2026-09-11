@@ -53,10 +53,50 @@ def create_app() -> Flask:
     app.register_blueprint(daily_candidates_bp)
     register_legacy_redirects(app)
 
+    @app.context_processor
+    def inject_life_ops():
+        tenant = None
+        modules = None
+        try:
+            from src.core.tenant import load_tenant
+
+            tenant = load_tenant()
+            modules = tenant.modules
+        except Exception:
+            pass
+        return {"tenant": tenant, "modules": modules}
+
+    @app.before_request
+    def gate_disabled_modules():
+        from flask import abort, request
+
+        from src.core.tenant import module_enabled
+
+        path = request.path or ""
+        checks = (
+            ("/projects", "projects"),
+            ("/spend", "spend"),
+            ("/x", "x"),
+            ("/grok-bot", "grok_bot"),
+            ("/memes", "memes"),
+        )
+        for prefix, name in checks:
+            if path == prefix or path.startswith(prefix + "/"):
+                if not module_enabled(name):
+                    abort(404)
+                return
+
     try:
         from src.core.grok_bot import get_grok_bot_routines
 
         get_grok_bot_routines().ensure_seeded()
+    except Exception:
+        pass
+
+    try:
+        from src.core.project_board import get_project_board
+
+        get_project_board().ensure_seeded()
     except Exception:
         pass
 

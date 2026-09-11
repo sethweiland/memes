@@ -4,6 +4,28 @@ Seth’s life/ops dashboard at [ops.sethweiland.com](https://ops.sethweiland.com
 
 **Memes is one module**, not the whole product. This repo still contains the domain-agnostic meme generator (RAG pipeline, gallery, daily queue). The Flask shell at `/` is a life overview; meme tools live under `/memes/`.
 
+## Life Ops
+
+A human-gated shell for one person and many agents (Grok Bot, Codex, or similar). Agents write work. The human decides. Not Linear, not Notion, not a meme app, not a hosted SaaS.
+
+Five primitives — **Project**, **queue item**, **human gate**, **cost event**, **routine**. Spec: [`docs/life-ops.md`](docs/life-ops.md).
+
+### Friend setup
+
+Fork or clone this repo and stand up **your** instance. Not multi-tenant.
+
+```bash
+cp config/tenant.example.yaml config/tenant.yaml
+# put your name, timezone, and 2–3 projects in that file (no secrets)
+cp .env.example .env          # only the keys your enabled modules need
+pip install -r requirements.txt
+python web/run.py             # http://localhost:5050
+```
+
+`TENANT_CONFIG` overrides the default `config/tenant.yaml`. Secrets stay in env / Fly secrets / (later) AWS or Bitwarden — never in the YAML. Optional S3: set `MEME_ASSETS_BUCKET` and the board lives at `ops/projects/board.json`; otherwise `data/projects/board.json`. Cloudflare Access is optional on localhost and recommended in front of a public hostname.
+
+Full contract, S3 layout, and agent write rules: [`docs/life-ops.md`](docs/life-ops.md).
+
 ## Meme generator
 
 A RAG-powered pipeline that generates memes using historical content from any domain. Ships with a bluegrass music configuration using Bluegrass Unlimited magazine archives.
@@ -90,7 +112,7 @@ python web/run.py
 | Section | Path | What it is |
 |---|---|---|
 | **Home** | `/` | Life overview — cards to Projects, Spend, X, Grok Bot, Memes |
-| **Projects** | `/projects/` | Placeholder until kanban (lanes: `idea`, `active`, `blocked`, `waiting_on_seth`, `parked`) |
+| **Projects** | `/projects/` | Kanban of named bets (`idea`, `active`, `blocked`, `waiting_on_you`, `parked`). Seeded from `config/tenant.yaml`. Board JSON: `ops/projects/board.json`. |
 | **Spend** | `/spend/` | Tech spending tracker (unchanged path) |
 | **X** | `/x/` | Real X Activity tab — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Queue is `ops/queue/x-activity/` |
 | **Grok Bot** | `/grok-bot/` | Catalog of recurring routines. Private JSON at `ops/grok-bot/routines.json` (git seed / local fallback `data/grok_bot_routines.json`). This page does not start or stop routines. |
@@ -100,7 +122,7 @@ python web/run.py
 - Tracks subscriptions (Imgflip, Vercel, etc.)
 - Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
 - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
-- **By Project** rollup (tokens + allocated fixed): `memes`, `sethweiland-com`, `waiver-wire`, `x`, `shared`, `unallocated`. Unallocated stay visible.
+- **By Project** rollup (tokens + allocated fixed): tenant project ids plus Spend-only `shared` / `unallocated`. Unallocated stay visible. `shared` and `unallocated` are not kanban cards.
 - Monthly total with active/cancelled breakdown
 - Subscription ledger: `data/tech_spend.json`
 
@@ -132,6 +154,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 **Queue Storage:**
 - Candidate queue JSON stored in S3 under `ops/queue/daily-candidates/{date}.json` (private)
 - X activity drafts at `ops/queue/x-activity/{date}.json` (private; local fallback `data/x_activity/`)
+- Project board at `ops/projects/board.json` (private; local fallback `data/projects/board.json`; seeded from tenant config when missing)
 - Grok Bot routines at `ops/grok-bot/routines.json` (private; git seed / local fallback `data/grok_bot_routines.json`)
 - Local cache in `data/daily_candidates/` when S3 is unset or unreachable
 - Web UI loads from S3 with local fallback
@@ -147,7 +170,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 - Monthly JSON at `ops/usage/{provider}/{YYYY}/{MM}.json` (private; ETag concurrency)
 - Local cache at `data/usage/{provider}/{YYYY}/{MM}.json`
 - Each event includes `project` (string id). This repo defaults to `memes`.
-- Known project ids: `memes`, `sethweiland-com`, `waiver-wire`, `x` (X / Twitter, @SethWeiland1), `shared`, `unallocated`.
+- Project ids come from `config/tenant.yaml`. Spend also always includes `shared` and `unallocated`.
 - Other jobs set `USAGE_PROJECT` or `MEME_PROJECT` before `log_token_usage` (e.g. `USAGE_PROJECT=waiver-wire`, X-draft calls `USAGE_PROJECT=x`). Same monthly S3 object — no per-project prefixes and no extra xAI keys.
 - Logging a token call never breaks meme generation if S3 is down
 

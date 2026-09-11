@@ -87,10 +87,19 @@ def normalize_routine(raw) -> Optional[dict]:
     blurb = str(raw.get("blurb") or "").strip() or None
     name = str(raw.get("name") or routine_id).strip()
 
+    project_raw = raw.get("project_id", raw.get("project"))
+    project_id = None
+    if project_raw is not None and str(project_raw).strip():
+        cleaned = "".join(
+            ch for ch in str(project_raw).strip().lower() if ch.isalnum() or ch in "-_"
+        )
+        project_id = cleaned or None
+
     return {
         "id": routine_id,
         "name": name,
         "owner_agent": owner,
+        "project_id": project_id,
         "category": category,
         "enabled": enabled,
         "schedule": schedule,

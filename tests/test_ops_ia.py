@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -12,6 +13,8 @@ from flask import Blueprint, Flask
 import tests.bootstrap  # noqa: F401
 
 from src.core.grok_bot import reset_grok_bot_routines
+from src.core.project_board import ProjectBoard, reset_project_board
+from src.core.tenant import reset_tenant
 from src.core.x_activity import XActivityQueue, reset_x_activity_queue
 from tests.fakes import MemoryS3Store
 from web.blueprints.dashboard import bp as dashboard_bp
@@ -78,11 +81,19 @@ class OpsIaTests(unittest.TestCase):
         )
         reset_x_activity_queue(self.queue)
         reset_grok_bot_routines()
+        reset_tenant()
+        self.board = ProjectBoard(
+            store=MemoryS3Store(configured=False),
+            local_path=Path(self.tmp.name) / "board.json",
+        )
+        reset_project_board(self.board)
         self.client = _ops_app().test_client()
 
     def tearDown(self):
         reset_x_activity_queue()
         reset_grok_bot_routines()
+        reset_project_board()
+        reset_tenant()
         self.tmp.cleanup()
 
     def test_home_is_life_ops_hub(self):
@@ -114,11 +125,18 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("Meme Ops Dashboard", html)
         self.assertIn("Daily Queue", html)
 
-    def test_projects_placeholder_and_real_x_activity(self):
+    def test_projects_board_and_real_x_activity(self):
         projects = self.client.get("/projects/")
         self.assertEqual(projects.status_code, 200)
-        self.assertIn("idea", projects.get_data(as_text=True))
-        self.assertNotIn("$", projects.get_data(as_text=True))
+        projects_html = projects.get_data(as_text=True)
+        self.assertIn("idea", projects_html)
+        self.assertIn("waiting_on_you", projects_html)
+        self.assertIn("Waiting on you", projects_html)
+        self.assertIn("Memes", projects_html)
+        self.assertIn("Millgrass", projects_html)
+        self.assertNotIn("waiting_on_seth", projects_html)
+        self.assertNotIn("Kanban is not built yet", projects_html)
+        self.assertNotIn("$", projects_html)
 
         x_page = self.client.get("/x/")
         self.assertEqual(x_page.status_code, 200)
@@ -140,6 +158,54 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("start/stop lives in Grok Bot settings", grok_html)
         self.assertNotIn("Routines catalog landing in a follow-up.", grok_html)
         self.assertNotIn("Start routine", grok_html)
+
+    def test_home_shows_waiting_on_you_cards_when_present(self):
+        self.board.save(
+            {
+                "updated_at": "2026-09-11T00:00:00+00:00",
+                "projects": [
+                    {
+                        "id": "needs-a-call",
+                        "name": "Needs a call",
+                        "lane": "waiting_on_you",
+                        "owner_agent": None,
+                        "links": {"repo": None, "prod": None},
+                        "summary": None,
+                        "last_done": None,
+                        "next_steps": None,
+                    }
+                ],
+            }
+        )
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("Waiting on you", html)
+        self.assertIn("Needs a call", html)
+        self.assertNotIn("waiting_on_seth", html)
+        self.assertNotIn("Nothing queued", html)
+
+    def test_home_pending_x_is_a_count_link_not_fake_rows(self):
+        today = datetime.now().strftime("%Y-%m-%d")
+        self.queue.save(
+            today,
+            {
+                "date": today,
+                "candidates": [
+                    {
+                        "id": "draft-1",
+                        "kind": "post",
+                        "status": "pending",
+                        "body": "SECRET_DRAFT_BODY_NOT_ON_HOME",
+                        "project": "x",
+                    }
+                ],
+            },
+        )
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertIn("1 pending X draft", html)
+        self.assertIn("/x/", html)
+        self.assertNotIn("SECRET_DRAFT_BODY_NOT_ON_HOME", html)
 
     def test_old_meme_paths_redirect(self):
         cases = (

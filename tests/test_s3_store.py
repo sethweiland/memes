@@ -29,6 +29,13 @@ class BucketLayoutTests(unittest.TestCase):
         self.assertTrue(key.startswith(BucketLayout.GROK_BOT_PREFIX))
         self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
 
+    def test_projects_board_key_is_private_ops(self):
+        key = BucketLayout.projects_board_key()
+        self.assertEqual(key, "ops/projects/board.json")
+        BucketLayout.require_ops_key(key)
+        self.assertTrue(key.startswith(BucketLayout.PROJECTS_PREFIX))
+        self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
+
     def test_ops_key_rejects_public_prefix(self):
         with self.assertRaises(ValueError):
             BucketLayout.require_ops_key("public/memes/usage/xai/2026/09.json")
