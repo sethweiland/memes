@@ -19,6 +19,11 @@
       "description": "Fantasy-football / Waiver Wire"
     },
     {
+      "id": "x",
+      "name": "X / Twitter",
+      "description": "@SethWeiland1 activity. X-draft xAI calls set USAGE_PROJECT=x."
+    },
+    {
       "id": "shared",
       "name": "Shared",
       "description": "Cursor, Grok Bot / engineering overhead that is not one product"
@@ -93,7 +98,7 @@
       "amount_usd": 0.0,
       "cadence": "usage",
       "status": "active",
-      "notes": "Token usage from meme generation — shared S3 ops/usage/xai/{YYYY}/{MM}.json (heuristic cost, not xAI billing). Each event has project; this $0 row is not allocated. This repo logs project=memes unless USAGE_PROJECT / MEME_PROJECT is set. Same API key; no per-project xAI keys.",
+      "notes": "Token usage — shared S3 ops/usage/xai/{YYYY}/{MM}.json (heuristic cost, not xAI billing). Each event has project; this $0 row is not allocated. This repo logs project=memes unless USAGE_PROJECT / MEME_PROJECT is set (X-draft jobs: USAGE_PROJECT=x). Same API key; no per-project xAI keys.",
       "url": "https://x.ai",
       "env_secret_hint": "XAI_API_KEY"
     },
@@ -134,7 +139,7 @@
       "cadence": "yearly",
       "status": "cancelling",
       "project": "unallocated",
-      "notes": "Orphaned Stripe - more social than infra; support cancel+refund started Sep 11 2026. Kept unallocated so it is not dumped into memes.",
+      "notes": "Orphaned Stripe - more social than infra; support cancel+refund started Sep 11 2026. Kept unallocated (not memes, not X-draft token spend). X-draft xAI calls use project `x` via USAGE_PROJECT=x.",
       "url": "https://x.com",
       "env_secret_hint": null
     }

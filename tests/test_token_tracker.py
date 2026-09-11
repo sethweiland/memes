@@ -154,6 +154,14 @@ class TokenTrackerTests(unittest.TestCase):
         raw, _etag = self.store.get_json(BucketLayout.usage_key("xai", 2026, 9))
         self.assertEqual(raw["events"][0]["project"], "waiver-wire")
 
+    def test_usage_project_x_for_x_draft_calls(self):
+        with patch.dict("os.environ", {"USAGE_PROJECT": "x", "MEME_PROJECT": ""}):
+            log_token_usage("xai", "grok-4.6", 10, 5)
+        raw, _etag = self.store.get_json(BucketLayout.usage_key("xai", 2026, 9))
+        self.assertEqual(raw["events"][0]["project"], "x")
+        usage = get_month_usage("xai", 2026, 9)
+        self.assertEqual(usage["by_project"]["x"]["call_count"], 1)
+
     def test_meme_project_env_when_usage_project_unset(self):
         with patch.dict("os.environ", {"USAGE_PROJECT": "", "MEME_PROJECT": "shared"}):
             log_token_usage("xai", "grok-4.6", 10, 5)

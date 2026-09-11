@@ -9,6 +9,7 @@ from flask import Blueprint, Flask
 import tests.bootstrap  # noqa: F401
 
 from src.core.projects import (
+    PROJECT_ORDER,
     UNALLOCATED_PROJECT,
     allocate_amount,
     build_project_rollup,
@@ -48,6 +49,18 @@ def _spend_app() -> Flask:
 
 
 class ProjectAllocationTests(unittest.TestCase):
+    def test_x_is_a_first_class_project(self):
+        self.assertIn("x", PROJECT_ORDER)
+        rollup = build_project_rollup([])
+        ids = [row["id"] for row in rollup["rows"]]
+        self.assertEqual(
+            ids,
+            ["memes", "sethweiland-com", "waiver-wire", "x", "shared", "unallocated"],
+        )
+        x_row = next(row for row in rollup["rows"] if row["id"] == "x")
+        self.assertEqual(x_row["name"], "X / Twitter")
+        self.assertEqual(x_row["total"], 0)
+
     def test_ledger_splits_sum_to_one(self):
         data = json.loads(_LEDGER.read_text(encoding="utf-8"))
         items = list(data.get("subscriptions") or []) + list(data.get("cancelled") or [])
@@ -169,6 +182,8 @@ class SpendProjectPageTests(unittest.TestCase):
         self.assertIn('data-project="unallocated"', html)
         self.assertIn("sethweiland.com", html)
         self.assertIn("Waiver Wire", html)
+        self.assertIn("X / Twitter", html)
+        self.assertIn('data-project="x"', html)
 
     def test_spend_works_with_empty_s3(self):
         tmp = tempfile.TemporaryDirectory()
@@ -204,10 +219,11 @@ class SpendProjectPageTests(unittest.TestCase):
             "source": "s3",
             "by_project": {
                 "memes": {"total_cost_usd": 0.40, "call_count": 5, "total_tokens": 9000},
+                "x": {"total_cost_usd": 0.10, "call_count": 1, "total_tokens": 2000},
                 "waiver-wire": {
-                    "total_cost_usd": 0.16,
-                    "call_count": 2,
-                    "total_tokens": 3500,
+                    "total_cost_usd": 0.06,
+                    "call_count": 1,
+                    "total_tokens": 1500,
                 },
             },
             "legacy_untagged_xai_as_memes": 0,
@@ -219,7 +235,8 @@ class SpendProjectPageTests(unittest.TestCase):
             response = app.test_client().get("/spend/")
         html = response.get_data(as_text=True)
         self.assertIn("Memes $0.40", html)
-        self.assertIn("Waiver Wire $0.16", html)
+        self.assertIn("X / Twitter $0.10", html)
+        self.assertIn("Waiver Wire $0.06", html)
         self.assertIn("· S3", html)
 
 

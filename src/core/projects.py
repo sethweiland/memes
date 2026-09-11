@@ -6,6 +6,7 @@ Known products (do not invent extra ones without updating this list):
     memes              bluegrass meme pipeline / meme-ops
     sethweiland-com    musician site on Vercel
     waiver-wire        fantasy-football / Waiver Wire
+    x                  X / Twitter (@SethWeiland1 activity)
     shared             Cursor / Grok Bot / engineering overhead
     unallocated        missing tag — always shown, never hidden
 
@@ -27,6 +28,7 @@ PROJECT_ORDER = (
     "memes",
     "sethweiland-com",
     "waiver-wire",
+    "x",
     "shared",
     "unallocated",
 )
@@ -46,6 +48,11 @@ KNOWN_PROJECTS: dict[str, dict[str, str]] = {
         "name": "Waiver Wire",
         "description": "Fantasy-football / Waiver Wire",
         "color": "#d97706",
+    },
+    "x": {
+        "name": "X / Twitter",
+        "description": "@SethWeiland1 activity. X-draft xAI calls set USAGE_PROJECT=x.",
+        "color": "#111827",
     },
     "shared": {
         "name": "Shared",

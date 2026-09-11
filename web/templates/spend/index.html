@@ -368,7 +368,7 @@
                 </thead>
                 <tbody>
                     {% for row in project_rollup.rows %}
-                    <tr{% if row.id == 'unallocated' %} data-project="unallocated"{% endif %}>
+                    <tr data-project="{{ row.id }}">
                         <td>
                             <div class="service-name">{{ row.name }}</div>
                             <span class="service-vendor">{{ row.description }}</span>
