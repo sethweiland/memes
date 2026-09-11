@@ -54,7 +54,9 @@
         </div>
         
         <!-- Image -->
-        {% if candidate.filename %}
+        {% if candidate.public_url %}
+        <img src="{{ candidate.public_url }}" alt="{{ candidate.template }}" loading="lazy">
+        {% elif candidate.filename %}
         <img src="/gallery/image/{{ candidate.filename }}" alt="{{ candidate.template }}" loading="lazy">
         {% else %}
         <div class="candidate-no-image">No image</div>

@@ -52,14 +52,15 @@ def _get_template_count():
 def _get_daily_candidates_count():
     """Count pending daily candidates for today."""
     today = datetime.now().strftime("%Y-%m-%d")
-    candidates_path = Path(f"data/daily_candidates/{today}.json")
-    if not candidates_path.exists():
-        return None
     try:
-        data = json.loads(candidates_path.read_text(encoding="utf-8"))
-        # Count candidates that aren't approved yet
+        from src.core.meme_assets import get_queue_storage
+        queue_storage = get_queue_storage()
+        data = queue_storage.load(today)
+        if not data:
+            return None
+        # Count candidates with status == "pending"
         candidates = data.get("candidates", [])
-        pending = [c for c in candidates if not c.get("approved", False)]
+        pending = [c for c in candidates if c.get("status") == "pending"]
         return len(pending)
     except Exception:
         return None
