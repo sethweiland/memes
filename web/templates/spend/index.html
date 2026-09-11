@@ -221,6 +221,63 @@
         font-size: 13px;
         color: #1565c0;
     }
+
+    .project-badge {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #eef2ff;
+        color: #3730a3;
+    }
+    .project-badge.unallocated {
+        background: #f3f4f6;
+        color: #4b5563;
+        border: 1px dashed #9ca3af;
+    }
+
+    .project-layout {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 24px;
+        align-items: center;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+        padding: 20px;
+    }
+    .project-pie {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+    }
+    .project-bar {
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+        min-width: 80px;
+    }
+    .project-bar > span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+    }
+    .token-breakdown {
+        margin-top: 4px;
+        font-size: 11px;
+        color: #555;
+    }
+    @media (max-width: 720px) {
+        .project-layout {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+    }
 </style>
 
 <div class="spend-header">
@@ -273,6 +330,64 @@
     </div>
 </div>
 
+<!-- By Project -->
+<div class="spend-section" id="by-project">
+    <h2>By Project <span style="font-weight: normal; color: #666; font-size: 16px;">&nbsp;&nbsp;${{ "%.2f"|format(project_rollup.total) }}/mo</span></h2>
+    <p class="notes" style="margin-top: -8px; margin-bottom: 16px; max-width: none;">
+        Tokens + allocated fixed/usage. Unallocated stays visible — unlabeled spend is never dropped to clean up the chart.
+        {% if xai_usage and xai_usage.legacy_untagged_xai_as_memes %}
+        Pre-tag xAI events without a project field are counted as Memes ({{ xai_usage.legacy_untagged_xai_as_memes }} this month).
+        {% endif %}
+    </p>
+
+    <div class="project-layout" style="margin-bottom: 16px;">
+        {% if project_rollup.pie_gradient %}
+        <div class="project-pie" style="background: conic-gradient({{ project_rollup.pie_gradient }});" role="img" aria-label="Spend share by project"></div>
+        {% else %}
+        <div class="project-pie" role="img" aria-label="No spend to chart"></div>
+        {% endif %}
+        <div class="spend-table" style="box-shadow: none; width: 100%;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Project</th>
+                        <th>Fixed</th>
+                        <th>Tokens</th>
+                        <th>Other usage</th>
+                        <th>Total</th>
+                        <th>Share</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in project_rollup.rows %}
+                    <tr{% if row.id == 'unallocated' %} data-project="unallocated"{% endif %}>
+                        <td>
+                            <div class="service-name">{{ row.name }}</div>
+                            <span class="service-vendor">{{ row.description }}</span>
+                        </td>
+                        <td class="amount">${{ "%.2f"|format(row.fixed) }}</td>
+                        <td>
+                            <div class="amount">${{ "%.2f"|format(row.tokens) }}</div>
+                            {% if row.token_calls %}
+                            <div class="source-indicator">{{ "{:,}".format(row.token_tokens) }} tokens · {{ row.token_calls }} calls</div>
+                            {% endif %}
+                        </td>
+                        <td class="amount">${{ "%.2f"|format(row.other_variable) }}</td>
+                        <td class="amount">${{ "%.2f"|format(row.total) }}</td>
+                        <td>
+                            <div class="source-indicator">{{ "%.1f"|format(row.share_pct) }}%</div>
+                            <div class="project-bar" title="{{ row.name }} share">
+                                <span style="width: {{ row.share_pct }}%; background: {{ row.color }};"></span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- Fixed Costs Section -->
 {% if fixed_items %}
 <div class="spend-section">
@@ -295,6 +410,7 @@
                     <td>
                         <div class="service-name">{{ sub.name }}</div>
                         <span class="service-vendor">{{ sub.vendor }}</span>
+                        <span class="project-badge{% if sub.project_tone == 'unallocated' %} unallocated{% endif %}">{{ sub.project_label }}</span>
                     </td>
                     <td>
                         <div class="amount">${{ "%.2f"|format(sub.amount_usd) }}</div>
@@ -341,6 +457,9 @@
                     <td>
                         <div class="service-name">{{ item.name }}</div>
                         <span class="service-vendor">{{ item.vendor }}</span>
+                        {% if item.id != 'xai-tokens' %}
+                        <span class="project-badge{% if item.project_tone == 'unallocated' %} unallocated{% endif %}">{{ item.project_label }}</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if aws_live and not aws_live.error and item.id == 'aws' %}
@@ -354,6 +473,13 @@
                             ✓ {{ "{:,}".format(xai_usage.tokens) }} tokens ({{ xai_usage.calls }} calls, {{ xai_usage.period }})
                             {% if xai_usage.source == 's3' %}· S3{% elif xai_usage.source == 'local' %}· local{% elif xai_usage.source == 'local_legacy_jsonl' %}· local jsonl{% endif %}
                         </div>
+                        {% if xai_usage.project_parts %}
+                        <div class="token-breakdown">
+                            {% for part in xai_usage.project_parts %}
+                            {{ part.name }} ${{ "%.2f"|format(part.amount) }}{% if not loop.last %} · {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                         {% else %}
                         <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>
                         <div class="source-indicator">
@@ -410,6 +536,7 @@
                     <td>
                         <div class="service-name">{{ item.name }}</div>
                         <span class="service-vendor">{{ item.vendor }}</span>
+                        <span class="project-badge{% if item.project_tone == 'unallocated' %} unallocated{% endif %}">{{ item.project_label }}</span>
                     </td>
                     <td>
                         <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>

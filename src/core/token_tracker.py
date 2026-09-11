@@ -17,6 +17,11 @@ Monthly JSON is rewritten with ETag optimistic concurrency so S3 is not used
 as an infinite append log or as one object per API call. Logging never raises
 to the caller — meme generation must keep working if S3 is down.
 
+Each event includes ``project`` (string id). This repo defaults to ``memes``
+via ``USAGE_PROJECT`` / ``MEME_PROJECT``. One monthly object per provider —
+do not split S3 into per-project prefixes. Pre-tag xAI events without
+``project`` are read as ``memes``; they are not rewritten.
+
 Cost is a documented heuristic, not xAI billing. The API response only has
 token counts; ``estimated_cost_usd`` from grok.py is typically None.
 """
@@ -32,6 +37,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from src.core.projects import (
+    assumed_legacy_xai_memes,
+    resolve_event_project,
+    resolve_write_project,
+)
 from src.core.s3_store import (
     BucketLayout,
     PreconditionFailed,
@@ -149,12 +159,54 @@ def _with_totals(doc: dict[str, Any], events: list[dict[str, Any]]) -> dict[str,
     return out
 
 
+def _event_cost(event: dict[str, Any]) -> float:
+    event_cost = event.get("estimated_cost_usd")
+    if event_cost is None:
+        event_cost = estimate_cost_usd(
+            int(event.get("prompt_tokens") or 0),
+            int(event.get("completion_tokens") or 0),
+        )
+    return float(event_cost or 0)
+
+
+def _project_breakdown(events: list[dict[str, Any]]) -> tuple[dict[str, Any], int]:
+    buckets: dict[str, dict[str, Any]] = {}
+    legacy_assumed = 0
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        if assumed_legacy_xai_memes(event):
+            legacy_assumed += 1
+        project_id = resolve_event_project(event)
+        bucket = buckets.setdefault(
+            project_id,
+            {
+                "total_tokens": 0,
+                "total_cost_usd": 0.0,
+                "call_count": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+            },
+        )
+        prompt = int(event.get("prompt_tokens") or 0)
+        completion = int(event.get("completion_tokens") or 0)
+        bucket["prompt_tokens"] += prompt
+        bucket["completion_tokens"] += completion
+        bucket["total_tokens"] += int(event.get("total_tokens") or (prompt + completion))
+        bucket["total_cost_usd"] += _event_cost(event)
+        bucket["call_count"] += 1
+    for bucket in buckets.values():
+        bucket["total_cost_usd"] = round(float(bucket["total_cost_usd"]), 4)
+    return buckets, legacy_assumed
+
+
 def _build_event(
     provider: str,
     model: str,
     prompt_tokens: int,
     completion_tokens: int,
     estimated_cost_usd: Optional[float],
+    project: Optional[str] = None,
 ) -> dict[str, Any]:
     prompt_tokens = int(prompt_tokens or 0)
     completion_tokens = int(completion_tokens or 0)
@@ -163,6 +215,7 @@ def _build_event(
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "provider": BucketLayout.safe_provider(provider),
         "model": model,
+        "project": resolve_write_project(project),
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
         "total_tokens": prompt_tokens + completion_tokens,
@@ -283,9 +336,13 @@ def log_token_usage(
     prompt_tokens: int,
     completion_tokens: int,
     estimated_cost_usd: Optional[float] = None,
+    project: Optional[str] = None,
 ) -> None:
     """
     Record one API call. Never raises — generation must not fail if S3 is down.
+
+    ``project`` is a string id (see ``src.core.projects``). Default is
+    ``USAGE_PROJECT`` or ``MEME_PROJECT``, else ``memes``.
     """
     try:
         event = _build_event(
@@ -294,6 +351,7 @@ def log_token_usage(
             prompt_tokens,
             completion_tokens,
             estimated_cost_usd,
+            project=project,
         )
         year, month = _event_month(event)
         local_doc = merge_month_docs(
@@ -317,6 +375,8 @@ def log_token_usage(
 
 def _summarize(doc: dict[str, Any], source: str) -> dict[str, Any]:
     totals = doc.get("totals") or {}
+    events = [event for event in (doc.get("events") or []) if isinstance(event, dict)]
+    by_project, legacy_assumed = _project_breakdown(events)
     return {
         "total_tokens": int(totals.get("total_tokens") or 0),
         "total_cost_usd": round(float(totals.get("estimated_cost_usd") or 0), 4),
@@ -324,6 +384,8 @@ def _summarize(doc: dict[str, Any], source: str) -> dict[str, Any]:
         "prompt_tokens": int(totals.get("prompt_tokens") or 0),
         "completion_tokens": int(totals.get("completion_tokens") or 0),
         "source": source,
+        "by_project": by_project,
+        "legacy_untagged_xai_as_memes": legacy_assumed,
     }
 
 
@@ -339,6 +401,8 @@ def get_month_usage(provider: str, year: int, month: int) -> dict[str, Any]:
         "prompt_tokens": 0,
         "completion_tokens": 0,
         "source": None,
+        "by_project": {},
+        "legacy_untagged_xai_as_memes": 0,
     }
     provider = BucketLayout.safe_provider(provider)
 

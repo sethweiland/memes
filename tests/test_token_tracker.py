@@ -34,7 +34,10 @@ class TokenTrackerTests(unittest.TestCase):
             patch("src.core.token_tracker.LEGACY_JSONL_PATH", self.root / "token_usage.jsonl"),
             patch("src.core.token_tracker.get_s3_store", return_value=self.store),
             patch("src.core.token_tracker.datetime", _FrozenDateTime),
-            patch.dict("os.environ", {"USAGE_HOST": "test-host"}),
+            patch.dict(
+                "os.environ",
+                {"USAGE_HOST": "test-host", "USAGE_PROJECT": "", "MEME_PROJECT": ""},
+            ),
         ]
         for item in self.patches:
             item.start()
@@ -136,6 +139,61 @@ class TokenTrackerTests(unittest.TestCase):
         usage = get_month_usage("xai", 2026, 9)
         self.assertEqual(usage["source"], "local")
         self.assertEqual(usage["call_count"], 1)
+
+    def test_default_project_is_memes(self):
+        log_token_usage("xai", "grok-4.6", 10, 5)
+        raw, _etag = self.store.get_json(BucketLayout.usage_key("xai", 2026, 9))
+        self.assertEqual(raw["events"][0]["project"], "memes")
+        usage = get_month_usage("xai", 2026, 9)
+        self.assertEqual(usage["by_project"]["memes"]["call_count"], 1)
+        self.assertEqual(usage["legacy_untagged_xai_as_memes"], 0)
+
+    def test_usage_project_env_override(self):
+        with patch.dict("os.environ", {"USAGE_PROJECT": "waiver-wire", "MEME_PROJECT": "memes"}):
+            log_token_usage("xai", "grok-4.6", 10, 5)
+        raw, _etag = self.store.get_json(BucketLayout.usage_key("xai", 2026, 9))
+        self.assertEqual(raw["events"][0]["project"], "waiver-wire")
+
+    def test_meme_project_env_when_usage_project_unset(self):
+        with patch.dict("os.environ", {"USAGE_PROJECT": "", "MEME_PROJECT": "shared"}):
+            log_token_usage("xai", "grok-4.6", 10, 5)
+        raw, _etag = self.store.get_json(BucketLayout.usage_key("xai", 2026, 9))
+        self.assertEqual(raw["events"][0]["project"], "shared")
+
+    def test_explicit_project_argument_wins(self):
+        with patch.dict("os.environ", {"USAGE_PROJECT": "memes"}):
+            log_token_usage("xai", "grok-4.6", 10, 5, project="sethweiland-com")
+        raw, _etag = self.store.get_json(BucketLayout.usage_key("xai", 2026, 9))
+        self.assertEqual(raw["events"][0]["project"], "sethweiland-com")
+
+    def test_legacy_xai_without_project_counts_as_memes(self):
+        self.store.configured = False
+        legacy = self.root / "token_usage.jsonl"
+        legacy.write_text(
+            json.dumps(
+                {
+                    "timestamp": "2026-09-02T00:00:00Z",
+                    "provider": "xai",
+                    "model": "grok-4.6",
+                    "prompt_tokens": 8,
+                    "completion_tokens": 2,
+                    "total_tokens": 10,
+                    "estimated_cost_usd": None,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        usage = get_month_usage("xai", 2026, 9)
+        self.assertEqual(usage["by_project"]["memes"]["call_count"], 1)
+        self.assertEqual(usage["legacy_untagged_xai_as_memes"], 1)
+        self.assertNotIn("unallocated", usage["by_project"])
+
+    def test_empty_s3_returns_zero_usage(self):
+        usage = get_month_usage("xai", 2026, 9)
+        self.assertEqual(usage["call_count"], 0)
+        self.assertEqual(usage["by_project"], {})
+        self.assertIsNone(usage["source"])
 
 
 if __name__ == "__main__":

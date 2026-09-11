@@ -1,7 +1,34 @@
 {
   "$schema": "Tech spend ledger for meme ops / engineering infrastructure",
   "last_updated": "2026-09-11",
-  "note": "Amounts from Sep 2026 statement/Gmail audit unless noted otherwise",
+  "note": "Amounts from Sep 2026 statement/Gmail audit unless noted otherwise. Tag each subscription with `project` or `projects` (shares summing to 1.0). Token events carry their own `project` — this repo defaults to memes; other jobs set USAGE_PROJECT or MEME_PROJECT. Unallocated stay visible.",
+  "projects": [
+    {
+      "id": "memes",
+      "name": "Memes",
+      "description": "Bluegrass meme pipeline / meme-ops / Imgflip / Fly / xAI from this repo"
+    },
+    {
+      "id": "sethweiland-com",
+      "name": "sethweiland.com",
+      "description": "Musician site on Vercel"
+    },
+    {
+      "id": "waiver-wire",
+      "name": "Waiver Wire",
+      "description": "Fantasy-football / Waiver Wire"
+    },
+    {
+      "id": "shared",
+      "name": "Shared",
+      "description": "Cursor, Grok Bot / engineering overhead that is not one product"
+    },
+    {
+      "id": "unallocated",
+      "name": "Unallocated",
+      "description": "Missing tag — always shown, never hidden"
+    }
+  ],
   "subscriptions": [
     {
       "id": "imgflip-premium",
@@ -11,7 +38,8 @@
       "amount_usd": 9.99,
       "cadence": "monthly",
       "status": "active",
-      "notes": "Premium API - templates banked, can cancel later",
+      "project": "memes",
+      "notes": "Premium API - templates banked, can cancel later. Meme pipeline only.",
       "url": "https://imgflip.com",
       "env_secret_hint": null
     },
@@ -23,7 +51,11 @@
       "amount_usd": 21.78,
       "cadence": "monthly",
       "status": "active",
-      "notes": "From Gmail; not always on Chase windows",
+      "projects": {
+        "sethweiland-com": 0.75,
+        "unallocated": 0.25
+      },
+      "notes": "From Gmail; not always on Chase windows. Round 75/25 split: only sethweiland.com is a known Vercel app here. Remainder unallocated (other Vercel apps unknown). Waiver Wire is not assumed to be on this invoice.",
       "url": "https://vercel.com",
       "env_secret_hint": null
     },
@@ -35,7 +67,8 @@
       "amount_usd": 60.00,
       "cadence": "monthly",
       "status": "active",
-      "notes": "Cursor $60/mo plan (user-confirmed Sep 2026)",
+      "project": "shared",
+      "notes": "Cursor $60/mo plan (user-confirmed Sep 2026). Engineering overhead across products, not one app.",
       "url": "https://cursor.com",
       "env_secret_hint": null
     },
@@ -47,7 +80,8 @@
       "amount_usd": 1.31,
       "cadence": "usage",
       "status": "active",
-      "notes": "Variable usage - use Cost Explorer for real-time if AWS creds exist",
+      "project": "memes",
+      "notes": "Variable usage - use Cost Explorer for real-time if AWS creds exist. Assumed mostly memes (S3 meme-assets). No waiver-wire AWS usage found in this repo.",
       "url": "https://aws.amazon.com",
       "env_secret_hint": "AWS_ACCESS_KEY_ID"
     },
@@ -59,7 +93,7 @@
       "amount_usd": 0.0,
       "cadence": "usage",
       "status": "active",
-      "notes": "Token usage from meme generation — shared S3 ops/usage/xai/{YYYY}/{MM}.json (heuristic cost, not xAI billing)",
+      "notes": "Token usage from meme generation — shared S3 ops/usage/xai/{YYYY}/{MM}.json (heuristic cost, not xAI billing). Each event has project; this $0 row is not allocated. This repo logs project=memes unless USAGE_PROJECT / MEME_PROJECT is set. Same API key; no per-project xAI keys.",
       "url": "https://x.ai",
       "env_secret_hint": "XAI_API_KEY"
     },
@@ -71,6 +105,7 @@
       "amount_usd": 0.0,
       "cadence": "usage",
       "status": "active",
+      "project": "memes",
       "notes": "App meme-ops: shared-cpu-1x 512MB, iad, auto_stop_machines=stop, min_machines_running=0. Signed up 2026-09-11. $0 now (trial / no invoice yet). Seth initially thought this was a 30-day trial; ledger uses official published terms, not that assumption.",
       "trial_note": "Published trial (https://fly.io/docs/about/free-trial/): 2 total VM-hours or 7 days, whichever comes first. Adding a payment method ends the trial and starts pay-as-you-go.",
       "post_trial_note": "Pay-as-you-go. Official always-on ceiling for shared-cpu-1x 512MB is ~$3.32 / 30 days (https://fly.io/docs/about/pricing/). Auto-stop should keep actual $ lower. No hobby-plan minimum.",
@@ -85,7 +120,8 @@
       "amount_usd": 10.00,
       "cadence": "monthly",
       "status": "cancelling",
-      "notes": "User set cancel ~Sep 13 2026",
+      "project": "shared",
+      "notes": "Personal xAI subscription (SuperGrok Lite), not the meme API. User set cancel ~Sep 13 2026. Allocated to shared.",
       "url": "https://x.ai",
       "env_secret_hint": null
     },
@@ -97,7 +133,8 @@
       "amount_usd": 84.00,
       "cadence": "yearly",
       "status": "cancelling",
-      "notes": "Orphaned Stripe - more social than infra; support cancel+refund started Sep 11 2026",
+      "project": "unallocated",
+      "notes": "Orphaned Stripe - more social than infra; support cancel+refund started Sep 11 2026. Kept unallocated so it is not dumped into memes.",
       "url": "https://x.com",
       "env_secret_hint": null
     }
@@ -111,7 +148,8 @@
       "amount_usd": 100.00,
       "cadence": "monthly",
       "status": "cancelled",
-      "notes": "Was $100/mo on United Explorer ~24th - USER CANCELLED mid-September 2026; last paid period Aug 24–Sep 24 (remainder may run through ~Sep 24)",
+      "project": "unallocated",
+      "notes": "Was $100/mo on United Explorer ~24th - USER CANCELLED mid-September 2026; last paid period Aug 24–Sep 24 (remainder may run through ~Sep 24). Historical; not product infra.",
       "last_charge_date": "2026-08-24",
       "url": "https://openai.com",
       "env_secret_hint": null
