@@ -64,6 +64,9 @@ class SpendUsageTests(unittest.TestCase):
             "total_cost_usd": 0.56,
             "call_count": 7,
             "source": "s3",
+            "by_project": {
+                "memes": {"total_cost_usd": 0.56, "call_count": 7, "total_tokens": 12500}
+            },
         }
         app = _spend_app()
         with patch("src.core.token_tracker.get_month_usage", return_value=usage):
@@ -74,3 +77,5 @@ class SpendUsageTests(unittest.TestCase):
         self.assertIn("12,500 tokens", html)
         self.assertIn("7 calls", html)
         self.assertIn("· S3", html)
+        self.assertIn("By Project", html)
+        self.assertIn("Memes $0.56", html)

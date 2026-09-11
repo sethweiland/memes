@@ -91,6 +91,7 @@ python web/run.py
   - Tracks subscriptions (Imgflip, Vercel, etc.)
   - Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
   - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
+  - **By Project** rollup (tokens + allocated fixed): `memes`, `sethweiland-com`, `waiver-wire`, `x`, `shared`, `unallocated`. Unallocated stay visible.
   - Monthly total with active/cancelled breakdown
   - Subscription ledger: `data/tech_spend.json`
 - **Generate**: Create memes with custom topics and settings
@@ -129,6 +130,9 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 **Token usage (Spend):**
 - Monthly JSON at `ops/usage/{provider}/{YYYY}/{MM}.json` (private; ETag concurrency)
 - Local cache at `data/usage/{provider}/{YYYY}/{MM}.json`
+- Each event includes `project` (string id). This repo defaults to `memes`.
+- Known project ids: `memes`, `sethweiland-com`, `waiver-wire`, `x` (X / Twitter, @SethWeiland1), `shared`, `unallocated`.
+- Other jobs set `USAGE_PROJECT` or `MEME_PROJECT` before `log_token_usage` (e.g. `USAGE_PROJECT=waiver-wire`, X-draft calls `USAGE_PROJECT=x`). Same monthly S3 object — no per-project prefixes and no extra xAI keys.
 - Logging a token call never breaks meme generation if S3 is down
 
 See `infra/meme-assets/README.md` for the full bucket tree and IAM.

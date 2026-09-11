@@ -21,7 +21,7 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
 | `public/memes/templates/` | public | catalog harvest (existing) | Keep in place; no migration |
 | `public/memes/generated/` | public | `MemeAssetUploader` | Default `MEME_ASSETS_PUBLIC_PREFIX` |
 | `ops/queue/` | private | `QueueStorage` | Daily candidate metadata |
-| `ops/usage/` | private | `token_tracker` | Monthly JSON, ETag concurrency |
+| `ops/usage/` | private | `token_tracker` | Monthly JSON, ETag concurrency. Each event has `project`; rollup is on Spend, not a per-project prefix. |
 
 Legacy (read-only fallback, not written by current code):
 
