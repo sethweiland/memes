@@ -1,4 +1,4 @@
-/* Meme Pipeline Web App - Client JS */
+/* Ops dashboard — meme module client JS */
 
 // ---------------------------------------------------------------------------
 // Polling helper
@@ -7,7 +7,7 @@
 function pollJob(jobId, onProgress, onDone, onFailed, intervalMs) {
     intervalMs = intervalMs || 2000;
     var timer = setInterval(function() {
-        fetch('/generate/api/status/' + jobId)
+        fetch('/memes/generate/api/status/' + jobId)
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.state === 'running' || data.state === 'pending') {
@@ -96,7 +96,7 @@ function initStartPage() {
                 ? 'Fresh candidate topics for ' + summary.display_name + '.'
                 : 'Fresh candidate topics for this domain pack.';
         }
-        fetch('/generate/api/topic-radar?domain=' + encodeURIComponent(domainName) + '&limit=18&news=0')
+        fetch('/memes/generate/api/topic-radar?domain=' + encodeURIComponent(domainName) + '&limit=18&news=0')
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.error) {
@@ -138,7 +138,7 @@ function initStartPage() {
     }
 
     if (domainSelect) {
-        fetch('/generate/api/domains')
+        fetch('/memes/generate/api/domains')
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 (data.domains || []).forEach(function(domain) {
@@ -222,7 +222,7 @@ function initStartPage() {
         surpriseBtn.addEventListener('click', function() {
             surpriseBtn.disabled = true;
             surpriseBtn.textContent = 'Thinking...';
-            fetch('/generate/api/surprise', {
+            fetch('/memes/generate/api/surprise', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ domain: domainSelect ? domainSelect.value : '' }),
@@ -271,7 +271,7 @@ function initStartPage() {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Starting...';
 
-            fetch('/generate/api/start', {
+            fetch('/memes/generate/api/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -279,7 +279,7 @@ function initStartPage() {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.job_id) {
-                    window.location.href = '/generate/review/' + data.job_id;
+                    window.location.href = '/memes/generate/review/' + data.job_id;
                 } else {
                     alert(data.error || 'Failed to start');
                     submitBtn.disabled = false;
@@ -362,7 +362,7 @@ function collectFeedbackMemes(evaluated, selectedIndices, feedbackData) {
 }
 
 function postFeedback(sessionId, topic, stage, memes) {
-    return fetch('/generate/api/feedback', {
+    return fetch('/memes/generate/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -400,7 +400,7 @@ function initReviewPage(jobId) {
         function onFailed(err) {
             if (progressBox) {
                 progressBox.innerHTML = '<div class="error-box"><h2>Generation Failed</h2><p>' +
-                    escapeHtml(err) + '</p><a href="/generate/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
+                    escapeHtml(err) + '</p><a href="/memes/generate/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
             }
         }
     );
@@ -554,7 +554,7 @@ function initReviewPage(jobId) {
                 : Promise.resolve();
 
             feedbackPromise.then(function() {
-                return fetch('/generate/api/finalize', {
+                return fetch('/memes/generate/api/finalize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -566,7 +566,7 @@ function initReviewPage(jobId) {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.job_id) {
-                    window.location.href = '/generate/results/' + data.job_id;
+                    window.location.href = '/memes/generate/results/' + data.job_id;
                 } else {
                     alert(data.error || 'Failed to start finalization');
                     generateBtn.disabled = false;
@@ -605,7 +605,7 @@ function initResultsPage(jobId) {
         function onFailed(err) {
             if (progressBox) {
                 progressBox.innerHTML = '<div class="error-box"><h2>Image Generation Failed</h2><p>' +
-                    escapeHtml(err) + '</p><a href="/generate/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
+                    escapeHtml(err) + '</p><a href="/memes/generate/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
             }
         }
     );
@@ -623,7 +623,7 @@ function initResultsPage(jobId) {
         data.images.forEach(function(img, i) {
             html += '<div class="result-card">';
             if (img.filename) {
-                html += '<img src="/gallery/image/' + encodeURIComponent(img.filename) + '" alt="' + escapeHtml(img.template) + '">';
+                html += '<img src="/memes/gallery/image/' + encodeURIComponent(img.filename) + '" alt="' + escapeHtml(img.template) + '">';
             }
             html += '<div class="result-info">';
             html += '<h3>' + escapeHtml(img.template) + '</h3>';
@@ -636,8 +636,8 @@ function initResultsPage(jobId) {
             if (img.filename) {
                 html += '<div class="download-btns">';
                 html += '<button class="btn btn-instagram" onclick="showInstagramModalFromResults(event, \'' + escapeAttr(img.filename) + '\', \'' + escapeAttr(img.caption || '') + '\');">📸 Post to Instagram</button>';
-                html += '<a class="btn btn-download" href="/gallery/download/' + encodeURIComponent(img.filename) + '" download>&#8595; Download</a>';
-                html += '<a class="btn btn-download btn-download-ig" href="/gallery/download/' + encodeURIComponent(img.filename) + '?format=instagram" download>&#8595; Download for IG</a>';
+                html += '<a class="btn btn-download" href="/memes/gallery/download/' + encodeURIComponent(img.filename) + '" download>&#8595; Download</a>';
+                html += '<a class="btn btn-download btn-download-ig" href="/memes/gallery/download/' + encodeURIComponent(img.filename) + '?format=instagram" download>&#8595; Download for IG</a>';
                 html += '</div>';
             }
             // Feedback: star rating + textarea
@@ -792,7 +792,7 @@ function showInstagramModal(event, filename, caption) {
     if (!modal) return;
     
     currentInstagramFilename = filename;
-    previewImg.src = '/gallery/image/' + encodeURIComponent(filename);
+    previewImg.src = '/memes/gallery/image/' + encodeURIComponent(filename);
     captionTextarea.value = caption || '';
     imageUrlInput.value = '';
     statusDiv.innerHTML = '';
@@ -840,9 +840,9 @@ function publishToInstagram() {
     statusDiv.innerHTML = statusMessage;
     
     // Try both endpoints (generate and gallery have the same API)
-    var endpoint = window.location.pathname.includes('/generate/')
-        ? '/generate/api/instagram/publish'
-        : '/gallery/api/instagram/publish';
+    var endpoint = window.location.pathname.includes('/memes/generate/')
+        ? '/memes/generate/api/instagram/publish'
+        : '/memes/gallery/api/instagram/publish';
     
     fetch(endpoint, {
         method: 'POST',
@@ -905,7 +905,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ---------------------------------------------------------------------------
 
 function doAction(templateId, action, cardEl) {
-    var url = '/templates/api/' + action + '/' + templateId;
+    var url = '/memes/templates/api/' + action + '/' + templateId;
     var body = {};
     if (action === 'approve') {
         var ta = cardEl.querySelector('textarea');
@@ -935,7 +935,7 @@ function doAction(templateId, action, cardEl) {
 function unapproveTemplate(templateId, cardEl) {
     var btns = cardEl.querySelectorAll('.btn');
     btns.forEach(function(b) { b.disabled = true; });
-    fetch('/templates/api/unapprove/' + templateId, {
+    fetch('/memes/templates/api/unapprove/' + templateId, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
     }).then(function(r) { return r.json(); })
@@ -985,7 +985,7 @@ function escapeAttr(text) {
 function pollVideoJob(jobId, onProgress, onDone, onFailed, intervalMs) {
     intervalMs = intervalMs || 3000;
     var timer = setInterval(function() {
-        fetch('/video/api/status/' + jobId)
+        fetch('/memes/video/api/status/' + jobId)
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.state === 'running' || data.state === 'pending') {
@@ -1051,7 +1051,7 @@ function initVideoStartPage() {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Starting...';
 
-            fetch('/video/api/start', {
+            fetch('/memes/video/api/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -1059,7 +1059,7 @@ function initVideoStartPage() {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.job_id) {
-                    window.location.href = '/video/review/' + data.job_id;
+                    window.location.href = '/memes/video/review/' + data.job_id;
                 } else {
                     alert(data.error || 'Failed to start');
                     submitBtn.disabled = false;
@@ -1101,7 +1101,7 @@ function initVideoReviewPage(jobId) {
         function onFailed(err) {
             if (progressBox) {
                 progressBox.innerHTML = '<div class="error-box"><h2>Generation Failed</h2><p>' +
-                    escapeHtml(err) + '</p><a href="/video/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
+                    escapeHtml(err) + '</p><a href="/memes/video/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
             }
         }
     );
@@ -1204,7 +1204,7 @@ function initVideoReviewPage(jobId) {
             produceBtn.disabled = true;
             produceBtn.textContent = 'Starting production...';
 
-            fetch('/video/api/finalize', {
+            fetch('/memes/video/api/finalize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1215,7 +1215,7 @@ function initVideoReviewPage(jobId) {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.job_id) {
-                    window.location.href = '/video/results/' + data.job_id;
+                    window.location.href = '/memes/video/results/' + data.job_id;
                 } else {
                     alert(data.error || 'Failed to start production');
                     produceBtn.disabled = false;
@@ -1253,7 +1253,7 @@ function initVideoResultsPage(jobId) {
         function onFailed(err) {
             if (progressBox) {
                 progressBox.innerHTML = '<div class="error-box"><h2>Video Production Failed</h2><p>' +
-                    escapeHtml(err) + '</p><a href="/video/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
+                    escapeHtml(err) + '</p><a href="/memes/video/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
             }
         },
         5000  // Poll every 5s (video gen is slow)
@@ -1278,7 +1278,7 @@ function initVideoResultsPage(jobId) {
             // Video player
             if (video.filename) {
                 html += '<video controls style="width:100%;max-height:400px;border-radius:4px;background:#000;">';
-                html += '<source src="/video/preview/' + encodeURIComponent(video.filename) + '" type="video/mp4">';
+                html += '<source src="/memes/video/preview/' + encodeURIComponent(video.filename) + '" type="video/mp4">';
                 html += 'Your browser does not support video playback.';
                 html += '</video>';
             }
@@ -1295,7 +1295,7 @@ function initVideoResultsPage(jobId) {
             // Download button
             if (video.filename) {
                 html += '<div class="download-btns" style="margin-top:12px;">';
-                html += '<a class="btn btn-download" href="/video/preview/' + encodeURIComponent(video.filename) + '" download>Download MP4</a>';
+                html += '<a class="btn btn-download" href="/memes/video/preview/' + encodeURIComponent(video.filename) + '" download>Download MP4</a>';
                 html += '</div>';
             }
 

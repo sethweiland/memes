@@ -2,10 +2,9 @@
 Niche Discovery blueprint.
 
 Routes:
-    /discovery              - Dashboard
-    /discovery/run          - Trigger pipeline run
-    /discovery/review       - Review & rate niches
-    /discovery/api/*        - API endpoints
+    /memes/discovery              - Dashboard
+    /memes/discovery/review       - Review & rate niches
+    /memes/discovery/api/*        - API endpoints
 """
 
 import json
@@ -222,7 +221,7 @@ def api_generate_memes(niche_name: str):
     # Return the topic to use for generation
     return jsonify({
         "topic": f"{niche.niche_name} memes",
-        "redirect": f"/generate?topic={niche.niche_name}+memes"
+        "redirect": f"/memes/generate/?topic={niche.niche_name}+memes"
     })
 
 

@@ -62,6 +62,8 @@ def index():
         grouped=grouped,
         kinds=KINDS,
         available_dates=_queue().list_dates(),
+        active_page="x_activity",
+        section="x",
     )
 
 

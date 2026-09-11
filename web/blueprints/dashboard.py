@@ -1,6 +1,7 @@
 """
-Dashboard blueprint — Master ops home for the meme pipeline.
-Displays stats, daily candidate queue, X drafts, and quick links to all tools.
+Memes dashboard — master view for the meme pipeline module.
+
+Lives at /memes/. The site home (/) is the life/ops hub.
 """
 
 import json
@@ -133,10 +134,5 @@ def index():
         stats=stats,
         recent_memes=recent_memes,
         active_page="dashboard",
+        section="memes",
     )
-
-
-@bp.route("/healthz")
-def healthz():
-    """Health check endpoint for container orchestration."""
-    return {"status": "ok"}, 200

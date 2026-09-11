@@ -270,7 +270,7 @@
 
         async function markInstagram(nicheName, exists) {
             try {
-                const resp = await fetch(`/discovery/api/niche/${encodeURIComponent(nicheName)}/instagram`, {
+                const resp = await fetch(`/memes/discovery/api/niche/${encodeURIComponent(nicheName)}/instagram`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({exists: exists})
@@ -285,7 +285,7 @@
 
         async function updateStatus(nicheName, status) {
             try {
-                const resp = await fetch(`/discovery/api/niche/${encodeURIComponent(nicheName)}/status`, {
+                const resp = await fetch(`/memes/discovery/api/niche/${encodeURIComponent(nicheName)}/status`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({status: status})
@@ -304,7 +304,7 @@
             btn.textContent = '...';
 
             try {
-                const resp = await fetch(`/discovery/api/instagram/search/${encodeURIComponent(nicheName)}`, {
+                const resp = await fetch(`/memes/discovery/api/instagram/search/${encodeURIComponent(nicheName)}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                 });

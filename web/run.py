@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Entry point for the meme pipeline web app.
+Entry point for the ops dashboard (memes is one module).
 
 Usage:
     python web/run.py
@@ -25,5 +25,5 @@ app = create_app()
 
 if __name__ == "__main__":
     port = int(os.getenv("WEB_PORT", "5050"))
-    print(f"Starting meme pipeline UI at http://localhost:{port}")
+    print(f"Starting ops dashboard at http://localhost:{port}")
     app.run(debug=True, port=port, use_reloader=False)
