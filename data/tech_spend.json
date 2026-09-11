@@ -58,8 +58,8 @@
       "category": "subscription",
       "amount_usd": 84.00,
       "cadence": "yearly",
-      "status": "active",
-      "notes": "Orphaned Stripe - more social than infra; included under Other/related",
+      "status": "cancelling",
+      "notes": "Orphaned Stripe - more social than infra; support cancel+refund started Sep 11 2026",
       "url": "https://x.com",
       "env_secret_hint": null
     }
@@ -73,8 +73,8 @@
       "amount_usd": 100.00,
       "cadence": "monthly",
       "status": "cancelled",
-      "notes": "Was $100/mo on United Explorer ~24th - USER CANCELLED mid-September 2026",
-      "last_charge_date": "2026-09-24",
+      "notes": "Was $100/mo on United Explorer ~24th - USER CANCELLED mid-September 2026; last paid period Aug 24–Sep 24 (remainder may run through ~Sep 24)",
+      "last_charge_date": "2026-08-24",
       "url": "https://openai.com",
       "env_secret_hint": null
     },
@@ -86,8 +86,8 @@
       "amount_usd": 20.00,
       "cadence": "monthly",
       "status": "cancelled",
-      "notes": "Cancelled earlier in 2026",
-      "last_charge_date": "2026-06-15",
+      "notes": "Cancelled earlier in 2026 - amount approximate, exact last charge date not confirmed in audit",
+      "last_charge_date": null,
       "url": "https://cursor.com",
       "env_secret_hint": null
     }
