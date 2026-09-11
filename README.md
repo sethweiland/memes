@@ -94,10 +94,10 @@ python web/run.py
   - **By Project** rollup (tokens + allocated fixed): `memes`, `sethweiland-com`, `waiver-wire`, `x`, `shared`, `unallocated`. Unallocated stay visible.
   - Monthly total with active/cancelled breakdown
   - Subscription ledger: `data/tech_spend.json`
+- **X**: Top-level life tab (sibling of Home / Spend / Memes). Review Stevie's X drafts (follow / post / reply). Approve or skip only — this app never posts to X. Spend project tag `x` is tracked separately.
 - **Generate**: Create memes with custom topics and settings
 - **Gallery**: Browse and filter generated memes
 - **Daily Queue**: Review daily candidate memes for Instagram
-- **X**: Review Stevie's X drafts (follow / post / reply). Approve or skip only — this app never posts to X. Spend project tag `x` is tracked separately.
 - **Templates**: Review and manage template descriptions
 - **Video Memes**: Generate and edit video content
 - **Discovery**: Find new niches and trending topics

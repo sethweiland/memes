@@ -321,6 +321,21 @@ class DashboardXBadgeTests(unittest.TestCase):
         self.assertIn("3", html)
         self.assertIn("Review X", html)
         self.assertIn("/x/", html)
+        self.assertNotIn("X Activity</h3>", html)
+
+    def test_x_is_life_nav_not_meme_tool(self):
+        """X sits with Spend, not next to Daily Queue / Generate."""
+        nav = (_WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+        spend_at = nav.find("active_page == 'spend'")
+        x_at = nav.find("active_page == 'x_activity'")
+        generate_at = nav.find("active_page == 'generate'")
+        daily_at = nav.find("active_page == 'daily_candidates'")
+        self.assertGreater(spend_at, 0)
+        self.assertGreater(x_at, spend_at)
+        self.assertGreater(generate_at, x_at)
+        self.assertGreater(daily_at, generate_at)
+        self.assertIn("Follow-up PR nests meme routes under /memes/", nav)
+        self.assertIn("X is a top-level life item", nav)
 
 
 if __name__ == "__main__":
