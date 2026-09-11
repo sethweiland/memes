@@ -212,13 +212,23 @@
 <!-- Summary Cards -->
 <div class="summary-cards">
     <div class="summary-card">
-        <div class="number total">${{ "%.2f"|format(monthly_total) }}</div>
-        <div class="label">Estimated Monthly Total</div>
+        <div class="number total">${{ "%.2f"|format(totals.total) }}</div>
+        <div class="label">Total Monthly</div>
+    </div>
+    
+    <div class="summary-card">
+        <div class="number" style="color: #2563eb;">${{ "%.2f"|format(totals.fixed) }}</div>
+        <div class="label">Fixed Costs</div>
+    </div>
+    
+    <div class="summary-card">
+        <div class="number" style="color: #8b5cf6;">${{ "%.2f"|format(totals.variable) }}</div>
+        <div class="label">Variable / Usage</div>
     </div>
     
     <div class="summary-card">
         <div class="number active">{{ status_counts.active }}</div>
-        <div class="label">Active Subscriptions</div>
+        <div class="label">Active</div>
     </div>
     
     {% if status_counts.cancelling > 0 %}
@@ -234,10 +244,10 @@
     </div>
 </div>
 
-<!-- Subscriptions Section -->
-{% if subscriptions %}
+<!-- Fixed Costs Section -->
+{% if fixed_items %}
 <div class="spend-section">
-    <h2>📦 Active Subscriptions</h2>
+    <h2>🔒 Fixed Costs <span style="font-weight: normal; color: #666; font-size: 16px;">&nbsp;&nbsp;${{ "%.2f"|format(totals.fixed) }}/mo</span></h2>
     
     <div class="spend-table">
         <table>
@@ -251,7 +261,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for sub in subscriptions %}
+                {% for sub in fixed_items %}
                 <tr>
                     <td>
                         <div class="service-name">{{ sub.name }}</div>
@@ -274,10 +284,10 @@
 </div>
 {% endif %}
 
-<!-- API / Usage Section -->
-{% if usage_items %}
+<!-- Variable / Usage Section -->
+{% if variable_items %}
 <div class="spend-section">
-    <h2>⚡ API / Token Usage</h2>
+    <h2>📊 Variable / Usage <span style="font-weight: normal; color: #666; font-size: 16px;">&nbsp;&nbsp;${{ "%.2f"|format(totals.variable) }}/mo</span></h2>
     
     {% if aws_live and aws_live.error %}
     <div class="warning-box">
@@ -297,7 +307,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in usage_items %}
+                {% for item in variable_items %}
                 <tr>
                     <td>
                         <div class="service-name">{{ item.name }}</div>
@@ -369,7 +379,7 @@
 </div>
 {% endif %}
 
-{% if not subscriptions and not usage_items and not cancelled %}
+{% if not fixed_items and not variable_items and not cancelled %}
 <div class="empty-state">
     <p><strong>No spend data configured</strong></p>
     <p>Add subscription and usage data to <code>data/tech_spend.json</code></p>

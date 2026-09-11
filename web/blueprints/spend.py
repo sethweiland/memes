@@ -94,9 +94,10 @@ def _get_aws_current_month_cost() -> Optional[Dict[str, Any]]:
     return None
 
 
-def _calculate_monthly_total(subscriptions: List[Dict], aws_live: Optional[Dict] = None) -> float:
-    """Calculate estimated monthly total from active subscriptions."""
-    total = 0.0
+def _calculate_totals(subscriptions: List[Dict], aws_live: Optional[Dict] = None) -> Dict[str, float]:
+    """Calculate fixed and variable monthly totals."""
+    fixed_total = 0.0
+    variable_total = 0.0
     
     for sub in subscriptions:
         # Include active and cancelling (still paying until cancelled)
@@ -105,24 +106,36 @@ def _calculate_monthly_total(subscriptions: List[Dict], aws_live: Optional[Dict]
             
         amount = sub.get('amount_usd', 0)
         cadence = sub.get('cadence', 'monthly')
+        category = sub.get('category', 'fixed')
         
         # Skip AWS from config if we have live data
         if aws_live and sub.get('id') == 'aws':
             continue
         
         # Convert to monthly equivalent
+        monthly_amount = 0
         if cadence == 'monthly':
-            total += amount
+            monthly_amount = amount
         elif cadence == 'yearly':
-            total += amount / 12
+            monthly_amount = amount / 12
         elif cadence == 'usage':
-            total += amount  # Already monthly estimate
+            monthly_amount = amount
+        
+        # Add to appropriate category
+        if category == 'variable':
+            variable_total += monthly_amount
+        else:
+            fixed_total += monthly_amount
     
-    # Add live AWS if available
+    # Add live AWS to variable if available
     if aws_live and not aws_live.get('error'):
-        total += aws_live.get('amount', 0)
+        variable_total += aws_live.get('amount', 0)
     
-    return round(total, 2)
+    return {
+        'fixed': round(fixed_total, 2),
+        'variable': round(variable_total, 2),
+        'total': round(fixed_total + variable_total, 2)
+    }
 
 
 def _count_by_status(subscriptions: List[Dict], cancelled: List[Dict]) -> Dict[str, int]:
@@ -150,19 +163,19 @@ def index():
     aws_live = _get_aws_current_month_cost()
     
     # Calculate totals and counts
-    monthly_total = _calculate_monthly_total(subscriptions, aws_live)
+    totals = _calculate_totals(subscriptions, aws_live)
     status_counts = _count_by_status(subscriptions, cancelled)
     
     # Organize items by category
-    subscription_items = [s for s in subscriptions if s.get('category') == 'subscription']
-    usage_items = [s for s in subscriptions if s.get('category') == 'usage']
+    fixed_items = [s for s in subscriptions if s.get('category') == 'fixed']
+    variable_items = [s for s in subscriptions if s.get('category') == 'variable']
     
     return render_template(
         "spend/index.html",
-        subscriptions=subscription_items,
-        usage_items=usage_items,
+        fixed_items=fixed_items,
+        variable_items=variable_items,
         cancelled=cancelled,
-        monthly_total=monthly_total,
+        totals=totals,
         status_counts=status_counts,
         aws_live=aws_live,
         last_updated=spend_data.get('last_updated'),
