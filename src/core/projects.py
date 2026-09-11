@@ -1,18 +1,11 @@
 """
 Shared project ids for token events and the tech-spend ledger.
 
-Known products (do not invent extra ones without updating this list):
+Kanban project ids come from tenant config (``config/tenant.yaml``).
+``shared`` and ``unallocated`` are Spend-only — never kanban cards.
 
-    memes              bluegrass meme pipeline / meme-ops
-    sethweiland-com    musician site on Vercel
-    waiver-wire        fantasy-football / Waiver Wire
-    x                  X / Twitter (@SethWeiland1 activity)
-    shared             Cursor / Grok Bot / engineering overhead
-    unallocated        missing tag — always shown, never hidden
-
-Token writers default to ``memes`` in this repo (``USAGE_PROJECT`` or
-``MEME_PROJECT`` override). Other jobs set one of those env vars; they do
-not need a separate xAI key or a per-project S3 prefix.
+Token writers default to the tenant ``defaults.usage_project`` (this repo:
+``memes``) unless ``USAGE_PROJECT`` or ``MEME_PROJECT`` is set.
 """
 
 from __future__ import annotations
@@ -20,11 +13,27 @@ from __future__ import annotations
 import os
 from typing import Any, Optional
 
+from src.core.tenant import SPEND_ONLY_PROJECT_IDS, load_tenant
+
 
 DEFAULT_PROJECT = "memes"
 UNALLOCATED_PROJECT = "unallocated"
+SHARED_PROJECT = "shared"
 
-PROJECT_ORDER = (
+_SPEND_ONLY_META: dict[str, dict[str, str]] = {
+    "shared": {
+        "name": "Shared",
+        "description": "Cursor, Grok Bot / engineering overhead that is not one product",
+        "color": "#7c3aed",
+    },
+    "unallocated": {
+        "name": "Unallocated",
+        "description": "Missing tag — always shown, never hidden to clean up a chart",
+        "color": "#6b7280",
+    },
+}
+
+_FALLBACK_ORDER = (
     "memes",
     "sethweiland-com",
     "waiver-wire",
@@ -33,7 +42,7 @@ PROJECT_ORDER = (
     "unallocated",
 )
 
-KNOWN_PROJECTS: dict[str, dict[str, str]] = {
+_FALLBACK_KNOWN: dict[str, dict[str, str]] = {
     "memes": {
         "name": "Memes",
         "description": "Bluegrass meme pipeline / meme-ops / Imgflip / Fly / xAI from this repo",
@@ -54,17 +63,55 @@ KNOWN_PROJECTS: dict[str, dict[str, str]] = {
         "description": "@SethWeiland1 activity. X-draft xAI calls set USAGE_PROJECT=x.",
         "color": "#111827",
     },
-    "shared": {
-        "name": "Shared",
-        "description": "Cursor, Grok Bot / engineering overhead that is not one product",
-        "color": "#7c3aed",
-    },
-    "unallocated": {
-        "name": "Unallocated",
-        "description": "Missing tag — always shown, never hidden to clean up a chart",
-        "color": "#6b7280",
-    },
+    **_SPEND_ONLY_META,
 }
+
+
+def known_projects() -> dict[str, dict[str, str]]:
+    """Spend metadata: tenant kanban projects + shared/unallocated."""
+    result: dict[str, dict[str, str]] = {}
+    try:
+        tenant = load_tenant()
+        for project in tenant.kanban_projects():
+            result[project.id] = {
+                "name": project.name,
+                "description": project.description or (project.summary or ""),
+                "color": project.color,
+            }
+    except Exception:
+        result = {pid: dict(meta) for pid, meta in _FALLBACK_KNOWN.items()}
+    for pid, meta in _SPEND_ONLY_META.items():
+        result.setdefault(pid, dict(meta))
+    return result
+
+
+def project_order() -> tuple[str, ...]:
+    ids: list[str] = []
+    try:
+        ids.extend(load_tenant().project_ids())
+    except Exception:
+        ids.extend(pid for pid in _FALLBACK_ORDER if pid not in SPEND_ONLY_PROJECT_IDS)
+    for extra in SPEND_ONLY_PROJECT_IDS:
+        if extra not in ids:
+            ids.append(extra)
+    return tuple(ids)
+
+
+def default_write_project() -> str:
+    try:
+        return load_tenant().default_usage_project or DEFAULT_PROJECT
+    except Exception:
+        return DEFAULT_PROJECT
+
+
+def __getattr__(name: str):
+    """Lazy aliases so ``from src.core.projects import PROJECT_ORDER`` still works."""
+    if name == "PROJECT_ORDER":
+        return project_order()
+    if name == "KNOWN_PROJECTS":
+        return known_projects()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 _WRITE_ENV_KEYS = ("USAGE_PROJECT", "MEME_PROJECT")
 
@@ -77,7 +124,7 @@ def normalize_project_id(value: Optional[str], *, missing: str) -> str:
 
 
 def project_meta(project_id: str) -> dict[str, str]:
-    known = KNOWN_PROJECTS.get(project_id)
+    known = known_projects().get(project_id)
     if known:
         return {"id": project_id, **known}
     return {
@@ -95,13 +142,14 @@ def event_missing_project(event: dict[str, Any]) -> bool:
 
 def resolve_write_project(explicit: Optional[str] = None) -> str:
     """Project id stamped on a new token event."""
+    fallback = default_write_project()
     if explicit and str(explicit).strip():
-        return normalize_project_id(str(explicit), missing=DEFAULT_PROJECT)
+        return normalize_project_id(str(explicit), missing=fallback)
     for key in _WRITE_ENV_KEYS:
         value = (os.environ.get(key) or "").strip()
         if value:
-            return normalize_project_id(value, missing=DEFAULT_PROJECT)
-    return DEFAULT_PROJECT
+            return normalize_project_id(value, missing=fallback)
+    return fallback
 
 
 def resolve_event_project(event: dict[str, Any]) -> str:
@@ -244,8 +292,9 @@ def build_project_rollup(
     events). Live AWS replaces the aws ledger amount when present.
     Cancelled items are not included.
     """
+    order = project_order()
     rows: dict[str, dict[str, Any]] = {
-        pid: _empty_row(pid) for pid in PROJECT_ORDER
+        pid: _empty_row(pid) for pid in order
     }
 
     aws_ok = bool(aws_live) and not (aws_live or {}).get("error")
@@ -296,8 +345,8 @@ def build_project_rollup(
     for row in rows.values():
         row["share_pct"] = round((row["total"] / grand) * 100, 1) if grand else 0.0
 
-    extras = [pid for pid in rows if pid not in PROJECT_ORDER]
-    ordered = [rows[pid] for pid in PROJECT_ORDER] + [rows[pid] for pid in extras]
+    extras = [pid for pid in rows if pid not in order]
+    ordered = [rows[pid] for pid in order] + [rows[pid] for pid in extras]
 
     slices = [row for row in ordered if row["total"] > 0]
     pie_parts: list[str] = []

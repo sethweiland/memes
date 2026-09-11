@@ -6,6 +6,7 @@ Bucket (default): bluegrass-meme-pipeline-dev-meme-assets (us-east-1)
     public/memes/templates/{id}.{ext}              # existing catalog — do not rename
     public/memes/generated/{hash}_{stem}.jpg       # IG-ready JPEGs (MemeAssetUploader)
 
+    ops/projects/board.json                        # private project kanban
     ops/queue/daily-candidates/{YYYY-MM-DD}.json   # private daily queue
     ops/queue/x-activity/{YYYY-MM-DD}.json         # private X drafts (Stevie)
     ops/grok-bot/routines.json                     # private Grok Bot routine catalog
@@ -45,6 +46,8 @@ class BucketLayout:
     QUEUE_PREFIX = "ops/queue/daily-candidates/"
     QUEUE_LEGACY_PREFIX = "queue/daily-candidates/"
     X_ACTIVITY_PREFIX = "ops/queue/x-activity/"
+    PROJECTS_PREFIX = "ops/projects/"
+    PROJECTS_BOARD_KEY = "ops/projects/board.json"
     GROK_BOT_PREFIX = "ops/grok-bot/"
     GROK_BOT_ROUTINES_KEY = "ops/grok-bot/routines.json"
     USAGE_PREFIX = "ops/usage/"
@@ -80,6 +83,10 @@ class BucketLayout:
     @classmethod
     def grok_bot_routines_key(cls) -> str:
         return cls.GROK_BOT_ROUTINES_KEY
+
+    @classmethod
+    def projects_board_key(cls) -> str:
+        return cls.PROJECTS_BOARD_KEY
 
     @classmethod
     def usage_key(cls, provider: str, year: int, month: int) -> str:

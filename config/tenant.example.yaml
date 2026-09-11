@@ -1,0 +1,72 @@
+# Friend template — copy to config/tenant.yaml and put YOUR bets in.
+# Safe to commit. Never put API keys, tokens, passwords, or ARNs here.
+
+human:
+  name: Your Name
+  timezone: America/New_York
+  handle: ""
+
+site:
+  title: Ops
+  domain: ops.example.com
+
+modules:
+  projects: true
+  spend: true
+  x: false
+  grok_bot: false
+  memes: false
+  calendar: false
+
+calendar:
+  enabled: false
+
+secrets:
+  backend: env
+
+agents:
+  - id: grok-bot
+    name: Grok Bot
+  - id: codex
+    name: Codex
+
+defaults:
+  usage_project: home-ops
+
+projects:
+  - id: home-ops
+    name: Home Ops
+    lane: active
+    owner_agent: grok-bot
+    color: "#2563eb"
+    description: Personal life-ops shell
+    links:
+      repo: https://github.com/you/your-fork
+      prod: ""
+    summary: Self-hosted life-ops board
+    last_done: null
+    next_steps: null
+  - id: side-project
+    name: Side Project
+    lane: idea
+    owner_agent: null
+    color: "#059669"
+    description: ""
+    links:
+      repo: ""
+      prod: ""
+    summary: ""
+    last_done: null
+    next_steps: null
+  - id: writing
+    name: Writing
+    lane: parked
+    owner_agent: null
+    color: "#d97706"
+    description: ""
+    links:
+      repo: ""
+      prod: ""
+    summary: ""
+    last_done: null
+    next_steps: null

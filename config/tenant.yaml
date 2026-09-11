@@ -1,0 +1,125 @@
+# Seth's reference tenant. Safe to commit — no secrets.
+# Lanes are a hypothesis from this repo (spend ledger, Grok Bot catalog,
+# live Fly/X/Vercel surfaces). last_done / next_steps stay empty when unknown.
+
+human:
+  name: Seth
+  timezone: America/New_York
+  handle: SethWeiland1
+
+site:
+  title: Ops
+  domain: ops.sethweiland.com
+
+modules:
+  projects: true
+  spend: true
+  x: true
+  grok_bot: true
+  memes: true
+  calendar: false
+
+calendar:
+  enabled: false
+
+secrets:
+  backend: env
+
+agents:
+  - id: stevie
+    name: Stevie
+  - id: jeffy
+    name: Jeffy
+  - id: grok-bot
+    name: Grok Bot
+  - id: codex
+    name: Codex
+
+defaults:
+  usage_project: memes
+
+projects:
+  - id: memes
+    name: Memes
+    lane: active
+    owner_agent: null
+    color: "#2563eb"
+    description: Bluegrass meme pipeline / meme-ops / Imgflip / Fly / xAI from this repo
+    links:
+      repo: https://github.com/sethweiland/memes
+      prod: https://ops.sethweiland.com
+    summary: Bluegrass meme pipeline / meme-ops
+    last_done: null
+    next_steps: null
+  - id: sethweiland-com
+    name: sethweiland.com
+    lane: active
+    owner_agent: null
+    color: "#059669"
+    description: Musician site on Vercel
+    links:
+      repo: ""
+      prod: https://sethweiland.com
+    summary: Musician site on Vercel
+    last_done: null
+    next_steps: null
+  - id: waiver-wire
+    name: Waiver Wire
+    lane: idea
+    owner_agent: null
+    color: "#d97706"
+    description: Fantasy-football / Waiver Wire
+    links:
+      repo: ""
+      prod: ""
+    summary: Fantasy-football / Waiver Wire
+    last_done: null
+    next_steps: null
+  - id: x
+    name: X / Twitter
+    lane: active
+    owner_agent: stevie
+    color: "#111827"
+    description: "@SethWeiland1 activity. X-draft xAI calls set USAGE_PROJECT=x."
+    links:
+      repo: ""
+      prod: https://x.com/SethWeiland1
+    summary: "@SethWeiland1 activity"
+    last_done: null
+    next_steps: null
+  - id: linkmarketcap
+    name: Linkmarketcap
+    lane: idea
+    owner_agent: null
+    color: "#0d9488"
+    description: ""
+    links:
+      repo: ""
+      prod: ""
+    summary: ""
+    last_done: null
+    next_steps: null
+  - id: whippoorwill
+    name: Whippoorwill
+    lane: idea
+    owner_agent: null
+    color: "#be185d"
+    description: ""
+    links:
+      repo: ""
+      prod: ""
+    summary: ""
+    last_done: null
+    next_steps: null
+  - id: millgrass
+    name: Millgrass
+    lane: idea
+    owner_agent: null
+    color: "#65a30d"
+    description: ""
+    links:
+      repo: ""
+      prod: ""
+    summary: ""
+    last_done: null
+    next_steps: null

@@ -9,13 +9,14 @@ from flask import Blueprint, Flask
 import tests.bootstrap  # noqa: F401
 
 from src.core.projects import (
-    PROJECT_ORDER,
     UNALLOCATED_PROJECT,
     allocate_amount,
     build_project_rollup,
     monthly_equivalent,
+    project_order,
     subscription_shares,
 )
+from src.core.tenant import reset_tenant
 from src.core.s3_store import reset_s3_store
 from src.core.token_tracker import get_month_usage
 from tests.fakes import MemoryS3Store
@@ -54,14 +55,31 @@ def _spend_app() -> Flask:
 
 
 class ProjectAllocationTests(unittest.TestCase):
+    def setUp(self):
+        reset_tenant()
+
+    def tearDown(self):
+        reset_tenant()
+
     def test_x_is_a_first_class_project(self):
-        self.assertIn("x", PROJECT_ORDER)
+        order = project_order()
+        self.assertIn("x", order)
+        self.assertIn("shared", order)
+        self.assertIn("unallocated", order)
+        for pid in (
+            "memes",
+            "sethweiland-com",
+            "waiver-wire",
+            "x",
+            "linkmarketcap",
+            "whippoorwill",
+            "millgrass",
+        ):
+            self.assertIn(pid, order)
+        self.assertNotIn("equinox", order)
         rollup = build_project_rollup([])
         ids = [row["id"] for row in rollup["rows"]]
-        self.assertEqual(
-            ids,
-            ["memes", "sethweiland-com", "waiver-wire", "x", "shared", "unallocated"],
-        )
+        self.assertEqual(ids[: len(order)], list(order))
         x_row = next(row for row in rollup["rows"] if row["id"] == "x")
         self.assertEqual(x_row["name"], "X / Twitter")
         self.assertEqual(x_row["total"], 0)

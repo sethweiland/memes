@@ -4,8 +4,120 @@
 
 {% block content %}
 <h1>Projects</h1>
-<p class="ops-lede">Kanban is not built yet. No project cards until that work lands.</p>
-<div class="empty-state">
-    <p>Upcoming lanes: <code>idea</code>, <code>active</code>, <code>blocked</code>, <code>waiting_on_seth</code>, <code>parked</code>.</p>
+<p class="ops-lede">Named bets. Agents write the card; you move the lane. This page does not post, buy, or start routines.</p>
+
+<div class="counter">{{ project_count }} projects</div>
+
+<div class="kanban" data-board="projects">
+    {% for lane, label, cards in grouped %}
+    <section class="kanban-col" data-lane="{{ lane }}">
+        <h2>
+            {{ label }}
+            <span class="kanban-count">{{ cards|length }}</span>
+        </h2>
+        <div class="kanban-cards">
+            {% for project in cards %}
+            <article class="kanban-card" data-id="{{ project.id }}" data-lane="{{ project.lane }}">
+                <div class="kanban-card-top">
+                    <h3>{{ project.name }}</h3>
+                    {% if project.owner_agent %}
+                    <span class="kanban-agent">{{ project.owner_agent }}</span>
+                    {% endif %}
+                </div>
+                {% if project.summary %}
+                <p class="kanban-summary">{{ project.summary }}</p>
+                {% endif %}
+                {% if project.last_done %}
+                <p class="kanban-meta">Last done {{ project.last_done }}</p>
+                {% endif %}
+                {% if project.next_steps %}
+                <p class="kanban-meta">Next {{ project.next_steps }}</p>
+                {% endif %}
+                {% if project.links.repo or project.links.prod %}
+                <p class="kanban-links">
+                    {% if project.links.repo %}
+                    <a href="{{ project.links.repo }}" target="_blank" rel="noopener">Repo</a>
+                    {% endif %}
+                    {% if project.links.prod %}
+                    <a href="{{ project.links.prod }}" target="_blank" rel="noopener">Prod</a>
+                    {% endif %}
+                </p>
+                {% endif %}
+                <label class="kanban-lane-label" for="lane-{{ project.id }}">Lane</label>
+                <select id="lane-{{ project.id }}" class="kanban-lane-select"
+                        data-id="{{ project.id }}"
+                        aria-label="Move {{ project.name }}">
+                    {% for option in lanes %}
+                    <option value="{{ option }}" {{ 'selected' if option == project.lane }}>
+                        {{ lane_labels[option] }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="kanban-status" id="status-{{ project.id }}"></div>
+            </article>
+            {% else %}
+            <p class="kanban-empty">No cards</p>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function moveProjectLane(projectId, lane, selectEl) {
+    var card = document.querySelector('.kanban-card[data-id="' + projectId + '"]');
+    var statusEl = document.getElementById('status-' + projectId);
+    selectEl.disabled = true;
+    fetch('/projects/api/projects/' + encodeURIComponent(projectId) + '/lane', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lane: lane }),
+    })
+    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(res) {
+        if (res.data.success) {
+            var dest = document.querySelector('.kanban-col[data-lane="' + lane + '"] .kanban-cards');
+            if (card && dest) {
+                var empty = dest.querySelector('.kanban-empty');
+                if (empty) empty.remove();
+                var oldCol = card.closest('.kanban-col');
+                dest.appendChild(card);
+                card.setAttribute('data-lane', lane);
+                if (oldCol) refreshCount(oldCol);
+                refreshCount(dest.closest('.kanban-col'));
+            }
+            if (statusEl) statusEl.textContent = '';
+        } else if (statusEl) {
+            statusEl.textContent = res.data.error || 'Move failed';
+        }
+        selectEl.disabled = false;
+    })
+    .catch(function() {
+        if (statusEl) statusEl.textContent = 'Request failed';
+        selectEl.disabled = false;
+    });
+}
+
+function refreshCount(col) {
+    if (!col) return;
+    var count = col.querySelectorAll('.kanban-card').length;
+    var badge = col.querySelector('.kanban-count');
+    if (badge) badge.textContent = String(count);
+    var list = col.querySelector('.kanban-cards');
+    if (list && count === 0 && !list.querySelector('.kanban-empty')) {
+        var p = document.createElement('p');
+        p.className = 'kanban-empty';
+        p.textContent = 'No cards';
+        list.appendChild(p);
+    }
+}
+
+document.querySelectorAll('.kanban-lane-select').forEach(function(selectEl) {
+    selectEl.addEventListener('change', function() {
+        moveProjectLane(selectEl.getAttribute('data-id'), selectEl.value, selectEl);
+    });
+});
+</script>
 {% endblock %}
