@@ -43,14 +43,78 @@ function initStartPage() {
     var domainIndicator = document.getElementById('domain-indicator');
     var domainName = document.getElementById('domain-name');
     var useWebBtn = document.getElementById('use-web-btn');
+    var domainSelect = document.getElementById('domain-select');
+    var domainHint = document.getElementById('domain-hint');
+    var topicRadar = document.getElementById('topic-radar');
+    var topicRadarGrid = document.getElementById('topic-radar-grid');
+    var topicRadarSubtitle = document.getElementById('topic-radar-subtitle');
+    var refreshRadarBtn = document.getElementById('refresh-radar-btn');
 
-    var currentContextMode = 'auto';
+    var currentContextMode = 'none';
+    var domainSummaries = {};
+
+    function renderTopicRadar(topics) {
+        if (!topicRadar || !topicRadarGrid) return;
+        topicRadarGrid.innerHTML = '';
+        if (!topics || !topics.length) {
+            topicRadar.style.display = 'none';
+            return;
+        }
+        topicRadar.style.display = 'block';
+        topics.slice(0, 12).forEach(function(item) {
+            var card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'topic-card';
+            card.innerHTML = ''
+                + '<span class="topic-lane">' + escapeHtml((item.lane || '').replace(/_/g, ' ')) + '</span>'
+                + '<strong>' + escapeHtml(item.topic || '') + '</strong>'
+                + '<span class="topic-angle">' + escapeHtml(item.meme_angle || '') + '</span>'
+                + '<span class="topic-score">Score ' + escapeHtml(String(item.overall_score || '')) + ' · ' + escapeHtml(item.source || '') + '</span>';
+            card.addEventListener('click', function() {
+                if (topicInput) {
+                    topicInput.value = item.topic || '';
+                    topicInput.focus();
+                }
+                if (domainSelect && domainSelect.value) {
+                    currentContextMode = 'rag';
+                }
+            });
+            topicRadarGrid.appendChild(card);
+        });
+    }
+
+    function loadTopicRadar(domainName) {
+        if (!domainName || !topicRadar || !topicRadarGrid) {
+            if (topicRadar) topicRadar.style.display = 'none';
+            return;
+        }
+        topicRadar.style.display = 'block';
+        topicRadarGrid.innerHTML = '<div class="topic-radar-loading">Scanning topic lanes...</div>';
+        var summary = domainSummaries[domainName];
+        if (topicRadarSubtitle) {
+            topicRadarSubtitle.textContent = summary
+                ? 'Fresh candidate topics for ' + summary.display_name + '.'
+                : 'Fresh candidate topics for this domain pack.';
+        }
+        fetch('/generate/api/topic-radar?domain=' + encodeURIComponent(domainName) + '&limit=18&news=0')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    topicRadarGrid.innerHTML = '<div class="topic-radar-loading">' + escapeHtml(data.error) + '</div>';
+                    return;
+                }
+                renderTopicRadar(data.topics || []);
+            })
+            .catch(function(err) {
+                topicRadarGrid.innerHTML = '<div class="topic-radar-loading">Radar unavailable: ' + escapeHtml(String(err)) + '</div>';
+            });
+    }
 
     // Context mode hints
     var contextHints = {
         auto: 'Auto-detects if a knowledge base matches your topic.',
         web: 'Uses web search to find relevant context for any topic.',
-        none: 'Uses only the AI\'s built-in knowledge (faster, but less context).',
+        none: 'Uses only xAI/Grok generation and avoids OpenAI-backed archive search.',
     };
 
     // Context mode toggle
@@ -70,6 +134,49 @@ function initStartPage() {
                     domainIndicator.style.display = 'none';
                 }
             });
+        });
+    }
+
+    if (domainSelect) {
+        fetch('/generate/api/domains')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                (data.domains || []).forEach(function(domain) {
+                    domainSummaries[domain.name] = domain;
+                    var option = document.createElement('option');
+                    option.value = domain.name;
+                    option.textContent = domain.display_name || domain.name;
+                    domainSelect.appendChild(option);
+                });
+            })
+            .catch(function(err) {
+                console.warn('Failed to load domain packs:', err);
+            });
+
+        domainSelect.addEventListener('change', function() {
+            var selected = domainSelect.value;
+            if (selected && contextBtns) {
+                currentContextMode = 'rag';
+                contextBtns.querySelectorAll('.context-btn').forEach(function(b) {
+                    b.classList.toggle('active', b.dataset.mode === 'auto');
+                });
+                if (contextHint) {
+                    contextHint.textContent = 'Uses the selected domain pack knowledge base and tone rules.';
+                }
+            }
+            if (domainHint) {
+                var summary = domainSummaries[selected];
+                domainHint.textContent = summary
+                    ? summary.description + ' Source: ' + summary.content_source_name + '.'
+                    : 'Use Generic for any topic, or choose a niche pack when one exists.';
+            }
+            loadTopicRadar(selected);
+        });
+    }
+
+    if (refreshRadarBtn && domainSelect) {
+        refreshRadarBtn.addEventListener('click', function() {
+            loadTopicRadar(domainSelect.value);
         });
     }
 
@@ -115,7 +222,11 @@ function initStartPage() {
         surpriseBtn.addEventListener('click', function() {
             surpriseBtn.disabled = true;
             surpriseBtn.textContent = 'Thinking...';
-            fetch('/generate/api/surprise', { method: 'POST' })
+            fetch('/generate/api/surprise', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domain: domainSelect ? domainSelect.value : '' }),
+            })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.topic) topicInput.value = data.topic;
@@ -138,14 +249,22 @@ function initStartPage() {
 
             var numConcepts = document.getElementById('num-concepts');
             var creativity = document.getElementById('creativity');
+            var humorEdge = document.getElementById('humor-edge');
             var modelSelect = document.getElementById('model-select');
+            var aiRefine = document.getElementById('ai-refine');
+            var criticModelSelect = document.getElementById('critic-model-select');
+            var selectedDomain = domainSelect ? domainSelect.value : '';
 
             var body = {
                 topic: topic,
                 num_concepts: numConcepts ? parseInt(numConcepts.value) : 20,
                 creativity: creativity ? parseFloat(creativity.value) / 10 : 1.0,
+                humor_edge: humorEdge ? parseInt(humorEdge.value) : 7,
                 context_mode: currentContextMode,
-                model: modelSelect ? modelSelect.value : 'grok-4-0709',
+                domain: selectedDomain,
+                model: modelSelect ? modelSelect.value : 'gpt-5.4-mini',
+                ai_refine: aiRefine ? aiRefine.checked : false,
+                critic_model: criticModelSelect ? criticModelSelect.value : 'gpt-5.5',
             };
 
             var submitBtn = form.querySelector('button[type="submit"]');
@@ -298,12 +417,41 @@ function initReviewPage(jobId) {
         var criteria = data.domain_criteria || [];
         var html = '<h2>Review ' + data.evaluated.length + ' memes for "' + escapeHtml(data.topic || '') + '"</h2>';
         html += '<p style="color:#666;margin-bottom:20px;">Click cards to select, then generate images for your picks.</p>';
+        if (data.creative_brief) {
+            html += '<details class="creative-brief"><summary>Creative Brief</summary><pre>' +
+                escapeHtml(data.creative_brief) + '</pre></details>';
+        }
+        if (data.ai_critique) {
+            var critiqueText = '';
+            if (data.ai_critique.rewrite_brief) {
+                critiqueText += 'Rewrite brief: ' + data.ai_critique.rewrite_brief + '\n\n';
+            }
+            if (data.ai_critique.prompt_rules && data.ai_critique.prompt_rules.length) {
+                critiqueText += 'Prompt rules:\n';
+                data.ai_critique.prompt_rules.forEach(function(rule) {
+                    critiqueText += '- ' + rule + '\n';
+                });
+            }
+            html += '<details class="creative-brief ai-critique"><summary>AI Critic Loop</summary><pre>' +
+                escapeHtml(critiqueText.trim()) + '</pre></details>';
+        }
+        if (data.ai_critique_error) {
+            html += '<div class="warning-box">AI critic loop failed: ' +
+                escapeHtml(data.ai_critique_error) + '</div>';
+        }
 
         data.evaluated.forEach(function(meme) {
             html += buildMemeCard(meme, criteria);
         });
 
         cardsContainer.innerHTML = html;
+
+        selectedIndices = new Set(data.recommended_indices || []);
+        selectedIndices.forEach(function(idx) {
+            var card = cardsContainer.querySelector('.meme-card[data-index="' + idx + '"]');
+            if (card) card.classList.add('selected');
+        });
+        updateSelectionBar();
 
         // Attach click handlers
         cardsContainer.querySelectorAll('.meme-card').forEach(function(card) {
@@ -330,6 +478,9 @@ function initReviewPage(jobId) {
         html += '<div class="check">&#10003;</div>';
         html += '<div class="meme-content">';
         html += '<h3>' + escapeHtml(meme.format);
+        if (meme.generation_source === 'critic_rewrite') {
+            html += ' <span class="source-badge source-critic" title="Generated by the AI critic rewrite pass">AI rewrite</span>';
+        }
         // Template category badge
         if (meme.template_category) {
             var badges = {
@@ -696,4 +847,334 @@ function escapeAttr(text) {
     if (!text) return '';
     return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+
+// ---------------------------------------------------------------------------
+// Video polling helper
+// ---------------------------------------------------------------------------
+
+function pollVideoJob(jobId, onProgress, onDone, onFailed, intervalMs) {
+    intervalMs = intervalMs || 3000;
+    var timer = setInterval(function() {
+        fetch('/video/api/status/' + jobId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.state === 'running' || data.state === 'pending') {
+                    if (onProgress) onProgress(data.progress || 'Working...');
+                } else if (data.state === 'done') {
+                    clearInterval(timer);
+                    if (onDone) onDone(data);
+                } else if (data.state === 'failed') {
+                    clearInterval(timer);
+                    if (onFailed) onFailed(data.error || 'Unknown error');
+                }
+            })
+            .catch(function(err) {
+                console.error('Poll error:', err);
+            });
+    }, intervalMs);
+    return timer;
+}
+
+
+// ---------------------------------------------------------------------------
+// Video Start page
+// ---------------------------------------------------------------------------
+
+function initVideoStartPage() {
+    var form = document.getElementById('video-start-form');
+    var topicInput = document.getElementById('topic-input');
+    var advToggle = document.getElementById('adv-toggle');
+    var advContent = document.getElementById('adv-content');
+
+    // Advanced toggle
+    if (advToggle && advContent) {
+        advToggle.addEventListener('click', function() {
+            advContent.classList.toggle('show');
+            advToggle.textContent = advContent.classList.contains('show')
+                ? 'Hide advanced options' : 'Show advanced options';
+        });
+    }
+
+    // Slider value displays
+    document.querySelectorAll('input[type="range"]').forEach(function(slider) {
+        var display = document.getElementById(slider.id + '-val');
+        if (display) {
+            slider.addEventListener('input', function() { display.textContent = slider.value; });
+        }
+    });
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var topic = topicInput.value.trim();
+            if (!topic) { topicInput.focus(); return; }
+
+            var body = {
+                topic: topic,
+                num_concepts: parseInt(document.getElementById('num-concepts').value) || 10,
+                num_scenes: parseInt(document.getElementById('num-scenes').value) || 2,
+                target_duration: parseFloat(document.getElementById('target-duration').value) || 7.0,
+                creativity: (parseFloat(document.getElementById('creativity').value) || 10) / 10,
+            };
+
+            var submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Starting...';
+
+            fetch('/video/api/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.job_id) {
+                    window.location.href = '/video/review/' + data.job_id;
+                } else {
+                    alert(data.error || 'Failed to start');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Generate Concepts';
+                }
+            })
+            .catch(function(err) {
+                alert('Error: ' + err);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generate Concepts';
+            });
+        });
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Video Review page
+// ---------------------------------------------------------------------------
+
+function initVideoReviewPage(jobId) {
+    var progressBox = document.getElementById('progress-box');
+    var progressText = document.getElementById('progress-text');
+    var cardsContainer = document.getElementById('cards-container');
+    var selectionBar = document.getElementById('selection-bar');
+    var selectionCount = document.getElementById('selection-count');
+    var produceBtn = document.getElementById('produce-selected-btn');
+
+    var selectedIndices = new Set();
+
+    pollVideoJob(jobId,
+        function onProgress(msg) {
+            if (progressText) progressText.textContent = msg;
+        },
+        function onDone(data) {
+            if (progressBox) progressBox.style.display = 'none';
+            renderVideoCards(data);
+        },
+        function onFailed(err) {
+            if (progressBox) {
+                progressBox.innerHTML = '<div class="error-box"><h2>Generation Failed</h2><p>' +
+                    escapeHtml(err) + '</p><a href="/video/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
+            }
+        }
+    );
+
+    function renderVideoCards(data) {
+        if (!data.evaluated || !data.evaluated.length) {
+            cardsContainer.innerHTML = '<div class="empty">No concepts were generated. Try a different topic.</div>';
+            return;
+        }
+
+        var criteria = data.criteria || [];
+        var html = '<h2>Review ' + data.evaluated.length + ' video meme concepts for "' + escapeHtml(data.topic || '') + '"</h2>';
+        html += '<p style="color:#666;margin-bottom:20px;">Click cards to select concepts, then produce videos for your picks. Video production costs depend on provider settings and duration.</p>';
+
+        data.evaluated.forEach(function(concept) {
+            html += buildVideoCard(concept, criteria);
+        });
+
+        cardsContainer.innerHTML = html;
+
+        // Click handlers
+        cardsContainer.querySelectorAll('.meme-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                var idx = parseInt(card.dataset.index);
+                if (selectedIndices.has(idx)) {
+                    selectedIndices.delete(idx);
+                    card.classList.remove('selected');
+                } else {
+                    selectedIndices.add(idx);
+                    card.classList.add('selected');
+                }
+                updateSelectionBar();
+            });
+        });
+    }
+
+    function buildVideoCard(concept, criteria) {
+        var html = '<div class="meme-card" data-index="' + concept.index + '">';
+        html += '<div class="rank">' + concept.index + '</div>';
+        html += '<div class="check">&#10003;</div>';
+        html += '<div class="meme-content">';
+        html += '<h3>' + escapeHtml(concept.title) + '</h3>';
+
+        html += '<div class="meme-text"><strong>Hook:</strong> ' + escapeHtml(concept.hook) + '</div>';
+
+        // Scenes
+        (concept.scenes || []).forEach(function(scene) {
+            html += '<div style="margin:8px 0;padding:8px;background:#f9f9f9;border-radius:4px;">';
+            html += '<div style="font-weight:600;font-size:13px;color:#666;">Scene ' + scene.scene_number + ' (' + scene.duration_seconds + 's)</div>';
+            html += '<div class="meme-text" style="margin-top:4px;"><strong>Visual:</strong> ' + escapeHtml(scene.visual_prompt) + '</div>';
+            html += '<div class="meme-text"><strong>VO:</strong> ' + escapeHtml(scene.voiceover_text) + '</div>';
+            if (scene.text_overlay) {
+                html += '<div class="meme-text"><strong>Text:</strong> ' + escapeHtml(scene.text_overlay) + '</div>';
+            }
+            html += '</div>';
+        });
+
+        html += '<div class="meme-text"><strong>CTA:</strong> ' + escapeHtml(concept.cta_text) + '</div>';
+        html += '<div class="meta"><span>Tone: ' + escapeHtml(concept.tone) + '</span><span>Audience: ' + escapeHtml(concept.target_audience) + '</span><span>' + concept.total_duration + 's</span></div>';
+
+        // Score bars
+        html += '<div style="margin-top:10px;">';
+        criteria.forEach(function(crit) {
+            var score = concept.scores[crit.name] || 0;
+            var cls = score >= 7 ? 'high' : (score >= 4 ? 'mid' : 'low');
+            html += '<div class="score-row">';
+            html += '<span class="score-label">' + escapeHtml(crit.display_name) + '</span>';
+            html += '<div class="score-bar-bg"><div class="score-bar ' + cls + '" style="width:' + (score * 10) + '%"></div></div>';
+            html += '<span class="score-value">' + score + '</span>';
+            html += '</div>';
+        });
+        var overallCls = concept.overall_score >= 7 ? 'high' : (concept.overall_score >= 4 ? 'mid' : 'low');
+        html += '<div class="score-row" style="margin-top:4px;font-weight:600;">';
+        html += '<span class="score-label">Overall</span>';
+        html += '<div class="score-bar-bg"><div class="score-bar ' + overallCls + '" style="width:' + (concept.overall_score * 10) + '%"></div></div>';
+        html += '<span class="score-value">' + concept.overall_score + '</span>';
+        html += '</div>';
+        html += '</div>';
+
+        if (concept.evaluation_notes) {
+            html += '<div class="eval-notes">' + escapeHtml(concept.evaluation_notes) + '</div>';
+        }
+
+        html += '</div></div>';
+        return html;
+    }
+
+    function updateSelectionBar() {
+        var count = selectedIndices.size;
+        if (selectionCount) selectionCount.textContent = count + ' selected';
+        if (selectionBar) {
+            if (count > 0) selectionBar.classList.add('show');
+            else selectionBar.classList.remove('show');
+        }
+    }
+
+    if (produceBtn) {
+        produceBtn.addEventListener('click', function() {
+            if (selectedIndices.size === 0) return;
+            produceBtn.disabled = true;
+            produceBtn.textContent = 'Starting production...';
+
+            fetch('/video/api/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    job_id: jobId,
+                    selected_indices: Array.from(selectedIndices),
+                }),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.job_id) {
+                    window.location.href = '/video/results/' + data.job_id;
+                } else {
+                    alert(data.error || 'Failed to start production');
+                    produceBtn.disabled = false;
+                    produceBtn.textContent = 'Produce Selected Video Memes';
+                }
+            })
+            .catch(function(err) {
+                alert('Error: ' + err);
+                produceBtn.disabled = false;
+                produceBtn.textContent = 'Produce Selected Video Memes';
+            });
+        });
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Video Results page
+// ---------------------------------------------------------------------------
+
+function initVideoResultsPage(jobId) {
+    var progressBox = document.getElementById('progress-box');
+    var progressText = document.getElementById('progress-text');
+    var resultsContainer = document.getElementById('results-container');
+
+    // Poll more slowly — video production takes minutes
+    pollVideoJob(jobId,
+        function onProgress(msg) {
+            if (progressText) progressText.textContent = msg;
+        },
+        function onDone(data) {
+            if (progressBox) progressBox.style.display = 'none';
+            renderVideoResults(data);
+        },
+        function onFailed(err) {
+            if (progressBox) {
+                progressBox.innerHTML = '<div class="error-box"><h2>Video Production Failed</h2><p>' +
+                    escapeHtml(err) + '</p><a href="/video/" class="btn btn-primary" style="margin-top:12px;">Try Again</a></div>';
+            }
+        },
+        5000  // Poll every 5s (video gen is slow)
+    );
+
+    function renderVideoResults(data) {
+        if (!data.videos || !data.videos.length) {
+            resultsContainer.innerHTML = '<div class="empty">No videos were produced.</div>';
+            return;
+        }
+
+        var html = '<h2>' + data.videos.length + ' Video Memes Produced</h2>';
+
+        if (data.cost_summary) {
+            html += '<div class="counter">Total cost: $' + (data.cost_summary.total_spent || 0).toFixed(2) + '</div>';
+        }
+
+        html += '<div class="results-grid">';
+        data.videos.forEach(function(video) {
+            html += '<div class="result-card">';
+
+            // Video player
+            if (video.filename) {
+                html += '<video controls style="width:100%;max-height:400px;border-radius:4px;background:#000;">';
+                html += '<source src="/video/preview/' + encodeURIComponent(video.filename) + '" type="video/mp4">';
+                html += 'Your browser does not support video playback.';
+                html += '</video>';
+            }
+
+            html += '<div class="result-info">';
+            html += '<h3>' + escapeHtml(video.title) + '</h3>';
+            html += '<div class="meta">';
+            html += '<span>Duration: ' + video.total_duration + 's</span>';
+            html += '<span>Cost: $' + video.total_cost.toFixed(2) + '</span>';
+            html += '</div>';
+            html += '<div class="meme-text"><strong>Hook:</strong> ' + escapeHtml(video.hook) + '</div>';
+            html += '<div class="meme-text"><strong>CTA:</strong> ' + escapeHtml(video.cta_text) + '</div>';
+
+            // Download button
+            if (video.filename) {
+                html += '<div class="download-btns" style="margin-top:12px;">';
+                html += '<a class="btn btn-download" href="/video/preview/' + encodeURIComponent(video.filename) + '" download>Download MP4</a>';
+                html += '</div>';
+            }
+
+            html += '</div></div>';
+        });
+        html += '</div>';
+
+        resultsContainer.innerHTML = html;
+    }
 }

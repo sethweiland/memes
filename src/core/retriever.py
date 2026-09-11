@@ -48,6 +48,7 @@ class DomainRetriever:
         self.vectorstore = vectorstore or DomainVectorStore(domain_config)
         self.prompts = prompt_templates
         self.grok_client = GrokClient()
+        self._semantic_search_disabled_reason: str | None = None
 
     def expand_query(self, query: str, num_variants: int = 3) -> list[str]:
         """
@@ -191,9 +192,18 @@ Return ONLY the queries, one per line, no numbering or bullets."""
         all_results: dict[str, RetrievalResult] = {}
 
         for q in queries:
-            semantic_results = self.vectorstore.semantic_search(
-                q, k=k * 2, where=chroma_filter
-            )
+            semantic_results = []
+            if self._semantic_search_disabled_reason is None:
+                try:
+                    semantic_results = self.vectorstore.semantic_search(
+                        q, k=k * 2, where=chroma_filter
+                    )
+                except Exception as e:
+                    self._semantic_search_disabled_reason = str(e)
+                    print(
+                        "Semantic archive search unavailable; "
+                        f"falling back to keyword search only. Reason: {e}"
+                    )
             for r in semantic_results:
                 if r['id'] not in all_results:
                     all_results[r['id']] = RetrievalResult(

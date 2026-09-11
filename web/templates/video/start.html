@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set active_page = "video" %}
+{% block title %}Generate Video Memes{% endblock %}
+
+{% block content %}
+<div class="start-form">
+    <h1>Generate Video Memes</h1>
+    <form id="video-start-form">
+        <div class="form-group">
+            <label for="topic-input">Topic</label>
+            <input type="text" id="topic-input" placeholder="e.g. banjo players, bluegrass festival chaos, your favorite niche topic..." autofocus>
+            <div class="hint">Describe the topic or joke territory for a short vertical video meme.</div>
+        </div>
+
+        <div class="form-group">
+            <label for="num-scenes">Scenes per video: <span id="num-scenes-val">2</span></label>
+            <div class="slider-group">
+                <span>1</span>
+                <input type="range" id="num-scenes" min="1" max="3" step="1" value="2">
+                <span>3</span>
+            </div>
+            <div class="hint">More scenes = more movement and setup, but higher cost per video.</div>
+        </div>
+
+        <div class="form-group">
+            <label for="target-duration">Target duration: <span id="target-duration-val">7</span>s</label>
+            <div class="slider-group">
+                <span>5s</span>
+                <input type="range" id="target-duration" min="5" max="10" step="1" value="7">
+                <span>10s</span>
+            </div>
+        </div>
+
+        <div class="advanced-toggle" id="adv-toggle">Show advanced options</div>
+        <div class="advanced-content" id="adv-content">
+            <div class="form-group">
+                <label for="num-concepts">Number of concepts: <span id="num-concepts-val">10</span></label>
+                <div class="slider-group">
+                    <span>3</span>
+                    <input type="range" id="num-concepts" min="3" max="50" step="1" value="10">
+                    <span>50</span>
+                </div>
+                <div class="hint">More concepts = more variety to choose from.</div>
+            </div>
+            <div class="form-group">
+                <label for="creativity">Creativity: <span id="creativity-val">10</span></label>
+                <div class="slider-group">
+                    <span>3</span>
+                    <input type="range" id="creativity" min="3" max="15" step="1" value="10">
+                    <span>15</span>
+                </div>
+                <div class="hint">Higher = more unexpected/experimental. Lower = safer concepts.</div>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button type="submit" class="btn btn-primary btn-large">Generate Concepts</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>initVideoStartPage();</script>
+{% endblock %}

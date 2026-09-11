@@ -140,4 +140,15 @@ def build_feedback_context(limit: int = 5) -> str:
     for quote in criticism_quotes[-limit:]:
         lines.append(f'- Recent criticism: "{quote}"')
 
+    ai_context = ""
+    try:
+        from src.core.ai_improvement_loop import build_ai_feedback_context
+        ai_context = build_ai_feedback_context(limit=3)
+    except Exception:
+        ai_context = ""
+
+    if ai_context:
+        lines.append("")
+        lines.append(ai_context)
+
     return "\n".join(lines)

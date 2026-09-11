@@ -86,14 +86,15 @@ class GenericConfig:
         return total
 
 
-# Generic evaluation criteria for any topic
-# NOTE: Humor is weighted highest at 60% - funny beats everything
+# Generic evaluation criteria for any topic.
+# Humor stays highest, but novelty and compression are now first-class because
+# "accurate topic text on a template" is not enough to make a strong meme.
 GENERIC_EVALUATION_CRITERIA = [
     EvaluationCriterion(
         name="humor",
         display_name="Humor",
         description="Is it actually funny? Would people share this?",
-        weight=0.60,
+        weight=0.45,
         scoring_guide=ScoringGuide(
             low="Not funny, confusing, or trying too hard",
             medium="Mildly amusing, decent chuckle",
@@ -104,7 +105,7 @@ GENERIC_EVALUATION_CRITERIA = [
         name="relevance",
         display_name="Topic Relevance",
         description="Does the meme connect to the topic (even if absurdly)?",
-        weight=0.25,
+        weight=0.20,
         scoring_guide=ScoringGuide(
             low="Completely random, no connection to topic",
             medium="Loosely related or absurdist take on the topic",
@@ -113,10 +114,32 @@ GENERIC_EVALUATION_CRITERIA = [
         low_score_note="Might be intentional absurdism",
     ),
     EvaluationCriterion(
+        name="novelty",
+        display_name="Novelty",
+        description="Does it find a fresh tension, angle, or social truth instead of the obvious first joke?",
+        weight=0.20,
+        scoring_guide=ScoringGuide(
+            low="Obvious, generic, or already overdone",
+            medium="Some specific angle, but familiar execution",
+            high="Fresh, painfully specific, or surprising in a way that feels native",
+        ),
+    ),
+    EvaluationCriterion(
+        name="compression",
+        display_name="Compression",
+        description="Is the joke concise and instantly readable?",
+        weight=0.10,
+        scoring_guide=ScoringGuide(
+            low="Too wordy, explains itself, or has multiple competing ideas",
+            medium="Readable but could be tighter",
+            high="Sharp, compact, and understandable in under two seconds",
+        ),
+    ),
+    EvaluationCriterion(
         name="template_fit",
         display_name="Template Fit",
         description="Does the text work with the meme format?",
-        weight=0.15,
+        weight=0.05,
         scoring_guide=ScoringGuide(
             low="Misuses the template or text doesn't fit",
             medium="Acceptable fit, gets the job done",

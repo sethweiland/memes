@@ -4,14 +4,41 @@
 
 {% block content %}
 <h1>Meme Gallery</h1>
+<div class="gallery-toolbar">
+    <div>
+        <div class="counter">{{ memes|length }} shown</div>
+        <div class="gallery-counts">{{ totals.original }} original · {{ totals.classic }} classic · {{ totals.all }} total</div>
+    </div>
+    <div class="gallery-filters">
+        <a href="{{ url_for('gallery.index', date='latest', type=type_filter) }}" class="{{ 'active' if date_filter == 'latest' }}">Latest 24</a>
+        <a href="{{ url_for('gallery.index', date='today', type=type_filter) }}" class="{{ 'active' if date_filter == 'today' }}">Today</a>
+        <a href="{{ url_for('gallery.index', date='week', type=type_filter) }}" class="{{ 'active' if date_filter == 'week' }}">Last 7 Days</a>
+        <a href="{{ url_for('gallery.index', date='all', type=type_filter) }}" class="{{ 'active' if date_filter == 'all' }}">All</a>
+        {% for d in available_dates %}
+        <a href="{{ url_for('gallery.index', date=d.key, type=type_filter) }}" class="{{ 'active' if date_filter == d.key }}">{{ d.label }}</a>
+        {% endfor %}
+    </div>
+</div>
+<div class="gallery-type-tabs">
+    <a href="{{ url_for('gallery.index', date=date_filter, type='all') }}" class="{{ 'active' if type_filter == 'all' }}">All Types</a>
+    <a href="{{ url_for('gallery.index', date=date_filter, type='original') }}" class="{{ 'active' if type_filter == 'original' }}">Originals</a>
+    <a href="{{ url_for('gallery.index', date=date_filter, type='classic') }}" class="{{ 'active' if type_filter == 'classic' }}">Known Templates</a>
+</div>
 {% if memes %}
-<div class="counter">{{ memes|length }} memes</div>
 <div class="gallery-grid">
     {% for meme in memes %}
-    <div class="gallery-item" title="{{ meme.metadata.get('template', meme.filename) }}">
+    <div class="gallery-item {{ 'gallery-item-original' if meme.is_original else 'gallery-item-classic' }}" title="{{ meme.template_name }}">
+        <div class="gallery-badge {{ 'original' if meme.is_original else 'classic' }}">{{ meme.meme_type }}</div>
         <img src="{{ url_for('gallery.serve_image', filename=meme.filename) }}" alt="{{ meme.filename }}" loading="lazy">
+        <div class="gallery-meta">
+            <strong>{{ meme.template_name }}</strong>
+            <span>{{ meme.created_label }}</span>
+            {% if meme.metadata.get('top_text') %}
+            <small>{{ meme.metadata.get('top_text') }}</small>
+            {% endif %}
+        </div>
         <div class="overlay">
-            <span>{{ meme.metadata.get('template', meme.filename) }}</span>
+            <span>{{ meme.template_name }}</span>
             <a class="btn btn-download btn-download-ig overlay-download" href="{{ url_for('gallery.download', filename=meme.filename, format='instagram') }}" download title="Download for Instagram" onclick="event.stopPropagation();">&#8595;</a>
         </div>
     </div>

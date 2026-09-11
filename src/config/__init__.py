@@ -70,6 +70,28 @@ def list_domains(domains_dir: Optional[Path] = None) -> list[str]:
     ])
 
 
+def list_domain_summaries(domains_dir: Optional[Path] = None) -> list[dict[str, str]]:
+    """
+    List available domain packs with display metadata.
+
+    This is intentionally lightweight for UI/API use. If a config cannot be
+    loaded, it is skipped rather than breaking the whole registry.
+    """
+    summaries: list[dict[str, str]] = []
+    for name in list_domains(domains_dir):
+        try:
+            config = load_domain(name, domains_dir)
+        except Exception:
+            continue
+        summaries.append({
+            "name": config.name,
+            "display_name": config.display_name,
+            "description": config.description,
+            "content_source_name": config.content_source_name,
+        })
+    return summaries
+
+
 __all__ = [
     "DomainConfig",
     "EntityCategory",
@@ -78,4 +100,5 @@ __all__ = [
     "PromptTemplates",
     "load_domain",
     "list_domains",
+    "list_domain_summaries",
 ]

@@ -12,14 +12,33 @@
             <div class="hint">Enter any topic - we'll find the best context for it.</div>
         </div>
 
+        <div class="form-group">
+            <label for="domain-select">Domain Pack</label>
+            <select id="domain-select" class="form-select">
+                <option value="">Generic / Auto</option>
+            </select>
+            <div class="hint" id="domain-hint">Use Generic for any topic, or choose a niche pack when one exists.</div>
+        </div>
+
+        <div class="topic-radar" id="topic-radar" style="display:none;">
+            <div class="topic-radar-header">
+                <div>
+                    <h2>Topic Radar</h2>
+                    <p id="topic-radar-subtitle">Fresh candidate topics for this domain pack.</p>
+                </div>
+                <button type="button" id="refresh-radar-btn" class="btn btn-secondary">Refresh</button>
+            </div>
+            <div class="topic-radar-grid" id="topic-radar-grid"></div>
+        </div>
+
         <div class="context-mode-group">
             <label>Context Source</label>
             <div class="context-mode-btns" id="context-mode-btns">
-                <button type="button" data-mode="auto" class="context-btn active">Auto</button>
+                <button type="button" data-mode="none" class="context-btn active">LLM Only</button>
                 <button type="button" data-mode="web" class="context-btn">Web Search</button>
-                <button type="button" data-mode="none" class="context-btn">LLM Only</button>
+                <button type="button" data-mode="auto" class="context-btn">Auto</button>
             </div>
-            <div class="hint" id="context-hint">Auto-detects if a knowledge base matches your topic.</div>
+            <div class="hint" id="context-hint">Uses only xAI/Grok generation and avoids OpenAI-backed archive search.</div>
         </div>
 
         <div id="domain-indicator" class="domain-indicator" style="display: none;">
@@ -32,11 +51,32 @@
             <div class="form-group">
                 <label for="model-select">Model</label>
                 <select id="model-select" class="form-select">
-                    <option value="grok-4-0709" selected>Grok 4 (Best quality)</option>
-                    <option value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning (Cheaper)</option>
-                    <option value="grok-3-mini">Grok 3 Mini (Fastest/Cheapest)</option>
+                    <option value="gpt-5.4-mini" selected>GPT 5.4 Mini (Default)</option>
+                    <option value="gpt-5.5">GPT 5.5 (Highest quality)</option>
+                    <option value="gpt-5.4">GPT 5.4</option>
+                    <option value="grok-4-0709">Grok 4</option>
+                    <option value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning</option>
+                    <option value="grok-3-mini">Grok 3 Mini</option>
                 </select>
-                <div class="hint">Higher quality models = better memes but more expensive.</div>
+                <div class="hint">GPT is now the default. Grok remains available for comparison.</div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-row" for="ai-refine">
+                    <input type="checkbox" id="ai-refine">
+                    <span>Tiny AI critic loop</span>
+                </label>
+                <div class="hint">Optional quality pass: critiques up to 3 concepts, saves the lesson, and generates up to 3 rewrites.</div>
+            </div>
+            <div class="form-group">
+                <label for="critic-model-select">Critic Model</label>
+                <select id="critic-model-select" class="form-select">
+                    <option value="gpt-5.5" selected>GPT 5.5 (Recommended critic)</option>
+                    <option value="gpt-5.4">GPT 5.4</option>
+                    <option value="gpt-5.4-mini">GPT 5.4 Mini</option>
+                    <option value="grok-4-0709">Grok 4</option>
+                    <option value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning</option>
+                </select>
+                <div class="hint">Only used when the critic loop is enabled.</div>
             </div>
             <div class="form-group">
                 <label for="num-concepts">Number of concepts: <span id="num-concepts-val">20</span></label>
@@ -55,6 +95,15 @@
                     <span>15</span>
                 </div>
                 <div class="hint">Higher = more unexpected/absurd. Lower = safer bets.</div>
+            </div>
+            <div class="form-group">
+                <label for="humor-edge">Edge: <span id="humor-edge-val">8</span></label>
+                <div class="slider-group">
+                    <span>Safe</span>
+                    <input type="range" id="humor-edge" min="1" max="10" step="1" value="8">
+                    <span>Fermented</span>
+                </div>
+                <div class="hint">Higher = less corporate, sharper, weirder, more roast-the-scene energy.</div>
             </div>
         </div>
 

@@ -77,8 +77,24 @@ class DomainVectorStore:
 
         # Use domain-specific paths if not overridden
         data_dir = Path(domain_config.data_dir)
-        self.persist_dir = persist_dir or str(data_dir / "chroma")
-        self.bm25_path = bm25_path or str(data_dir / "bm25_index.pkl")
+        default_persist_dir = data_dir / "chroma"
+        default_bm25_path = data_dir / "bm25_index.pkl"
+
+        # Backward compatibility: older bluegrass indexes lived directly under data/.
+        # Prefer that populated index when the newer domain-specific BM25 file is absent.
+        legacy_persist_dir = Path("data") / "chroma"
+        legacy_bm25_path = Path("data") / "bm25_index.pkl"
+        if (
+            persist_dir is None
+            and bm25_path is None
+            and not default_bm25_path.exists()
+            and legacy_bm25_path.exists()
+        ):
+            default_persist_dir = legacy_persist_dir
+            default_bm25_path = legacy_bm25_path
+
+        self.persist_dir = persist_dir or str(default_persist_dir)
+        self.bm25_path = bm25_path or str(default_bm25_path)
 
         # Ensure directories exist
         os.makedirs(self.persist_dir, exist_ok=True)

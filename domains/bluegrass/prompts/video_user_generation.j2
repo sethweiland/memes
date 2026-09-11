@@ -1,0 +1,37 @@
+Topic: {{ topic }}
+
+{% if context_text %}
+CONTEXT FROM {{ domain.content_source_description | upper }}:
+{{ context_text }}
+{% endif %}
+
+Generate {{ num_concepts }} video ad concepts. Each ad should be {{ target_duration | int }} seconds total with {{ num_scenes }} scene(s).
+
+Use this EXACT format for each concept (no markdown, no numbering):
+
+TITLE: working title for the concept
+HOOK: the attention-grabbing opening (what makes someone stop scrolling)
+{% for i in range(1, num_scenes + 1) %}
+SCENE_{{ i }}_VISUAL: Describe what the viewer sees (specific enough for AI video generation)
+SCENE_{{ i }}_VOICEOVER: What is spoken during this scene
+SCENE_{{ i }}_TEXT: On-screen text overlay (or "none")
+SCENE_{{ i }}_DURATION: Duration in seconds (e.g., 3.0)
+{% endfor %}
+CTA_TEXT: call-to-action text shown on screen
+CTA_VOICEOVER: spoken call-to-action
+TONE: the overall feel (e.g., energetic, emotional, humorous, informative)
+AUDIENCE: who this ad targets
+EXPLANATION: why this concept works
+
+---
+
+TITLE: next concept...
+
+DIVERSITY REQUIREMENTS:
+- Each concept must take a DIFFERENT angle or approach
+- Vary the tone across concepts (mix of emotional, humorous, informative)
+- Use different visual styles (close-up, wide shot, motion, static)
+
+{% if previously_covered %}
+AVOID these angles already covered: {{ previously_covered | join(', ') }}
+{% endif %}

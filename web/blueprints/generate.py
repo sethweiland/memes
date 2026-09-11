@@ -18,11 +18,36 @@ CONTEXT_MODE_WEB = "web"
 CONTEXT_MODE_NONE = "none"
 
 
+def _coerce_int(value, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _coerce_float(value, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 # ---------------------------------------------------------------------------
 # Stage 1 worker
 # ---------------------------------------------------------------------------
 
-def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode="auto", model="grok-4-0709"):
+def _run_stage1(
+    job,
+    topic,
+    num_concepts,
+    creativity,
+    domain=None,
+    context_mode="auto",
+    model="gpt-5.4-mini",
+    humor_edge=7,
+    ai_refine=False,
+    critic_model="gpt-5.5",
+):
     """
     Background worker: generate freely + evaluate.
 
@@ -40,6 +65,7 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
     from src.core.two_stage import TwoStagePipeline, GenericTwoStagePipeline, _format_context_text
     from src.core.fallback_context import FallbackContextProvider
     from src.core.generic_config import get_generic_config
+    from src.core.creative_brief import build_creative_brief
 
     job.progress = "Loading models..."
 
@@ -47,6 +73,7 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
         num_concepts=num_concepts,
         generation_creativity=creativity,
         creativity=creativity,
+        humor_edge=humor_edge,
     )
 
     # Determine which pipeline to use based on context_mode
@@ -76,6 +103,7 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
         used_chunk_ids: set[str] = set()
         previously_covered: list[str] = []
         previously_used_templates: list[str] = []
+        creative_brief_text = ""
         batches_needed = (num_concepts + pipe_config.concepts_per_batch - 1) // pipe_config.concepts_per_batch
 
         for batch_num in range(batches_needed):
@@ -107,6 +135,14 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
             if feedback_ctx:
                 context_text += "\n\n" + feedback_ctx
 
+            if not creative_brief_text:
+                job.progress = "Finding memeable tensions..."
+                creative_brief_text = build_creative_brief(
+                    pipeline.rag.grok,
+                    topic=topic,
+                    context_text=context_text,
+                ).to_prompt_section()
+
             job.progress = f"Generating batch {batch_num + 1}/{batches_needed}..."
 
             memes = two_stage.generate_freely(
@@ -116,6 +152,7 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
                 num_ideas=batch_size,
                 previously_covered=previously_covered if previously_covered else None,
                 previously_used_templates=previously_used_templates if previously_used_templates else None,
+                creative_brief=creative_brief_text,
             )
             all_memes.extend(memes)
 
@@ -154,56 +191,123 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
         # Use generic two-stage pipeline
         two_stage = GenericTwoStagePipeline(config, pipe_config, model=model)
         pipeline = two_stage  # For stage 2
-        template_catalog = two_stage.catalog.get_prompt_catalog(limit=50, randomize=True)
+        classic_template_catalog = two_stage.catalog.get_classic_prompt_catalog(limit=50, randomize=True)
+        original_template_catalog = two_stage.catalog.get_original_prompt_catalog()
 
         feedback_ctx = build_feedback_context()
         if feedback_ctx:
             context_text += "\n\n" + feedback_ctx
 
-        # Generate in batches
         all_memes = []
         previously_covered: list[str] = []
         previously_used_templates: list[str] = []
-        batches_needed = (num_concepts + pipe_config.concepts_per_batch - 1) // pipe_config.concepts_per_batch
+        job.progress = "Finding memeable tensions..."
+        creative_brief_text = build_creative_brief(
+            two_stage.grok,
+            topic=topic,
+            context_text=context_text,
+        ).to_prompt_section()
 
-        for batch_num in range(batches_needed):
-            remaining = num_concepts - len(all_memes)
-            batch_size = min(pipe_config.concepts_per_batch, remaining)
-            if batch_size <= 0:
-                break
+        original_target = max(2, round(num_concepts * 0.4)) if num_concepts >= 8 else max(1, num_concepts // 3)
+        classic_target = max(0, num_concepts - original_target)
+        lanes = [
+            ("classic", classic_target, classic_template_catalog),
+            ("original", original_target, original_template_catalog),
+        ]
 
-            job.progress = f"Generating batch {batch_num + 1}/{batches_needed}..."
+        for lane_name, lane_target, lane_catalog in lanes:
+            generated_in_lane = 0
+            batches_needed = (lane_target + pipe_config.concepts_per_batch - 1) // pipe_config.concepts_per_batch
+            for batch_num in range(batches_needed):
+                remaining = lane_target - generated_in_lane
+                batch_size = min(pipe_config.concepts_per_batch, remaining)
+                if batch_size <= 0:
+                    break
 
-            memes = two_stage.generate_freely(
-                topic=topic,
-                context_text=context_text,
-                template_catalog=template_catalog,
-                num_ideas=batch_size,
-                previously_covered=previously_covered if previously_covered else None,
-                previously_used_templates=previously_used_templates if previously_used_templates else None,
-            )
-            all_memes.extend(memes)
+                job.progress = f"Generating {lane_name} batch {batch_num + 1}/{batches_needed}..."
 
-            for m in memes:
-                # Track used templates to avoid duplicates
-                if m.format:
-                    previously_used_templates.append(m.format)
-                # Track topics for content diversity
-                refs = []
-                if m.format:
-                    refs.append(m.format)
-                for text in [m.top_text or "", m.bottom_text or ""]:
-                    words = [w for w in text.split() if w[0:1].isupper() and len(w) > 2]
-                    refs.extend(words[:3])
-                previously_covered.extend(refs)
+                memes = two_stage.generate_freely(
+                    topic=topic,
+                    context_text=context_text,
+                    template_catalog=lane_catalog,
+                    num_ideas=batch_size,
+                    previously_covered=previously_covered if previously_covered else None,
+                    previously_used_templates=previously_used_templates if previously_used_templates else None,
+                    creative_brief=creative_brief_text,
+                    format_lane=lane_name,
+                )
+                all_memes.extend(memes)
+                generated_in_lane += len(memes)
 
-            job.progress = f"Generated {len(all_memes)}/{num_concepts} concepts..."
+                for m in memes:
+                    if m.format:
+                        previously_used_templates.append(m.format)
+                    refs = []
+                    if m.format:
+                        refs.append(m.format)
+                    for text in [m.top_text or "", m.bottom_text or ""]:
+                        words = [w for w in text.split() if w[0:1].isupper() and len(w) > 2]
+                        refs.extend(words[:3])
+                    previously_covered.extend(refs)
+
+                job.progress = f"Generated {len(all_memes)}/{num_concepts} concepts..."
 
         context_text_final = context_text
 
     job.progress = f"Evaluating {len(all_memes)} concepts..."
     evaluated = two_stage.evaluate_for_review(all_memes, context_text_final)
     job.progress = f"Evaluation complete — {len(evaluated)} memes scored"
+
+    ai_critique = None
+    ai_critique_error = ""
+    if ai_refine and evaluated:
+        try:
+            from src.core.ai_improvement_loop import AIImprovementLoop, save_ai_feedback
+
+            job.progress = "Running tiny AI critic loop..."
+            critic = AIImprovementLoop(model=critic_model)
+            ai_critique = critic.critique(
+                topic=topic,
+                evaluated=evaluated,
+                context_text=context_text_final,
+                limit=3,
+            )
+            if ai_critique:
+                save_ai_feedback(ai_critique)
+                improvement_brief = ai_critique.to_prompt_section()
+                job.progress = "Generating critic-informed rewrites..."
+                rewrite_count = min(3, max(1, num_concepts // 6))
+                if domain and context_mode == CONTEXT_MODE_RAG:
+                    rewrite_catalog = template_catalog
+                    improved = two_stage.generate_freely(
+                        topic=topic,
+                        context_text=context_text_final,
+                        template_catalog=rewrite_catalog,
+                        num_ideas=rewrite_count,
+                        previously_covered=previously_covered if previously_covered else None,
+                        previously_used_templates=previously_used_templates if previously_used_templates else None,
+                        creative_brief=(creative_brief_text + "\n\n" + improvement_brief).strip(),
+                    )
+                else:
+                    improved = two_stage.generate_freely(
+                        topic=topic,
+                        context_text=context_text_final,
+                        template_catalog=original_template_catalog + "\n\n" + classic_template_catalog,
+                        num_ideas=rewrite_count,
+                        previously_covered=previously_covered if previously_covered else None,
+                        previously_used_templates=previously_used_templates if previously_used_templates else None,
+                        creative_brief=(creative_brief_text + "\n\n" + improvement_brief).strip(),
+                        format_lane="mixed",
+                    )
+                if improved:
+                    job.progress = f"Evaluating {len(improved)} critic rewrites..."
+                    improved_evaluated = two_stage.evaluate_for_review(improved, context_text_final)
+                    for item in improved_evaluated:
+                        item.generation_source = "critic_rewrite"
+                    evaluated.extend(improved_evaluated)
+                    evaluated.sort(key=lambda e: e.overall_score, reverse=True)
+        except Exception as e:
+            ai_critique_error = str(e)
 
     # Store pipeline + evaluated memes for Stage 2
     job.result = {
@@ -212,6 +316,9 @@ def _run_stage1(job, topic, num_concepts, creativity, domain=None, context_mode=
         "topic": topic,
         "context_mode": context_mode,
         "domain": domain,
+        "creative_brief": creative_brief_text,
+        "ai_critique": ai_critique.to_dict() if ai_critique else None,
+        "ai_critique_error": ai_critique_error,
         "domain_criteria": [
             {
                 "name": c.name,
@@ -278,6 +385,48 @@ def start():
     return render_template("generate/start.html")
 
 
+@bp.route("/api/domains")
+def api_domains():
+    from src.config import list_domain_summaries
+
+    return jsonify({"domains": list_domain_summaries()})
+
+
+@bp.route("/api/topic-radar")
+def api_topic_radar():
+    import json
+    from pathlib import Path
+
+    from src.config import list_domains, load_domain
+    from src.core.topic_radar import build_topic_radar
+
+    domain = (request.args.get("domain") or "bluegrass").strip()
+    limit = max(1, min(_coerce_int(request.args.get("limit"), 18), 50))
+    include_news = request.args.get("news", "1") not in ("0", "false", "False")
+
+    if domain not in list_domains():
+        return jsonify({"error": f"Unknown domain pack: {domain}"}), 404
+
+    config = load_domain(domain)
+    try:
+        topics = build_topic_radar(config, limit=limit, include_news=include_news)
+        source = "live"
+    except Exception:
+        cache_path = Path("data/topic_radar") / f"{domain}.json"
+        if not cache_path.exists():
+            raise
+        cached = json.loads(cache_path.read_text(encoding="utf-8"))
+        topics = cached.get("topics", [])[:limit]
+        source = "cache"
+
+    return jsonify({
+        "domain": domain,
+        "display_name": config.display_name,
+        "source": source,
+        "topics": topics,
+    })
+
+
 @bp.route("/api/start", methods=["POST"])
 def api_start():
     data = request.get_json(silent=True) or {}
@@ -285,27 +434,45 @@ def api_start():
     if not topic:
         return jsonify({"error": "Topic is required"}), 400
 
-    num_concepts = int(data.get("num_concepts", 20))
-    creativity = float(data.get("creativity", 1.0))
+    num_concepts = _coerce_int(data.get("num_concepts"), 20)
+    creativity = _coerce_float(data.get("creativity"), 1.0)
+    humor_edge = _coerce_int(data.get("humor_edge"), 7)
     context_mode = data.get("context_mode", CONTEXT_MODE_AUTO)
-    model = data.get("model", "grok-4-0709")
+    requested_domain = (data.get("domain") or "").strip()
+    model = data.get("model", "gpt-5.4-mini")
+    ai_refine = bool(data.get("ai_refine", False))
+    critic_model = data.get("critic_model", "gpt-5.5")
 
     # Clamp values
     num_concepts = max(5, min(100, num_concepts))
     creativity = max(0.3, min(1.5, creativity))
+    humor_edge = max(1, min(10, humor_edge))
 
     # Validate model
-    valid_models = {"grok-4-0709", "grok-4-1-fast-reasoning", "grok-3-mini"}
+    valid_models = {"gpt-5.4-mini", "gpt-5.5", "gpt-5.4", "grok-4-0709", "grok-4-1-fast-reasoning", "grok-3-mini"}
     if model not in valid_models:
-        model = "grok-4-0709"
+        model = "gpt-5.4-mini"
+    if critic_model not in valid_models:
+        critic_model = "gpt-5.5"
 
     # Validate context_mode
     if context_mode not in (CONTEXT_MODE_AUTO, CONTEXT_MODE_RAG, CONTEXT_MODE_WEB, CONTEXT_MODE_NONE):
         context_mode = CONTEXT_MODE_AUTO
 
-    # Auto-detect domain if context_mode is "auto"
+    # Explicit domain selection wins. This is the extensibility path for
+    # domain packs: bluegrass today, other niches later.
     domain = None
-    if context_mode == CONTEXT_MODE_AUTO:
+    if requested_domain:
+        from src.config import list_domains
+
+        if requested_domain in list_domains():
+            domain = requested_domain
+            context_mode = CONTEXT_MODE_RAG
+        elif context_mode == CONTEXT_MODE_RAG:
+            context_mode = CONTEXT_MODE_WEB
+
+    # Auto-detect domain if context_mode is "auto"
+    if not domain and context_mode == CONTEXT_MODE_AUTO:
         from src.core.domain_classifier import DomainClassifier
         from src.core.grok import GrokClient
 
@@ -341,7 +508,18 @@ def api_start():
         except Exception:
             context_mode = CONTEXT_MODE_WEB
 
-    job_id = jobs.submit(_run_stage1, topic, num_concepts, creativity, domain, context_mode, model)
+    job_id = jobs.submit(
+        _run_stage1,
+        topic,
+        num_concepts,
+        creativity,
+        domain,
+        context_mode,
+        model,
+        humor_edge,
+        ai_refine,
+        critic_model,
+    )
     return jsonify({
         "job_id": job_id,
         "detected_domain": domain,
@@ -366,6 +544,8 @@ def api_status(job_id):
     if job.state == "done" and job.result:
         # For stage 1 results, serialize evaluated memes
         if "evaluated" in job.result:
+            from src.core.meme_selection import select_balanced_indices
+
             resp["evaluated"] = [
                 {
                     "index": i + 1,
@@ -377,11 +557,19 @@ def api_status(job_id):
                     "evaluation_notes": e.evaluation_notes,
                     "is_absurdist": e.is_absurdist,
                     "template_category": getattr(e, "template_category", ""),
+                    "generation_source": getattr(e, "generation_source", ""),
                 }
                 for i, e in enumerate(job.result["evaluated"])
             ]
             resp["topic"] = job.result.get("topic", "")
             resp["domain_criteria"] = job.result.get("domain_criteria", [])
+            resp["creative_brief"] = job.result.get("creative_brief", "")
+            resp["ai_critique"] = job.result.get("ai_critique")
+            resp["ai_critique_error"] = job.result.get("ai_critique_error", "")
+            resp["recommended_indices"] = select_balanced_indices(
+                job.result["evaluated"],
+                limit=min(6, len(job.result["evaluated"])),
+            )
 
         # For stage 2 results, serialize images
         if "images" in job.result:
@@ -418,7 +606,10 @@ def api_finalize():
     evaluated = source_job.result["evaluated"]
 
     # Validate indices
-    selected_indices = [int(i) for i in selected_indices if 0 < int(i) <= len(evaluated)]
+    selected_indices = [
+        idx for idx in (_coerce_int(i, 0) for i in selected_indices)
+        if 0 < idx <= len(evaluated)
+    ]
     if not selected_indices:
         return jsonify({"error": "No valid indices selected"}), 400
 
@@ -493,36 +684,28 @@ def api_surprise():
     """Generate a random topic via brainstorming."""
     try:
         from src.config import list_domains, load_domain
-        from src.core.grok import GrokClient
+        from src.core.topic_radar import TopicRadar
 
-        # Check if any domains are configured
+        data = request.get_json(silent=True) or {}
+        requested_domain = (data.get("domain") or "").strip()
+
         domains = list_domains()
+        domain_name = requested_domain if requested_domain in domains else (domains[0] if domains else "")
 
-        grok = GrokClient()
-
-        if domains:
-            # Pick a random domain and suggest topic for it
-            import random
-            domain_name = random.choice(domains)
+        if domain_name:
             config = load_domain(domain_name)
-            response = grok._chat([
-                {"role": "user", "content": (
-                    f"Suggest ONE specific, funny meme topic about {config.display_name}. "
-                    "Be creative and specific — pick a particular artist, quirk, "
-                    "moment, or debate. Just return the topic, nothing else."
-                )}
-            ], temperature=1.0)
-        else:
-            # No domains - suggest a general trending meme topic
-            response = grok._chat([
-                {"role": "user", "content": (
-                    "Suggest ONE specific, funny meme topic that's trending or popular right now. "
-                    "It could be about tech, pop culture, sports, politics, or anything meme-worthy. "
-                    "Be specific. Just return the topic, nothing else."
-                )}
-            ], temperature=1.0)
+            candidates = TopicRadar(config).generate(limit=12, include_news=False)
+            if candidates:
+                import random
+                weights = [max(1, int(c.overall_score * 10)) for c in candidates]
+                picked = random.choices(candidates, weights=weights, k=1)[0]
+                return jsonify({
+                    "topic": picked.topic,
+                    "domain": domain_name,
+                    "lane": picked.lane,
+                    "meme_angle": picked.meme_angle,
+                })
 
-        grok.close()
-        return jsonify({"topic": response.strip()})
+        return jsonify({"topic": "a niche community taking a tiny ritual way too seriously"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

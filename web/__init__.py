@@ -30,8 +30,10 @@ def create_app() -> Flask:
     from .blueprints.gallery import bp as gallery_bp
     from .blueprints.templates_review import bp as templates_bp
     from .blueprints.discovery import bp as discovery_bp
+    from .blueprints.video import bp as video_bp
 
     app.register_blueprint(generate_bp, url_prefix="/generate")
+    app.register_blueprint(video_bp, url_prefix="/video")
     app.register_blueprint(gallery_bp, url_prefix="/gallery")
     app.register_blueprint(templates_bp, url_prefix="/templates")
     app.register_blueprint(discovery_bp, url_prefix="/discovery")

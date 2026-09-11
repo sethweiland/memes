@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% set active_page = "video" %}
+{% block title %}Video Results{% endblock %}
+
+{% block content %}
+{% if expired %}
+<div class="error-box">
+    <h2>Session Expired</h2>
+    <p>This generation session is no longer available.</p>
+    <a href="{{ url_for('video.start') }}" class="btn btn-primary" style="margin-top:12px;">Start New Generation</a>
+</div>
+{% else %}
+<div id="progress-box" class="progress-box">
+    <div class="spinner"></div>
+    <div class="progress-text" id="progress-text">Producing videos...</div>
+</div>
+<div id="results-container"></div>
+<div style="text-align:center; margin-top:24px;">
+    <a href="{{ url_for('video.start') }}" class="btn btn-secondary">Generate More</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not expired %}
+<script>initVideoResultsPage('{{ job_id }}');</script>
+{% endif %}
+{% endblock %}

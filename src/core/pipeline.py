@@ -28,6 +28,7 @@ class PipelineConfig:
     concepts_per_batch: int = 10      # Concepts per Grok call
     num_context_chunks: int = 5       # RAG context chunks per batch
     creativity: float = 1.0           # Temperature (0.0-1.5)
+    humor_edge: int = 7               # 1=brand-safe, 10=sharp/absurdist page voice
 
     # RAG
     expand_queries: bool = True       # Whether to expand search queries for better recall
@@ -59,6 +60,8 @@ class PipelineConfig:
             raise ValueError(f"creativity must be 0.0-2.0, got {self.creativity}")
         if not 0.0 <= self.generation_creativity <= 2.0:
             raise ValueError(f"generation_creativity must be 0.0-2.0, got {self.generation_creativity}")
+        if not 1 <= self.humor_edge <= 10:
+            raise ValueError(f"humor_edge must be 1-10, got {self.humor_edge}")
         if not 1 <= self.num_images <= 50:
             raise ValueError(f"num_images must be 1-50, got {self.num_images}")
         if self.token_budget is not None and self.token_budget < 1000:
@@ -317,12 +320,16 @@ FORMAT: next template name...
 
         for img in images:
             try:
-                self.rag.budget.check(self.rag.budget.TOKENS_PER_CAPTION, "caption generation")
+                self.rag.budget.check(
+                    self.rag.budget.TOKENS_PER_CAPTION + self.rag.budget.TOKENS_PER_SEARCH_NO_EXPAND,
+                    "caption context generation",
+                )
             except TokenBudgetExceeded:
                 print(f"  Token budget exceeded — skipping remaining captions")
                 break
 
             idea = img.idea
+            caption_context = self._get_caption_context(idea)
 
             # Use prompt template if available
             if self.prompts.has_template("caption"):
@@ -333,6 +340,7 @@ FORMAT: next template name...
                     explanation=idea.explanation,
                     source_quote=idea.source_quote,
                     artist_reference=idea.artist_reference,
+                    context_text=caption_context,
                 )
             else:
                 # Fallback
@@ -341,6 +349,8 @@ Meme: {idea.top_text} / {idea.bottom_text}
 Why it's funny: {idea.explanation}
 Source material: {idea.source_quote if idea.source_quote else 'N/A'}
 Artist referenced: {idea.artist_reference if idea.artist_reference else 'N/A'}
+Retrieved context:
+{caption_context if caption_context else 'N/A'}
 """
                 prompt = f"""Write a short social media caption (2-3 sentences) that explains the historical context behind this {self.domain.display_name.lower()} meme.
 
@@ -350,6 +360,8 @@ The caption should:
 - Explain the real history that makes this funny
 - Be educational but not dry
 - Sound natural for Instagram/Twitter
+- Only use facts supported by the retrieved context or the meme itself
+- If the retrieved context does not support a specific claim, keep the caption observational instead of factual
 - NOT include hashtags
 
 Just write the caption, nothing else."""
@@ -366,6 +378,34 @@ Just write the caption, nothing else."""
 
         print(f"Generated {len([i for i in images if i.caption])} captions")
         return images
+
+    def _get_caption_context(self, idea: MemeIdea) -> str:
+        """Retrieve targeted context for a selected meme before writing its caption."""
+        query_parts = [
+            idea.artist_reference,
+            idea.source_quote,
+            idea.top_text,
+            idea.bottom_text,
+            idea.explanation,
+        ]
+        query = " ".join(part for part in query_parts if part).strip()
+        if not query:
+            return ""
+
+        try:
+            context = self.rag.get_context(
+                query,
+                k=3,
+                expand_query=False,
+            )
+        except Exception as e:
+            print(f"  Caption context lookup failed for {idea.format}: {e}")
+            return ""
+
+        if not context:
+            return ""
+
+        return _format_context_text(context, max_chars=700)
 
     def run(
         self,

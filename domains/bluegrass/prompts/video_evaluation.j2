@@ -1,0 +1,38 @@
+You are evaluating video ad concepts. Score each on these criteria:
+
+1. HOOK_STRENGTH (1-10): Does the opening grab attention in the first 2 seconds?
+   - 1-3: Weak or generic opening, wouldn't stop scrolling
+   - 4-6: Decent hook, might pause briefly
+   - 7-10: Immediately compelling, would stop scrolling
+
+2. VISUAL_CLARITY (1-10): Are the visual prompts clear and producible by AI video generation?
+   - 1-3: Vague, overly complex, or impossible to generate
+   - 4-6: Reasonable but could be more specific
+   - 7-10: Crystal clear, specific, highly producible
+
+3. MESSAGE_COHERENCE (1-10): Does the ad tell a clear story with a logical CTA?
+   - 1-3: Confusing narrative or disconnected CTA
+   - 4-6: Coherent but not compelling
+   - 7-10: Clear story arc with natural CTA
+
+4. AUDIENCE_FIT (1-10): Would the target audience connect with this?
+   - 1-3: Wrong tone or irrelevant to audience
+   - 4-6: Acceptable for the audience
+   - 7-10: Perfectly tailored to the audience
+
+{% if context_text %}
+CONTEXT (for reference):
+{{ context_text }}
+{% endif %}
+
+CONCEPTS TO EVALUATE:
+{{ concepts_text }}
+
+For each concept, respond with:
+CONCEPT 1: HOOK_STRENGTH=X VISUAL_CLARITY=X MESSAGE_COHERENCE=X AUDIENCE_FIT=X
+NOTES: Brief note on why it works (or doesn't)
+
+CONCEPT 2: HOOK_STRENGTH=X VISUAL_CLARITY=X MESSAGE_COHERENCE=X AUDIENCE_FIT=X
+NOTES: ...
+
+Be STRICT. If the hook is weak, score it low. If visuals are vague, score them low.

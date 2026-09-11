@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from .secrets import get_secret_value
+
 
 @dataclass
 class MemeIdea:
@@ -32,10 +34,10 @@ class GrokClient:
             api_key: xAI API key. If not provided, uses XAI_API_KEY env var.
             default_model: Default model to use for API calls.
         """
-        self.api_key = api_key or os.getenv("XAI_API_KEY")
+        self.api_key = api_key or get_secret_value("XAI_API_KEY", ("XAI_API_KEY", "xai_api_key"))
         if not self.api_key:
             raise ValueError(
-                "XAI_API_KEY not found. Set it in .env or pass api_key parameter."
+                "XAI_API_KEY not found. Set it in .env, AWS Secrets Manager, or pass api_key parameter."
             )
         self.default_model = default_model or self.DEFAULT_MODEL
 
@@ -67,18 +69,42 @@ class GrokClient:
         Returns:
             Response content string
         """
-        response = self.client.post(
-            "/chat/completions",
-            json={
-                "model": model or self.default_model,
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            }
-        )
-        response.raise_for_status()
+        request_json = {
+            "model": model or self.default_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        response = self.client.post("/chat/completions", json=request_json)
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            detail = self._format_error_detail(response)
+            raise RuntimeError(
+                f"xAI chat completion failed ({response.status_code}) "
+                f"for model '{request_json['model']}': {detail}"
+            ) from e
         data = response.json()
         return data["choices"][0]["message"]["content"]
+
+    @staticmethod
+    def _format_error_detail(response: httpx.Response) -> str:
+        """Return a useful xAI error message without leaking request secrets."""
+        try:
+            payload = response.json()
+        except ValueError:
+            text = response.text.strip()
+            return text[:500] if text else "No response body"
+
+        if isinstance(payload, dict):
+            parts = []
+            for key in ("error", "message", "code"):
+                value = payload.get(key)
+                if value:
+                    parts.append(str(value))
+            if parts:
+                return " - ".join(parts)[:500]
+        return str(payload)[:500]
 
     def generate_meme_ideas(
         self,
@@ -214,6 +240,17 @@ FORMAT: next meme...
                 val = ""
             return val.strip()
 
+        field_marker_re = re.compile(
+            r'\b(FORMAT|TEMPLATE|TOP[_ ]?(?:TEXT|PANEL[_ ]?TEXT)|BOTTOM[_ ]?(?:TEXT|PANEL[_ ]?TEXT)|'
+            r'TOP_PANEL_TEXT|BOTTOM_PANEL_TEXT|PANEL[_ ]?\d+[_ ]?TEXT|'
+            r'EXPLANATION|SOURCE[_ ]?QUOTE|ARTIST[_ ]?REFERENCE):',
+            flags=re.IGNORECASE,
+        )
+
+        def normalize_inline_markers(text: str) -> str:
+            """Put known field markers on their own lines when the model emits one-line records."""
+            return field_marker_re.sub(lambda m: "\n" + m.group(0), text).strip()
+
         for section in sections:
             section = section.strip()
             if not section:
@@ -228,8 +265,10 @@ FORMAT: next meme...
                 artist_reference="",
             )
 
+            section = normalize_inline_markers(section)
             lines = section.split('\n')
             current_field = None
+            panel_texts: list[tuple[int, str]] = []
 
             for line in lines:
                 line = line.strip()
@@ -249,10 +288,22 @@ FORMAT: next meme...
                 if upper_line.startswith("FORMAT:") or upper_line.startswith("TEMPLATE:"):
                     meme.format = clean_value(line.split(":", 1)[1])
                     current_field = "format"
+                elif re.match(r'^PANEL[_ ]?\d+[_ ]?TEXT:', upper_line):
+                    label, value = line.split(":", 1)
+                    panel_num_match = re.search(r'\d+', label)
+                    panel_num = int(panel_num_match.group(0)) if panel_num_match else len(panel_texts) + 1
+                    panel_texts.append((panel_num, clean_value(value)))
+                    current_field = None
                 elif upper_line.startswith("TOP_TEXT:") or upper_line.startswith("TOP TEXT:"):
                     meme.top_text = clean_value(line.split(":", 1)[1])
                     current_field = "top_text"
+                elif upper_line.startswith("TOP_PANEL_TEXT:") or upper_line.startswith("TOP PANEL TEXT:"):
+                    meme.top_text = clean_value(line.split(":", 1)[1])
+                    current_field = "top_text"
                 elif upper_line.startswith("BOTTOM_TEXT:") or upper_line.startswith("BOTTOM TEXT:"):
+                    meme.bottom_text = clean_value(line.split(":", 1)[1])
+                    current_field = "bottom_text"
+                elif upper_line.startswith("BOTTOM_PANEL_TEXT:") or upper_line.startswith("BOTTOM PANEL TEXT:"):
                     meme.bottom_text = clean_value(line.split(":", 1)[1])
                     current_field = "bottom_text"
                 elif upper_line.startswith("EXPLANATION:"):
@@ -268,6 +319,12 @@ FORMAT: next meme...
                     # Continuation of previous field
                     current_value = getattr(meme, current_field)
                     setattr(meme, current_field, current_value + " " + line)
+
+            if panel_texts and not (meme.top_text or meme.bottom_text):
+                panels = [text for _, text in sorted(panel_texts, key=lambda p: p[0]) if text]
+                if panels:
+                    meme.top_text = panels[0]
+                    meme.bottom_text = " / ".join(panels[1:])
 
             if meme.format or meme.top_text:  # Has some content
                 memes.append(meme)

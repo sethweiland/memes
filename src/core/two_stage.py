@@ -12,8 +12,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union
 
 from .grok import MemeIdea, GrokClient
+from .openai_provider import OpenAIResponsesClient
 from .meme_generator import GeneratedMeme, MemeImageGenerator
 from .templates import TemplatesCatalog
+from .taste_examples import format_taste_examples
 
 if TYPE_CHECKING:
     from .pipeline import MemePipeline, PipelineConfig
@@ -29,6 +31,7 @@ class EvaluatedMeme:
     evaluation_notes: str         # AI's notes on the meme
     is_absurdist: bool = False    # Flag for intentional absurdism
     template_category: str = ""   # "trending", "new", "classic", or ""
+    generation_source: str = ""   # e.g. "critic_rewrite"
 
     def get_score(self, criterion: str) -> int:
         """Get score for a specific criterion."""
@@ -100,6 +103,7 @@ class TwoStagePipeline:
         previously_covered: list[str] | None = None,
         previously_used_templates: list[str] | None = None,
         trending_section: str = "",
+        creative_brief: str = "",
     ) -> list[MemeIdea]:
         """
         Stage 1: Generate memes WITHOUT explanation requirement.
@@ -161,6 +165,9 @@ BOTTOM_TEXT: bottom text
 ---
 
 FORMAT: next template..."""
+
+        if creative_brief:
+            user_prompt += f"\n\n{creative_brief}"
 
         # Diversity instructions
         user_prompt += "\n\nDIVERSITY REQUIREMENTS (MANDATORY):"
@@ -535,20 +542,23 @@ class GenericTwoStagePipeline:
         self,
         generic_config: "GenericConfig",
         pipe_config: "PipelineConfig",
-        model: str = "grok-4-0709",
+        model: str = "gpt-5.4-mini",
     ):
         self.domain = generic_config  # Alias for compatibility
         self.config = pipe_config
         self.catalog = TemplatesCatalog()
         self._model = model
-        self._grok: GrokClient | None = None
+        self._grok: GrokClient | OpenAIResponsesClient | None = None
         self._generator: MemeImageGenerator | None = None
 
     @property
-    def grok(self) -> GrokClient:
-        """Lazy-load GrokClient with configured model."""
+    def grok(self) -> GrokClient | OpenAIResponsesClient:
+        """Lazy-load the configured text generation provider."""
         if self._grok is None:
-            self._grok = GrokClient(default_model=self._model)
+            if self._model.startswith("gpt-"):
+                self._grok = OpenAIResponsesClient(default_model=self._model)
+            else:
+                self._grok = GrokClient(default_model=self._model)
         return self._grok
 
     def _get_generator(self) -> MemeImageGenerator:
@@ -583,7 +593,6 @@ Your response (just the persona, nothing else):"""
         try:
             response = self.grok._chat(
                 messages=[{"role": "user", "content": prompt}],
-                model="grok-4-0709",  # Full model for nuanced subculture understanding
                 temperature=0.3,
             )
             return response.strip()
@@ -598,6 +607,8 @@ Your response (just the persona, nothing else):"""
         num_ideas: int = 10,
         previously_covered: list[str] | None = None,
         previously_used_templates: list[str] | None = None,
+        creative_brief: str = "",
+        format_lane: str = "mixed",
     ) -> list[MemeIdea]:
         """
         Stage 1: Generate memes WITHOUT explanation requirement.
@@ -611,12 +622,9 @@ Your response (just the persona, nothing else):"""
             previously_covered: Topics to avoid repeating
             previously_used_templates: Template names already used - avoid reusing
         """
-        # Get trending templates
-        try:
-            from .trending_templates import get_trending_prompt_section
-            trending_section = get_trending_prompt_section()
-        except Exception:
-            trending_section = ""
+        # Keep image rendering reliable: only offer templates from the renderable
+        # imgflip catalog. Raw trending scrape names may not have captionable IDs.
+        trending_section = ""
 
         # Detect persona/tone for this topic's community
         persona = self._detect_persona(topic)
@@ -629,8 +637,32 @@ COMMUNITY PERSONA — Match this vibe:
 Your memes should feel like they came from someone IN this community, not an outside observer.
 """
 
+        edge_level = getattr(self.config, "humor_edge", 7)
+        if edge_level <= 3:
+            edge_section = """
+EDGE LEVEL: BRAND-SAFE
+- Keep jokes broadly acceptable and non-edgy.
+- Still avoid bland recap text; every meme needs a real punchline.
+"""
+        elif edge_level <= 7:
+            edge_section = """
+EDGE LEVEL: PAGE VOICE
+- Write like a funny niche meme account, not a brand calendar.
+- Roast behaviors, habits, gatekeeping, awkward social dynamics, and scene stereotypes.
+- Mild sarcasm, self-owning, and chaotic festival/jam energy are encouraged.
+"""
+        else:
+            edge_section = """
+EDGE LEVEL: FERMENTED
+- Be sharper, weirder, more deadpan, and less polished.
+- Roast the scene from inside the scene. Make the account feel run by someone sleep-deprived at a campsite jam.
+- Prefer unhinged specificity, social discomfort, petty musician behavior, and painfully true observations.
+- Do not become hateful or target protected traits; aim sideways at culture and behavior.
+"""
+
         system_prompt = f"""You are a professional comedy writer creating memes that make people actually laugh out loud.
 {persona_section}
+{edge_section}
 HUMOR TECHNIQUES — Use these deliberately:
 
 1. SUBVERT EXPECTATIONS: Setup creates one expectation → punchline goes somewhere completely different
@@ -644,6 +676,9 @@ WHAT NOT TO DO:
 - Don't explain the joke in the meme text
 - Don't use "Nobody: / Absolutely nobody:" format (overused)
 - Don't make generic observations that could apply to anything
+- Don't write event recap text pretending to be a joke
+- Don't cram unrelated context facts into one meme
+- Don't sound like a sponsor post, local newspaper blurb, or family-friendly festival brochure
 - Don't be safe — take actual creative risks
 
 Write memes that feel fresh and internet-savvy. Go weird. Make it actually funny."""
@@ -655,22 +690,56 @@ CONTEXT (use this for relevant facts/references):
 {context_text}
 """
 
+        taste_examples = format_taste_examples(topic, limit=8)
+        taste_section = ""
+        if taste_examples:
+            taste_section = f"""
+{taste_examples}
+"""
+
+        if format_lane == "original":
+            lane_requirements = """FORMAT LANE: ORIGINAL ASSETS ONLY
+- Use ONLY Original locally rendered formats from the available list.
+- Make these feel like native screenshots/posts/notifications/starter packs, not normal captioned templates.
+- Prioritize believable fake UI text, painfully specific social situations, and concise observational jokes.
+- Use Original Freestyle Card for weirder, more out-there ideas that do not fit fake social UI.
+- Use Original Field Guide for "type of person/specimen" jokes.
+- Use Original Classified Ad for fake marketplace, wanted, lost/found, or desperate-scene jokes.
+- Use Original Fake Poll for false choices, social dilemmas, and rigged community votes.
+- Do not use famous/imgflip templates in this lane."""
+        elif format_lane == "classic":
+            lane_requirements = """FORMAT LANE: KNOWN TEMPLATES ONLY
+- Use ONLY classic/imgflip templates from the available list.
+- Do not use Original locally rendered formats in this lane.
+- Choose templates where the known meme grammar strengthens the joke."""
+        else:
+            lane_requirements = """FORMAT LANE: MIXED
+- Use classic templates and original local formats where each is strongest."""
+
         user_prompt = f"""Topic: {topic}
 {context_section}
+{taste_section}
 {template_catalog}
 
-{trending_section}
+{creative_brief}
+
+{lane_requirements}
 
 Generate {num_ideas} memes.
 
 TEMPLATE REQUIREMENTS — STRICT:
 - EVERY meme must use a DIFFERENT template (no duplicates!)
-- PRIORITIZE ✨ FRESH FORMATS — use at least 50% of your memes with new/fresh templates
-- Use remaining slots for 🔥 HOT RIGHT NOW and 👑 CLASSICS
-- Fresh templates are UNDERUSED — this is your chance to try something new
-- Spread across ALL categories, don't cluster on the same few templates
+- Use ONLY exact template names from AVAILABLE TEMPLATES above
+- Prefer familiar, legible templates unless a fresher listed template fits the joke perfectly
+- Use 25-40% Original locally rendered formats when the joke is a fake post, text message, notification, starter pack, or custom scene.
+- Spread across categories, don't cluster on the same few templates
 
 STYLE REQUIREMENTS:
+- ONE JOKE PER MEME. No reference pileups.
+- Make the joke understandable in under 2 seconds.
+- Use context as seasoning, not the meal.
+- Prefer painful community truths over factual summaries.
+- Keep each text box short. If a panel needs more than 12 words, it probably is not a meme.
 - At least 2 should be UNHINGED/ABSURDIST (intentionally weird)
 - At least 2 should be HYPER-SPECIFIC (detailed scenarios)
 - Aim for actual laughs, not polite smiles
@@ -758,6 +827,13 @@ MEME 2: {score_format}
 NOTES: ...
 
 Be STRICT on humor. If it's not actually funny, score it low."""
+        prompt += f"""
+
+HUMOR EDGE SETTING: {getattr(self.config, "humor_edge", 7)}/10
+Penalize memes that are brand-safe but bland, overly wholesome, corporate, brochure-like, or just summarize context.
+Penalize reference pileups: a meme with too many unrelated facts and no clean punchline should score low on humor.
+Reward one clear comedic turn, painful truth, inside-scene specificity, deadpan absurdism, and jokes that sound postable by a real meme page.
+"""
 
         response = self.grok._chat([
             {"role": "user", "content": prompt}

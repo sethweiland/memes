@@ -18,6 +18,15 @@ env/
 
 # Environment variables (contains API keys)
 .env
+secrets.local.json
+
+# Terraform local state and plans
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+terraform.tfvars.json
 
 # Scraped content (copyright concerns)
 articles/bluegrass_unlimited_archives.json

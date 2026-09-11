@@ -9,6 +9,7 @@ Routes:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
@@ -18,6 +19,7 @@ NICHE_DIR = Path(__file__).parent.parent.parent / "niche-discovery"
 sys.path.insert(0, str(NICHE_DIR / "src"))
 
 from run_tracker import RunTracker, NicheRecord
+from src.core.secrets import get_secret_value
 
 bp = Blueprint("discovery", __name__, template_folder="../templates/discovery")
 
@@ -25,6 +27,18 @@ bp = Blueprint("discovery", __name__, template_folder="../templates/discovery")
 def get_tracker() -> RunTracker:
     """Get the run tracker instance."""
     return RunTracker(data_dir=NICHE_DIR / "data")
+
+
+def _has_apify_token() -> bool:
+    return bool(get_secret_value("APIFY_API_TOKEN", ("APIFY_API_TOKEN", "apify_api_token")))
+
+
+def _ensure_apify_env() -> bool:
+    token = get_secret_value("APIFY_API_TOKEN", ("APIFY_API_TOKEN", "apify_api_token"))
+    if token:
+        os.environ["APIFY_API_TOKEN"] = token
+        return True
+    return False
 
 
 @bp.route("/")
@@ -249,11 +263,10 @@ def api_instagram_search(niche_name: str):
     Search Instagram for competitors for a single niche.
     Requires APIFY_API_TOKEN in environment.
     """
-    import os
-    if not os.getenv("APIFY_API_TOKEN"):
+    if not _ensure_apify_env():
         return jsonify({
             "error": "APIFY_API_TOKEN not configured",
-            "message": "Add APIFY_API_TOKEN to your .env file. Get one at https://apify.com"
+            "message": "Add APIFY_API_TOKEN to .env or AWS Secrets Manager. Get one at https://apify.com"
         }), 400
 
     tracker = get_tracker()
@@ -295,11 +308,10 @@ def api_instagram_bulk_search():
     Search Instagram for multiple niches.
     Request body: {"niche_names": ["niche1", "niche2", ...], "max_niches": 10}
     """
-    import os
-    if not os.getenv("APIFY_API_TOKEN"):
+    if not _ensure_apify_env():
         return jsonify({
             "error": "APIFY_API_TOKEN not configured",
-            "message": "Add APIFY_API_TOKEN to your .env file"
+            "message": "Add APIFY_API_TOKEN to .env or AWS Secrets Manager"
         }), 400
 
     data = request.get_json() or {}
@@ -344,10 +356,9 @@ def api_instagram_bulk_search():
 @bp.route("/api/instagram/status")
 def api_instagram_status():
     """Check if Instagram search is configured."""
-    import os
-    has_token = bool(os.getenv("APIFY_API_TOKEN"))
+    has_token = _has_apify_token()
 
     return jsonify({
         "configured": has_token,
-        "message": "Ready to search" if has_token else "Add APIFY_API_TOKEN to .env"
+        "message": "Ready to search" if has_token else "Add APIFY_API_TOKEN to .env or AWS Secrets Manager"
     })

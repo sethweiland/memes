@@ -73,6 +73,82 @@ TEMPLATE_DESCRIPTIONS = {
 }
 
 
+LOCAL_TEMPLATE_DEFINITIONS = [
+    MemeTemplate(
+        id="local:fake-social-post",
+        name="Original Fake Social Post",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a fake social post. TOP_TEXT is the account/name; BOTTOM_TEXT is the post text.",
+    ),
+    MemeTemplate(
+        id="local:fake-text-message",
+        name="Original Fake Text Message",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a fake text conversation. TOP_TEXT is the first message; BOTTOM_TEXT is the reply.",
+    ),
+    MemeTemplate(
+        id="local:starter-pack",
+        name="Original Starter Pack",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a starter pack grid. TOP_TEXT is the title; BOTTOM_TEXT is slash-separated items.",
+    ),
+    MemeTemplate(
+        id="local:fake-notification",
+        name="Original Fake Notification",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a phone notification. TOP_TEXT is the app/source; BOTTOM_TEXT is the notification.",
+    ),
+    MemeTemplate(
+        id="local:fake-poll",
+        name="Original Fake Poll",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a social poll. TOP_TEXT is the poll question; BOTTOM_TEXT is slash-separated poll options.",
+    ),
+    MemeTemplate(
+        id="local:classified-ad",
+        name="Original Classified Ad",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a newspaper/classified listing. TOP_TEXT is the headline; BOTTOM_TEXT is the listing copy.",
+    ),
+    MemeTemplate(
+        id="local:field-guide",
+        name="Original Field Guide",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original asset rendered locally as a field guide/specimen card. TOP_TEXT is the species/type; BOTTOM_TEXT is slash-separated traits.",
+    ),
+    MemeTemplate(
+        id="local:freestyle-card",
+        name="Original Freestyle Card",
+        url="",
+        width=1080,
+        height=1080,
+        box_count=2,
+        description="Original flexible local format for weirder ideas. TOP_TEXT is the title; BOTTOM_TEXT is the body, warning, quote, or absurd caption.",
+    ),
+]
+
+
 class TemplatesCatalog:
     """Manage meme templates from imgflip."""
 
@@ -94,8 +170,14 @@ class TemplatesCatalog:
         self._ai_descriptions: dict[str, dict] = {}  # template_id -> AI description entry
         self.metadata: dict[str, dict] = {}  # template_id -> provenance metadata
         self._load_or_fetch()
+        self._add_local_templates()
         self._apply_ai_descriptions()
         self._load_metadata()
+
+    def _add_local_templates(self):
+        """Add locally rendered original meme formats to the catalog."""
+        for template in LOCAL_TEMPLATE_DEFINITIONS:
+            self.templates[template.id] = template
 
     def _load_or_fetch(self):
         """Load from cache or fetch from API."""
@@ -289,16 +371,45 @@ class TemplatesCatalog:
         else:
             selected = self.get_popular(limit)
 
+        local_templates = [t for t in LOCAL_TEMPLATE_DEFINITIONS if t not in selected]
         lines = ["Available meme templates (pick one by exact name):"]
+        if local_templates:
+            lines.append("Original locally rendered formats:")
+            for template in local_templates:
+                lines.append(template.to_prompt_format())
+            lines.append("Imgflip templates:")
         for template in selected:
             lines.append(template.to_prompt_format())
         return "\n".join(lines)
 
+    def get_original_prompt_catalog(self) -> str:
+        """Get only locally rendered original formats for LLM prompts."""
+        lines = ["Available original locally rendered formats (pick one by exact name):"]
+        for template in LOCAL_TEMPLATE_DEFINITIONS:
+            lines.append(template.to_prompt_format())
+        return "\n".join(lines)
+
+    def get_classic_prompt_catalog(self, limit: int = 30, randomize: bool = False) -> str:
+        """Get only non-local/imgflip templates for LLM prompts."""
+        local_ids = {t.id for t in LOCAL_TEMPLATE_DEFINITIONS}
+        original_templates = self.templates
+        try:
+            self.templates = {
+                tid: template
+                for tid, template in original_templates.items()
+                if tid not in local_ids
+            }
+            return self.get_prompt_catalog(limit=limit, randomize=randomize)
+        finally:
+            self.templates = original_templates
+
     def find_best_match(self, name: str) -> MemeTemplate | None:
         """
         Find best matching template for a name.
-        Tries exact match, then partial match, then word match.
+        Tries exact match, then partial match, then conservative fuzzy match.
         """
+        from difflib import SequenceMatcher
+
         name_lower = name.lower().strip()
 
         # Exact match
@@ -311,12 +422,16 @@ class TemplatesCatalog:
             if name_lower in template.name.lower() or template.name.lower() in name_lower:
                 return template
 
-        # Word match (any word from template name appears in query)
+        best_template = None
+        best_ratio = 0.0
         for template in self.templates.values():
-            template_words = set(template.name.lower().split())
-            query_words = set(name_lower.split())
-            if template_words & query_words:  # Any overlap
-                return template
+            ratio = SequenceMatcher(None, name_lower, template.name.lower()).ratio()
+            if ratio > best_ratio:
+                best_template = template
+                best_ratio = ratio
+
+        if best_template is not None and best_ratio >= 0.62:
+            return best_template
 
         return None
 

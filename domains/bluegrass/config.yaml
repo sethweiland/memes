@@ -106,6 +106,108 @@ current_events:
     - "IBMA"
   max_results: 10
 
+topic_radar:
+  watchlist_sources:
+    publications:
+      - name: Bluegrass Today
+        url: https://bluegrasstoday.com/
+        notes: News, releases, tour and festival announcements
+      - name: Bluegrass Unlimited
+        url: https://bluegrassunlimited.com/
+        notes: Archive-grounded history and scene coverage
+      - name: IBMA
+        url: https://worldofbluegrass.org/
+        notes: Awards, World of Bluegrass, industry news
+    festivals:
+      - name: ROMP Festival
+        url: https://rompfest.com/
+        notes: Owensboro festival with strong bluegrass identity
+      - name: Grey Fox Bluegrass Festival
+        url: https://greyfoxbluegrass.com/
+        notes: Major festival lineup and camping culture
+      - name: Telluride Bluegrass Festival
+        url: https://bluegrass.com/telluride
+        notes: Crossover prestige, travel, lineup discourse
+      - name: MerleFest
+        url: https://merlefest.org/
+        notes: Roots/bluegrass crossover and discovery lane
+    social_lanes:
+      - Billy Strings tour and fan reactions
+      - Molly Tuttle releases and award moments
+      - Sierra Hull musician discourse
+      - emerging band festival lineup announcements
+      - jam etiquette complaints
+      - gear and instrument flexing
+  priority_entities:
+    - Billy Strings
+    - Molly Tuttle
+    - Sierra Hull
+    - Sturgill Simpson
+    - Sam Bush
+    - Bela Fleck
+    - Alison Krauss
+    - Del McCoury
+    - Jerry Douglas
+    - Tony Rice
+    - Bill Monroe
+    - Earl Scruggs
+  event_terms:
+    - festival lineup
+    - campground jam
+    - late-night picking circle
+    - IBMA week
+    - artist workshop
+    - parking lot jam
+    - merch table
+    - weather forecast
+  rituals:
+    - banjo player treating tuning like a hostage negotiation
+    - someone calling a jam tune nobody actually knows
+    - the quiet guitar player being the most dangerous musician there
+    - festival campers forming a government by day three
+    - arguing whether a very good song is legally bluegrass
+    - buying one more instrument because this one will fix your timing
+    - pretending not to care about the lineup while refreshing the page
+    - the mandolin chop becoming the group chat's emotional support sound
+  seed_topics:
+    - topic: Billy Strings fans explaining this is definitely still bluegrass
+      lane: anchor_artist
+      source: bluegrass radar seed
+      why_now: Billy is the biggest mainstream bridge into the scene, so his fan culture is always high-signal.
+      meme_angle: Contrast huge crossover energy with tiny traditionalist rule debates.
+      audience: Billy Strings fans and bluegrass lifers
+      freshness_score: 9
+      relevance_score: 10
+      comedy_score: 9
+      risk_notes: Keep it affectionate; do not frame modern fans as lesser.
+    - topic: emerging bluegrass bands trying to survive festival season
+      lane: emerging_artist
+      source: bluegrass radar seed
+      why_now: Festival lineups constantly create new discovery moments for bands.
+      meme_angle: Treat touring logistics, merch tables, and late-night jams as heroic trials.
+      audience: touring musicians and festival regulars
+      freshness_score: 8
+      relevance_score: 9
+      comedy_score: 8
+    - topic: festival lineup announcement group chat behavior
+      lane: festival_event
+      source: bluegrass radar seed
+      why_now: Lineup drops, ticket windows, and travel planning are recurring social triggers.
+      meme_angle: Make the planning spiral more intense than the actual festival.
+      audience: festival-goers
+      freshness_score: 8
+      relevance_score: 9
+      comedy_score: 8
+    - topic: old school bluegrass fans discovering a viral TikTok clip
+      lane: current_culture
+      source: bluegrass radar seed
+      why_now: Bluegrass keeps colliding with broader short-form internet culture.
+      meme_angle: Contrast old scene norms with algorithmic discovery and comment-section chaos.
+      audience: fans who live between archive culture and modern feeds
+      freshness_score: 8
+      relevance_score: 8
+      comedy_score: 8
+
 # Flag memes as potential absurdism when source_accuracy < 4 and humor >= 6
 absurdism_detection:
   enabled: true
