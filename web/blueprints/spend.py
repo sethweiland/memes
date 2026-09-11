@@ -37,6 +37,51 @@ def _load_tech_spend() -> Dict[str, Any]:
         }
 
 
+def _get_xai_token_usage() -> Optional[Dict[str, Any]]:
+    """
+    Get current month xAI token usage from local tracking.
+    Returns dict with amount, tokens, and call_count, or None if no data.
+    """
+    try:
+        from datetime import datetime
+        from pathlib import Path
+        import sys
+        
+        # Add project root to path for token_tracker import
+        project_root = Path(__file__).parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        
+        from src.core.token_tracker import get_month_usage
+        
+        now = datetime.now()
+        usage = get_month_usage("xai", now.year, now.month)
+        
+        if usage['call_count'] == 0:
+            return None
+        
+        # Estimate cost: rough approximation based on grok-4.6 pricing
+        # Real pricing varies by model, but this gives ballpark
+        # grok-4.6: ~$0.015/1M input tokens, ~$0.075/1M output tokens (example rates)
+        estimated_cost = usage.get('total_cost_usd', 0.0)
+        if estimated_cost == 0 and usage['total_tokens'] > 0:
+            # Rough estimate if not tracked: assume 50/50 split, use average rate
+            estimated_cost = (usage['total_tokens'] / 1_000_000) * 0.045
+        
+        return {
+            'amount': round(estimated_cost, 2),
+            'tokens': usage['total_tokens'],
+            'calls': usage['call_count'],
+            'source': 'local_log',
+            'period': f"{now.year}-{now.month:02d}"
+        }
+    except Exception as e:
+        return {
+            'error': str(e),
+            'source': 'local_log_failed'
+        }
+
+
 def _get_aws_current_month_cost() -> Optional[Dict[str, Any]]:
     """
     Fetch current month AWS cost from Cost Explorer API if credentials are available.
@@ -94,7 +139,7 @@ def _get_aws_current_month_cost() -> Optional[Dict[str, Any]]:
     return None
 
 
-def _calculate_totals(subscriptions: List[Dict], aws_live: Optional[Dict] = None) -> Dict[str, float]:
+def _calculate_totals(subscriptions: List[Dict], aws_live: Optional[Dict] = None, xai_usage: Optional[Dict] = None) -> Dict[str, float]:
     """Calculate fixed and variable monthly totals."""
     fixed_total = 0.0
     variable_total = 0.0
@@ -110,6 +155,10 @@ def _calculate_totals(subscriptions: List[Dict], aws_live: Optional[Dict] = None
         
         # Skip AWS from config if we have live data
         if aws_live and sub.get('id') == 'aws':
+            continue
+        
+        # Skip xAI tokens from config if we have usage data
+        if xai_usage and sub.get('id') == 'xai-tokens':
             continue
         
         # Convert to monthly equivalent
@@ -130,6 +179,10 @@ def _calculate_totals(subscriptions: List[Dict], aws_live: Optional[Dict] = None
     # Add live AWS to variable if available
     if aws_live and not aws_live.get('error'):
         variable_total += aws_live.get('amount', 0)
+    
+    # Add xAI token usage to variable if available
+    if xai_usage and not xai_usage.get('error'):
+        variable_total += xai_usage.get('amount', 0)
     
     return {
         'fixed': round(fixed_total, 2),
@@ -159,11 +212,12 @@ def index():
     subscriptions = spend_data.get('subscriptions', [])
     cancelled = spend_data.get('cancelled', [])
     
-    # Try to get live AWS data
+    # Try to get live data
     aws_live = _get_aws_current_month_cost()
+    xai_usage = _get_xai_token_usage()
     
     # Calculate totals and counts
-    totals = _calculate_totals(subscriptions, aws_live)
+    totals = _calculate_totals(subscriptions, aws_live, xai_usage)
     status_counts = _count_by_status(subscriptions, cancelled)
     
     # Organize items by category
@@ -178,6 +232,7 @@ def index():
         totals=totals,
         status_counts=status_counts,
         aws_live=aws_live,
+        xai_usage=xai_usage,
         last_updated=spend_data.get('last_updated'),
         note=spend_data.get('note'),
         active_page="spend"

@@ -319,9 +319,16 @@
                         <div class="source-indicator live">
                             ✓ live API ({{ aws_live.period }})
                         </div>
+                        {% elif xai_usage and not xai_usage.error and item.id == 'xai-tokens' %}
+                        <div class="amount live">${{ "%.2f"|format(xai_usage.amount) }}</div>
+                        <div class="source-indicator live">
+                            ✓ {{ "{:,}".format(xai_usage.tokens) }} tokens ({{ xai_usage.calls }} calls, {{ xai_usage.period }})
+                        </div>
                         {% else %}
                         <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>
-                        <div class="source-indicator">config</div>
+                        <div class="source-indicator">
+                            {% if item.id == 'xai-tokens' %}no usage yet{% else %}config{% endif %}
+                        </div>
                         {% endif %}
                     </td>
                     <td class="cadence">{{ item.cadence }}</td>

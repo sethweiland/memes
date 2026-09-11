@@ -52,6 +52,18 @@
       "env_secret_hint": "AWS_ACCESS_KEY_ID"
     },
     {
+      "id": "xai-tokens",
+      "name": "xAI / Grok API",
+      "vendor": "xAI",
+      "category": "variable",
+      "amount_usd": 0.0,
+      "cadence": "usage",
+      "status": "active",
+      "notes": "Token usage from meme generation - tracked locally in data/token_usage.jsonl",
+      "url": "https://x.ai",
+      "env_secret_hint": "XAI_API_KEY"
+    },
+    {
       "id": "supergrok-xai",
       "name": "SuperGrok Lite",
       "vendor": "xAI",
