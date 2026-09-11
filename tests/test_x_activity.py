@@ -150,6 +150,27 @@ class XActivityQueueTests(unittest.TestCase):
         loaded = self.queue.load(DATE)
         self.assertEqual(loaded["candidates"][0]["id"], FOLLOW_ID)
 
+    def test_load_wraps_bare_json_array(self):
+        """Stevie may leave a bare candidates array on S3. Wrap on read only."""
+        candidates = _fixture()["candidates"]
+        self.store.put_json(BucketLayout.x_activity_key(DATE), candidates)
+
+        loaded = self.queue.load(DATE)
+        self.assertEqual(loaded["date"], DATE)
+        self.assertEqual(loaded["candidates"], candidates)
+
+        raw, _etag = self.store.get_json(BucketLayout.x_activity_key(DATE))
+        self.assertIsInstance(raw, list)
+
+        updated = self.queue.approve(DATE, FOLLOW_ID)
+        self.assertEqual(updated["status"], "approved")
+        stored, _etag = self.store.get_json(BucketLayout.x_activity_key(DATE))
+        self.assertIsInstance(stored, dict)
+        self.assertEqual(stored["date"], DATE)
+        self.assertEqual(stored["candidates"][0]["status"], "approved")
+        with self.assertRaises(TypeError):
+            self.queue.save(DATE, candidates)
+
     def test_unconfigured_s3_uses_local_only(self):
         store = MemoryS3Store(configured=False)
         queue = XActivityQueue(store=store, local_dir=self.local_dir)
