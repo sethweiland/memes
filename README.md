@@ -1,4 +1,10 @@
-# Domain-Agnostic Meme Generator
+# Ops
+
+Seth’s life/ops dashboard at [ops.sethweiland.com](https://ops.sethweiland.com). The live site is behind **Cloudflare Access** — this is not a public app.
+
+**Memes is one module**, not the whole product. This repo still contains the domain-agnostic meme generator (RAG pipeline, gallery, daily queue). The Flask shell at `/` is a life overview; meme tools live under `/memes/`.
+
+## Meme generator
 
 A RAG-powered pipeline that generates memes using historical content from any domain. Ships with a bluegrass music configuration using Bluegrass Unlimited magazine archives.
 
@@ -72,35 +78,41 @@ rag.index_articles("articles/bluegrass_unlimited_archives.json")
 
 ### Web UI (Recommended)
 
-The meme pipeline includes a web interface with a Master Dashboard for managing the full workflow:
+The ops dashboard is a mobile-first Flask app. Memes is a section with the pipeline tools underneath.
 
 ```bash
 python web/run.py
 # Open http://localhost:5050 in your browser
 ```
 
-**Dashboard Features:**
-- **Stats Overview**: Template catalog size, pending daily candidates, gallery count, S3 configuration
-- **Brand/Page Selector**: Switch between multiple Instagram pages (configured via `instagram_brands.json`)
-- **Quick Links**: Direct access to Generate, Gallery, Templates Review, Discovery, and Video tools
-- **Recent Memes Strip**: Preview of your latest generated content
+**Top-level nav (in order):**
 
-**Pages:**
-- **Dashboard**: Ops overview with stats and quick links
-- **Spend**: Tech spending tracker for subscriptions and API costs
-  - Tracks subscriptions (Imgflip, Vercel, etc.)
-  - Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
-  - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
-  - **By Project** rollup (tokens + allocated fixed): `memes`, `sethweiland-com`, `waiver-wire`, `x`, `shared`, `unallocated`. Unallocated stay visible.
-  - Monthly total with active/cancelled breakdown
-  - Subscription ledger: `data/tech_spend.json`
-- **X**: Top-level life tab (sibling of Home / Spend / Memes). Review Stevie's X drafts (follow / post / reply). Approve or skip only — this app never posts to X. Spend project tag `x` is tracked separately.
-- **Generate**: Create memes with custom topics and settings
-- **Gallery**: Browse and filter generated memes
-- **Daily Queue**: Review daily candidate memes for Instagram
-- **Templates**: Review and manage template descriptions
-- **Video Memes**: Generate and edit video content
-- **Discovery**: Find new niches and trending topics
+| Section | Path | What it is |
+|---|---|---|
+| **Home** | `/` | Life overview — cards to Projects, Spend, X, Memes |
+| **Projects** | `/projects/` | Placeholder until kanban (lanes: `idea`, `active`, `blocked`, `waiting_on_seth`, `parked`) |
+| **Spend** | `/spend/` | Tech spending tracker (unchanged path) |
+| **X** | `/x/` | Real X Activity tab — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Queue is `ops/queue/x-activity/` |
+| **Memes** | `/memes/` | Meme pipeline dashboard (the old `/` page) |
+
+**Spend:**
+- Tracks subscriptions (Imgflip, Vercel, etc.)
+- Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
+- xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
+- **By Project** rollup (tokens + allocated fixed): `memes`, `sethweiland-com`, `waiver-wire`, `x`, `shared`, `unallocated`. Unallocated stay visible.
+- Monthly total with active/cancelled breakdown
+- Subscription ledger: `data/tech_spend.json`
+
+**Memes module** (`/memes/` and children):
+- **Dashboard** `/memes/` — template catalog size, pending daily candidates, gallery count, S3, brand selector, tool links
+- **Generate** `/memes/generate/` — create memes with custom topics and settings
+- **Gallery** `/memes/gallery/` — browse and filter generated memes
+- **Daily Queue** `/memes/gallery/daily-candidates/` (also `/memes/daily-queue/`) — review candidates for Instagram
+- **Templates** `/memes/templates/` — review and manage template descriptions
+- **Video** `/memes/video/` — generate and edit video content
+- **Discovery** `/memes/discovery/` — find new niches and trending topics
+
+Old meme URLs (`/generate/`, `/gallery/`, `/gallery/daily-candidates/`, `/templates/`, `/video/`, `/discovery/`) **302** to the `/memes/…` paths so bookmarks keep working.
 
 **Multi-Brand Setup (Optional):**
 
@@ -146,7 +158,7 @@ python scripts/generate_daily_candidates.py
 ```
 
 **Review & Approve:**
-1. Navigate to `/gallery/daily-candidates/` in the web UI
+1. Navigate to `/memes/gallery/daily-candidates/` in the web UI
 2. Images load from S3 public URLs
 3. Approve publishes to Instagram using S3 URL directly
 4. No shared filesystem required between generation and web host
@@ -363,7 +375,7 @@ rag = DomainRAG(config)
 
 ## Production Deployment
 
-The meme ops web UI can be deployed as a Docker container to Fly.io or any Docker host.
+The ops dashboard can be deployed as a Docker container to Fly.io or any Docker host.
 
 ### Fly.io Deployment
 
@@ -405,10 +417,10 @@ The meme ops web UI can be deployed as a Docker container to Fly.io or any Docke
      KLING_API_KEY=your_key
    ```
 
-5. **Configure Cloudflare Access** (optional):
+5. **Cloudflare Access** (live host):
    - Point `ops.sethweiland.com` to your Fly.io app
-   - Configure Cloudflare Access to protect the app
-   - The app listens on `$PORT` (default 8080) and works behind reverse proxies
+   - Keep Cloudflare Access in front of the app — this UI is not public
+   - The Flask app does not replace Access; it listens on `$PORT` (default 8080) behind the proxy
 
 ### Docker Deployment
 

@@ -13,6 +13,26 @@ nav a { color: #e0e0e0; text-decoration: none; font-size: 14px; }
 nav a:hover { color: #fff; }
 nav a.active { color: #fff; font-weight: 600; border-bottom: 2px solid #4fc3f7; }
 nav .brand { font-size: 18px; font-weight: 700; margin-right: 16px; color: #fff; text-decoration: none; }
+nav.subnav { background: #16213e; padding: 8px 24px; gap: 16px; flex-wrap: wrap; }
+nav.subnav a.active { border-bottom-color: #81d4fa; }
+
+/* Ops hub */
+.ops-lede { color: #666; margin-bottom: 20px; }
+.ops-hub { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 28px; }
+.ops-card { display: block; background: #fff; border-radius: 10px; padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.12); text-decoration: none; color: inherit; }
+.ops-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.ops-card h2 { margin: 0 0 6px; font-size: 18px; }
+.ops-card p { margin: 0; color: #666; font-size: 14px; }
+.ops-waiting { background: #fff; border-radius: 10px; padding: 20px;
+               box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.ops-waiting h2 { margin: 0 0 8px; font-size: 16px; }
+.ops-waiting p { margin: 0; color: #666; font-size: 14px; }
+.ops-footer { max-width: 1100px; margin: 48px auto 24px; padding: 0 16px;
+              color: #888; font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+@media (min-width: 640px) {
+    .ops-hub { grid-template-columns: 1fr 1fr; }
+}
 
 /* Layout */
 .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
@@ -59,6 +79,9 @@ textarea { width: 100%; min-height: 80px; padding: 8px; border: 1px solid #ddd;
 
 /* Empty state */
 .empty { text-align: center; padding: 60px; color: #999; }
+.empty-state { text-align: center; padding: 48px 16px; color: #666; }
+.empty-state p { margin: 0 0 8px; }
+.empty-state code { font-size: 13px; }
 
 /* Stat grid */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

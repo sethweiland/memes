@@ -279,5 +279,6 @@ def index():
         project_rollup=project_rollup,
         last_updated=spend_data.get('last_updated'),
         note=spend_data.get('note'),
-        active_page="spend"
+        active_page="spend",
+        section="spend",
     )

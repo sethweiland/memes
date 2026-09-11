@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Meme Pipeline{% endblock %}
+{% block title %}Memes · Ops{% endblock %}
 
 {% block content %}
 <style>
@@ -170,7 +170,7 @@
     {% if brands|length > 1 %}
     <div class="brand-selector">
         <label for="brand-select">Instagram Page:</label>
-        <select id="brand-select" onchange="window.location.href='/?brand='+this.value">
+        <select id="brand-select" onchange="window.location.href='{{ url_for('dashboard.index') }}?brand='+this.value">
             {% for brand in brands %}
             <option value="{{ brand.id }}" {% if brand.id == selected_brand.id %}selected{% endif %}>
                 {{ brand.name }}

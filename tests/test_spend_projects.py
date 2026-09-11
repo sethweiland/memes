@@ -33,13 +33,16 @@ def _spend_app() -> Flask:
         static_folder=str(_WEB_ROOT / "static"),
     )
     nav = [
-        ("dashboard", "index", "/"),
-        ("generate", "start", "/generate/"),
-        ("video", "start", "/video/"),
-        ("gallery", "index", "/gallery/"),
-        ("daily_candidates", "index", "/gallery/daily-candidates/"),
+        ("home", "index", "/"),
+        ("projects", "index", "/projects/"),
         ("x_activity", "index", "/x/"),
-        ("templates_review", "review_page", "/templates/"),
+        ("dashboard", "index", "/memes/"),
+        ("generate", "start", "/memes/generate/"),
+        ("video", "start", "/memes/video/"),
+        ("gallery", "index", "/memes/gallery/"),
+        ("daily_candidates", "index", "/memes/gallery/daily-candidates/"),
+        ("templates_review", "review_page", "/memes/templates/"),
+        ("discovery", "dashboard", "/memes/discovery/"),
     ]
     for name, endpoint, path in nav:
         stub = Blueprint(name, name)

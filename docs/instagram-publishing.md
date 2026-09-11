@@ -97,7 +97,7 @@ Options for hosting:
 - Use a CDN (CloudFront, Cloudflare, etc.)
 - Any public web server serving the JPEG over HTTPS
 
-The local file served by `/gallery/image/` is **not** accessible to Instagram's servers and won't work.
+The local file served by `/memes/gallery/image/` is **not** accessible to Instagram's servers and won't work.
 
 ## Publishing Workflow
 
@@ -110,7 +110,7 @@ All publish attempts are logged to `data/instagram_publish_log.json` (credential
 
 ## API Reference
 
-### POST /gallery/api/instagram/publish
+### POST /memes/gallery/api/instagram/publish
 
 Publish an approved meme to Instagram.
 
@@ -143,7 +143,7 @@ Publish an approved meme to Instagram.
 }
 ```
 
-### GET /gallery/api/instagram/history
+### GET /memes/gallery/api/instagram/history
 
 Get Instagram publish history.
 

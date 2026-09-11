@@ -33,7 +33,7 @@ This:
 
 ### 2. Review in Web UI
 
-Navigate to: **http://localhost:5000/gallery/daily-candidates**
+Navigate to: **http://localhost:5050/memes/gallery/daily-candidates/** (old `/gallery/daily-candidates/` 302s here)
 
 - View all pending candidates
 - Edit captions
@@ -203,11 +203,12 @@ See `infra/meme-assets/README.md` for IAM policy example.
 
 | Route | Description |
 |-------|-------------|
-| `/gallery/daily-candidates` | Review page (defaults to today) |
-| `/gallery/daily-candidates?date=2026-09-10` | View specific date |
-| `/gallery/daily-candidates/api/candidates/<date>` | Get candidates JSON |
-| `/gallery/daily-candidates/api/candidates/<date>/approve/<id>` | Approve & publish |
-| `/gallery/daily-candidates/api/candidates/<date>/skip/<id>` | Skip candidate |
+| `/memes/gallery/daily-candidates/` | Review page (defaults to today) |
+| `/memes/gallery/daily-candidates/?date=2026-09-10` | View specific date |
+| `/memes/gallery/daily-candidates/api/candidates/<date>` | Get candidates JSON |
+| `/memes/gallery/daily-candidates/api/candidates/<date>/approve/<id>` | Approve & publish |
+| `/memes/gallery/daily-candidates/api/candidates/<date>/skip/<id>` | Skip candidate |
+| `/gallery/daily-candidates/` | 302 → `/memes/gallery/daily-candidates/` |
 
 ## Troubleshooting
 
@@ -250,8 +251,8 @@ The web UI loads queue data from S3 first, then falls back to local cache. If S3
 
 Daily candidates integrate with the existing Instagram publisher:
 
-1. **Manual Gallery Publishing**: Click "📸 Instagram" on any meme in `/gallery` (existing workflow)
-2. **Daily Queue**: Click "✅ Approve & Post" in `/gallery/daily-candidates` (new workflow)
+1. **Manual Gallery Publishing**: Click "📸 Instagram" on any meme in `/memes/gallery/` (existing workflow)
+2. **Daily Queue**: Click "✅ Approve & Post" in `/memes/gallery/daily-candidates/` (new workflow)
 3. **Generate Results**: Click "📸 Post to Instagram" after generating (existing workflow)
 
 All three paths use the same S3 auto-upload + Instagram Graph API backend.

@@ -256,7 +256,7 @@ def main():
         print(f"\n✅ Generated {args.count} daily candidates")
         print(f"📁 Saved to: {output_path}")
         print(f"💡 Topic: {candidates_data['topic']}")
-        print(f"\n🌐 Review at: http://localhost:5000/gallery/daily-candidates")
+        print(f"\n🌐 Review at: http://localhost:5050/memes/gallery/daily-candidates/")
         
     except Exception as e:
         logger.error(f"Failed to generate daily candidates: {e}")

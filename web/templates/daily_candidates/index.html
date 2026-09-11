@@ -57,7 +57,7 @@
         {% if candidate.public_url %}
         <img src="{{ candidate.public_url }}" alt="{{ candidate.template }}" loading="lazy">
         {% elif candidate.filename %}
-        <img src="/gallery/image/{{ candidate.filename }}" alt="{{ candidate.template }}" loading="lazy">
+        <img src="{{ url_for('gallery.serve_image', filename=candidate.filename) }}" alt="{{ candidate.template }}" loading="lazy">
         {% else %}
         <div class="candidate-no-image">No image</div>
         {% endif %}
@@ -244,7 +244,7 @@ function approveCandidate(date, candidateId) {
     approveBtn.textContent = '⏳ Uploading & Publishing...';
     statusEl.innerHTML = '<div class="info-box">Uploading to S3 and creating Instagram post...</div>';
     
-    fetch('/gallery/daily-candidates/api/candidates/' + date + '/approve/' + candidateId, {
+    fetch('/memes/gallery/daily-candidates/api/candidates/' + date + '/approve/' + candidateId, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caption: caption }),
@@ -289,7 +289,7 @@ function skipCandidate(date, candidateId) {
     skipBtn.disabled = true;
     skipBtn.textContent = '⏳ Skipping...';
     
-    fetch('/gallery/daily-candidates/api/candidates/' + date + '/skip/' + candidateId, {
+    fetch('/memes/gallery/daily-candidates/api/candidates/' + date + '/skip/' + candidateId, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
     })

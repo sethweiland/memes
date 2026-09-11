@@ -17,7 +17,7 @@ Verification:
 - `python scripts/cache_topic_radar.py --domain bluegrass --no-news`
 - Inspect `data/topic_radar/bluegrass.json`
 - `python scripts/report_topic_radar.py --domain bluegrass`
-- `GET /generate/api/topic-radar?domain=bluegrass`
+- `GET /memes/generate/api/topic-radar?domain=bluegrass`
 - Confirm Billy Strings, emerging bands, festivals, and evergreen rituals appear.
 
 ## Priority 2: Safer Remote Viewing

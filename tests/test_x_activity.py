@@ -75,14 +75,16 @@ def _nav_app(*blueprints):
         static_folder=str(_WEB_ROOT / "static"),
     )
     nav = [
-        ("dashboard", "index", "/"),
+        ("home", "index", "/"),
+        ("projects", "index", "/projects/"),
         ("spend", "index", "/spend/"),
-        ("generate", "start", "/generate/"),
-        ("video", "start", "/video/"),
-        ("gallery", "index", "/gallery/"),
-        ("daily_candidates", "index", "/gallery/daily-candidates/"),
-        ("templates_review", "review_page", "/templates/"),
-        ("discovery", "dashboard", "/discovery/"),
+        ("dashboard", "index", "/memes/"),
+        ("generate", "start", "/memes/generate/"),
+        ("video", "start", "/memes/video/"),
+        ("gallery", "index", "/memes/gallery/"),
+        ("daily_candidates", "index", "/memes/gallery/daily-candidates/"),
+        ("templates_review", "review_page", "/memes/templates/"),
+        ("discovery", "dashboard", "/memes/discovery/"),
         ("x_activity", "index", "/x/"),
     ]
     registered = {bp.name for bp in blueprints}
@@ -93,7 +95,10 @@ def _nav_app(*blueprints):
         stub.add_url_rule(path, endpoint, lambda: "")
         app.register_blueprint(stub)
     for bp in blueprints:
-        app.register_blueprint(bp)
+        if bp.name == "dashboard":
+            app.register_blueprint(bp, url_prefix="/memes")
+        else:
+            app.register_blueprint(bp)
     return app
 
 
@@ -335,7 +340,7 @@ class DashboardXBadgeTests(unittest.TestCase):
         today = datetime.now().strftime("%Y-%m-%d")
         self.queue.save(today, _fixture(today))
         with patch("web.blueprints.dashboard._get_daily_candidates_count", return_value=None):
-            response = self.client.get("/")
+            response = self.client.get("/memes/")
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         self.assertIn("X Pending", html)
@@ -345,18 +350,18 @@ class DashboardXBadgeTests(unittest.TestCase):
         self.assertNotIn("X Activity</h3>", html)
 
     def test_x_is_life_nav_not_meme_tool(self):
-        """X sits with Spend, not next to Daily Queue / Generate."""
+        """X sits with Spend in the top nav; meme tools live in the Memes subnav."""
         nav = (_WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
-        spend_at = nav.find("active_page == 'spend'")
-        x_at = nav.find("active_page == 'x_activity'")
-        generate_at = nav.find("active_page == 'generate'")
-        daily_at = nav.find("active_page == 'daily_candidates'")
+        spend_at = nav.find("url_for('spend.index')")
+        x_at = nav.find("url_for('x_activity.index')")
+        memes_at = nav.find("url_for('dashboard.index')")
+        subnav_at = nav.find('class="subnav"')
+        generate_at = nav.find("url_for('generate.start')")
         self.assertGreater(spend_at, 0)
         self.assertGreater(x_at, spend_at)
-        self.assertGreater(generate_at, x_at)
-        self.assertGreater(daily_at, generate_at)
-        self.assertIn("Follow-up PR nests meme routes under /memes/", nav)
-        self.assertIn("X is a top-level life item", nav)
+        self.assertGreater(memes_at, x_at)
+        self.assertGreater(subnav_at, x_at)
+        self.assertGreater(generate_at, subnav_at)
 
 
 if __name__ == "__main__":

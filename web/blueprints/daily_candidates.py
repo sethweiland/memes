@@ -13,7 +13,7 @@ from src.core.meme_assets import upload_meme_to_s3, get_queue_storage
 from src.core.instagram_publisher import publish_to_instagram
 
 
-bp = Blueprint("daily_candidates", __name__, url_prefix="/gallery/daily-candidates")
+bp = Blueprint("daily_candidates", __name__, url_prefix="/memes/gallery/daily-candidates")
 logger = logging.getLogger(__name__)
 
 
