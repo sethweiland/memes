@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}Spend - Meme Pipeline{% endblock %}
+
+{% block content %}
+<style>
+    .spend-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .spend-header h1 {
+        margin: 0;
+        font-size: 28px;
+    }
+    .data-source-badge {
+        background: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+        font-size: 13px;
+        color: #666;
+    }
+    
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .summary-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+    .summary-card .number {
+        font-size: 36px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .summary-card .number.total {
+        color: #1a73e8;
+    }
+    .summary-card .number.active {
+        color: #4caf50;
+    }
+    .summary-card .number.cancelling {
+        color: #ff9800;
+    }
+    .summary-card .number.cancelled {
+        color: #999;
+    }
+    .summary-card .label {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+    }
+    
+    .spend-section {
+        margin-bottom: 32px;
+    }
+    .spend-section h2 {
+        font-size: 20px;
+        margin-bottom: 16px;
+        color: #1a1a2e;
+    }
+    
+    .spend-table {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+        overflow: hidden;
+    }
+    .spend-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .spend-table th,
+    .spend-table td {
+        padding: 14px 16px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .spend-table th {
+        background: #fafafa;
+        font-weight: 600;
+        color: #555;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .spend-table tr:last-child td {
+        border-bottom: none;
+    }
+    .spend-table tr:hover {
+        background: #f9f9f9;
+    }
+    
+    .service-name {
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+    .service-vendor {
+        font-size: 13px;
+        color: #888;
+        display: block;
+        margin-top: 2px;
+    }
+    
+    .amount {
+        font-weight: 600;
+        color: #1a1a2e;
+        font-size: 15px;
+    }
+    .amount.live {
+        color: #1a73e8;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-badge.active {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    .status-badge.cancelling {
+        background: #fff3e0;
+        color: #e65100;
+    }
+    .status-badge.cancelled {
+        background: #f5f5f5;
+        color: #999;
+    }
+    
+    .cadence {
+        font-size: 13px;
+        color: #666;
+    }
+    
+    .notes {
+        font-size: 13px;
+        color: #666;
+        font-style: italic;
+        max-width: 300px;
+    }
+    
+    .source-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: #888;
+    }
+    .source-indicator.live {
+        color: #1a73e8;
+        font-weight: 600;
+    }
+    
+    .warning-box {
+        background: #fff3e0;
+        border: 1px solid #ffe0b2;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #e65100;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+    
+    .info-note {
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        color: #1565c0;
+    }
+</style>
+
+<div class="spend-header">
+    <h1>💰 Tech Spend</h1>
+    {% if last_updated %}
+    <div class="data-source-badge">
+        Data as of: {{ last_updated }}
+    </div>
+    {% endif %}
+</div>
+
+{% if note %}
+<div class="info-note">
+    <strong>Note:</strong> {{ note }}
+</div>
+{% endif %}
+
+<!-- Summary Cards -->
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="number total">${{ "%.2f"|format(monthly_total) }}</div>
+        <div class="label">Estimated Monthly Total</div>
+    </div>
+    
+    <div class="summary-card">
+        <div class="number active">{{ status_counts.active }}</div>
+        <div class="label">Active Subscriptions</div>
+    </div>
+    
+    {% if status_counts.cancelling > 0 %}
+    <div class="summary-card">
+        <div class="number cancelling">{{ status_counts.cancelling }}</div>
+        <div class="label">Winding Down</div>
+    </div>
+    {% endif %}
+    
+    <div class="summary-card">
+        <div class="number cancelled">{{ status_counts.cancelled }}</div>
+        <div class="label">Cancelled</div>
+    </div>
+</div>
+
+<!-- Subscriptions Section -->
+{% if subscriptions %}
+<div class="spend-section">
+    <h2>📦 Active Subscriptions</h2>
+    
+    <div class="spend-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Amount</th>
+                    <th>Cadence</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in subscriptions %}
+                <tr>
+                    <td>
+                        <div class="service-name">{{ sub.name }}</div>
+                        <span class="service-vendor">{{ sub.vendor }}</span>
+                    </td>
+                    <td>
+                        <div class="amount">${{ "%.2f"|format(sub.amount_usd) }}</div>
+                        <div class="source-indicator">config</div>
+                    </td>
+                    <td class="cadence">{{ sub.cadence }}</td>
+                    <td>
+                        <span class="status-badge {{ sub.status }}">{{ sub.status }}</span>
+                    </td>
+                    <td class="notes">{{ sub.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- API / Usage Section -->
+{% if usage_items %}
+<div class="spend-section">
+    <h2>⚡ API / Token Usage</h2>
+    
+    {% if aws_live and aws_live.error %}
+    <div class="warning-box">
+        <strong>AWS Cost Explorer Error:</strong> {{ aws_live.error }} — showing config fallback amount
+    </div>
+    {% endif %}
+    
+    <div class="spend-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Amount</th>
+                    <th>Cadence</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in usage_items %}
+                <tr>
+                    <td>
+                        <div class="service-name">{{ item.name }}</div>
+                        <span class="service-vendor">{{ item.vendor }}</span>
+                    </td>
+                    <td>
+                        {% if aws_live and not aws_live.error and item.id == 'aws' %}
+                        <div class="amount live">${{ "%.2f"|format(aws_live.amount) }}</div>
+                        <div class="source-indicator live">
+                            ✓ live API ({{ aws_live.period }})
+                        </div>
+                        {% else %}
+                        <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>
+                        <div class="source-indicator">config</div>
+                        {% endif %}
+                    </td>
+                    <td class="cadence">{{ item.cadence }}</td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">{{ item.status }}</span>
+                    </td>
+                    <td class="notes">{{ item.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Cancelled Section -->
+{% if cancelled %}
+<div class="spend-section">
+    <h2>🗑️ Cancelled / Historical</h2>
+    
+    <div class="spend-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Last Amount</th>
+                    <th>Cadence</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cancelled %}
+                <tr>
+                    <td>
+                        <div class="service-name">{{ item.name }}</div>
+                        <span class="service-vendor">{{ item.vendor }}</span>
+                    </td>
+                    <td>
+                        <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>
+                        {% if item.last_charge_date %}
+                        <div class="source-indicator">Last: {{ item.last_charge_date }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="cadence">{{ item.cadence }}</td>
+                    <td>
+                        <span class="status-badge cancelled">{{ item.status }}</span>
+                    </td>
+                    <td class="notes">{{ item.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if not subscriptions and not usage_items and not cancelled %}
+<div class="empty-state">
+    <p><strong>No spend data configured</strong></p>
+    <p>Add subscription and usage data to <code>data/tech_spend.json</code></p>
+</div>
+{% endif %}
+
+{% endblock %}

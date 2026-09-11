@@ -1,0 +1,95 @@
+{
+  "$schema": "Tech spend ledger for meme ops / engineering infrastructure",
+  "last_updated": "2026-09-11",
+  "note": "Amounts from Sep 2026 statement/Gmail audit unless noted otherwise",
+  "subscriptions": [
+    {
+      "id": "imgflip-premium",
+      "name": "Imgflip API Premium",
+      "vendor": "Imgflip",
+      "category": "subscription",
+      "amount_usd": 9.99,
+      "cadence": "monthly",
+      "status": "active",
+      "notes": "Premium API - templates banked, can cancel later",
+      "url": "https://imgflip.com",
+      "env_secret_hint": null
+    },
+    {
+      "id": "vercel-pro",
+      "name": "Vercel Pro",
+      "vendor": "Vercel",
+      "category": "subscription",
+      "amount_usd": 21.78,
+      "cadence": "monthly",
+      "status": "active",
+      "notes": "From Gmail; not always on Chase windows",
+      "url": "https://vercel.com",
+      "env_secret_hint": null
+    },
+    {
+      "id": "aws",
+      "name": "AWS",
+      "vendor": "Amazon Web Services",
+      "category": "usage",
+      "amount_usd": 1.31,
+      "cadence": "monthly",
+      "status": "active",
+      "notes": "Typical small bill - use Cost Explorer for real-time if AWS creds exist",
+      "url": "https://aws.amazon.com",
+      "env_secret_hint": "AWS_ACCESS_KEY_ID"
+    },
+    {
+      "id": "supergrok-xai",
+      "name": "SuperGrok Lite",
+      "vendor": "xAI",
+      "category": "subscription",
+      "amount_usd": 10.00,
+      "cadence": "monthly",
+      "status": "cancelling",
+      "notes": "User set cancel ~Sep 13 2026",
+      "url": "https://x.ai",
+      "env_secret_hint": null
+    },
+    {
+      "id": "x-premium",
+      "name": "X Premium",
+      "vendor": "Twitter/X",
+      "category": "subscription",
+      "amount_usd": 84.00,
+      "cadence": "yearly",
+      "status": "active",
+      "notes": "Orphaned Stripe - more social than infra; included under Other/related",
+      "url": "https://x.com",
+      "env_secret_hint": null
+    }
+  ],
+  "cancelled": [
+    {
+      "id": "chatgpt-plus",
+      "name": "ChatGPT Plus",
+      "vendor": "OpenAI",
+      "category": "subscription",
+      "amount_usd": 100.00,
+      "cadence": "monthly",
+      "status": "cancelled",
+      "notes": "Was $100/mo on United Explorer ~24th - USER CANCELLED mid-September 2026",
+      "last_charge_date": "2026-09-24",
+      "url": "https://openai.com",
+      "env_secret_hint": null
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor Pro",
+      "vendor": "Cursor",
+      "category": "subscription",
+      "amount_usd": 20.00,
+      "cadence": "monthly",
+      "status": "cancelled",
+      "notes": "Cancelled earlier in 2026",
+      "last_charge_date": "2026-06-15",
+      "url": "https://cursor.com",
+      "env_secret_hint": null
+    }
+  ]
+}

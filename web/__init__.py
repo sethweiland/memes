@@ -27,6 +27,7 @@ def create_app() -> Flask:
 
     # Register blueprints
     from .blueprints.dashboard import bp as dashboard_bp
+    from .blueprints.spend import bp as spend_bp
     from .blueprints.generate import bp as generate_bp
     from .blueprints.gallery import bp as gallery_bp
     from .blueprints.templates_review import bp as templates_bp
@@ -35,6 +36,7 @@ def create_app() -> Flask:
     from .blueprints.daily_candidates import bp as daily_candidates_bp
 
     app.register_blueprint(dashboard_bp, url_prefix="/")
+    app.register_blueprint(spend_bp, url_prefix="/spend")
     app.register_blueprint(generate_bp, url_prefix="/generate")
     app.register_blueprint(video_bp, url_prefix="/video")
     app.register_blueprint(gallery_bp, url_prefix="/gallery")
