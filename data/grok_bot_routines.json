@@ -1,0 +1,96 @@
+{
+  "updated_at": "2026-09-11T21:22:00Z",
+  "routines": [
+    {
+      "id": "ceramic-support-thread-watch",
+      "name": "Ceramic support thread watch",
+      "owner_agent": "stevie",
+      "category": "support",
+      "enabled": true,
+      "schedule": "44 8-19 * * 1-5",
+      "schedule_human": "Weekdays 8:44–19:44 ET, hourly-ish",
+      "last_run_at": null,
+      "status": "ok",
+      "blurb": "Watch the Ceramic support thread for new replies",
+      "links": { "ops": null }
+    },
+    {
+      "id": "fiddle-lab-presets-homework-nudge",
+      "name": "Fiddle Lab presets homework nudge",
+      "owner_agent": "stevie",
+      "category": "music",
+      "enabled": true,
+      "schedule": "40 10 * * 1-5",
+      "schedule_human": "Weekdays at 10:40am ET",
+      "last_run_at": null,
+      "status": "ok",
+      "blurb": "Nudge on Fiddle Lab presets homework",
+      "links": { "ops": null }
+    },
+    {
+      "id": "ucla-tba-kickoff-watch",
+      "name": "UCLA TBA kickoff watch",
+      "owner_agent": "stevie",
+      "category": "sports",
+      "enabled": true,
+      "schedule": "20 9 * * 1,4",
+      "schedule_human": "Mon + Thu at 9:20am ET",
+      "last_run_at": null,
+      "status": "ok",
+      "blurb": "Watch UCLA TBA kickoff listings",
+      "links": { "ops": null }
+    },
+    {
+      "id": "x-follow-candidates",
+      "name": "X follow candidates",
+      "owner_agent": "stevie",
+      "category": "x",
+      "enabled": true,
+      "schedule": "23 10 * * 1-5",
+      "schedule_human": "Weekdays at 10:23am ET",
+      "last_run_at": null,
+      "status": "ok",
+      "blurb": "Draft X follow candidates for review",
+      "links": { "ops": null }
+    },
+    {
+      "id": "x-reply-candidates",
+      "name": "X reply candidates",
+      "owner_agent": "stevie",
+      "category": "x",
+      "enabled": true,
+      "schedule": "23 16 * * 1-5",
+      "schedule_human": "Weekdays at 4:23pm ET",
+      "last_run_at": null,
+      "status": "ok",
+      "blurb": "Draft X reply candidates for review",
+      "links": { "ops": null }
+    },
+    {
+      "id": "x-tweet-drafts",
+      "name": "X tweet drafts",
+      "owner_agent": "stevie",
+      "category": "x",
+      "enabled": true,
+      "schedule": "23 13 * * 1-5",
+      "schedule_human": "Weekdays at 1:23pm ET",
+      "last_run_at": null,
+      "status": "ok",
+      "blurb": "Draft X tweet candidates for review",
+      "links": { "ops": null }
+    },
+    {
+      "id": "whole-foods-restock",
+      "name": "Whole Foods restock",
+      "owner_agent": "jeffy",
+      "category": "shopping",
+      "enabled": true,
+      "schedule": "0 9 */10 * *",
+      "schedule_human": "Every 10 days at 9:00am ET",
+      "last_run_at": "2026-09-11T13:27:16Z",
+      "status": "ok",
+      "blurb": "Build WF cart, wait for Seth to checkout",
+      "links": { "ops": null }
+    }
+  ]
+}

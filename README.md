@@ -93,7 +93,7 @@ python web/run.py
 | **Projects** | `/projects/` | Placeholder until kanban (lanes: `idea`, `active`, `blocked`, `waiting_on_seth`, `parked`) |
 | **Spend** | `/spend/` | Tech spending tracker (unchanged path) |
 | **X** | `/x/` | Real X Activity tab — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Queue is `ops/queue/x-activity/` |
-| **Grok Bot** | `/grok-bot/` | Placeholder — routines catalog landing in a follow-up (`ops/grok-bot/routines.json`) |
+| **Grok Bot** | `/grok-bot/` | Catalog of recurring routines. Private JSON at `ops/grok-bot/routines.json` (git seed / local fallback `data/grok_bot_routines.json`). This page does not start or stop routines. |
 | **Memes** | `/memes/` | Meme pipeline dashboard (the old `/` page) |
 
 **Spend:**
@@ -132,6 +132,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 **Queue Storage:**
 - Candidate queue JSON stored in S3 under `ops/queue/daily-candidates/{date}.json` (private)
 - X activity drafts at `ops/queue/x-activity/{date}.json` (private; local fallback `data/x_activity/`)
+- Grok Bot routines at `ops/grok-bot/routines.json` (private; git seed / local fallback `data/grok_bot_routines.json`)
 - Local cache in `data/daily_candidates/` when S3 is unset or unreachable
 - Web UI loads from S3 with local fallback
 

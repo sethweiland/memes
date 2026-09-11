@@ -11,6 +11,7 @@ from flask import Blueprint, Flask
 
 import tests.bootstrap  # noqa: F401
 
+from src.core.grok_bot import reset_grok_bot_routines
 from src.core.x_activity import XActivityQueue, reset_x_activity_queue
 from tests.fakes import MemoryS3Store
 from web.blueprints.dashboard import bp as dashboard_bp
@@ -76,10 +77,12 @@ class OpsIaTests(unittest.TestCase):
             local_dir=Path(self.tmp.name),
         )
         reset_x_activity_queue(self.queue)
+        reset_grok_bot_routines()
         self.client = _ops_app().test_client()
 
     def tearDown(self):
         reset_x_activity_queue()
+        reset_grok_bot_routines()
         self.tmp.cleanup()
 
     def test_home_is_life_ops_hub(self):
@@ -129,8 +132,14 @@ class OpsIaTests(unittest.TestCase):
         grok = self.client.get("/grok-bot/")
         self.assertEqual(grok.status_code, 200)
         grok_html = grok.get_data(as_text=True)
-        self.assertIn("Routines catalog landing in a follow-up.", grok_html)
-        self.assertNotIn("<tr", grok_html)
+        self.assertIn("Whole Foods restock", grok_html)
+        self.assertIn("X follow candidates", grok_html)
+        self.assertIn("X reply candidates", grok_html)
+        self.assertIn("X tweet drafts", grok_html)
+        self.assertIn('<section class="grok-bot-section" data-category="x">', grok_html)
+        self.assertIn("start/stop lives in Grok Bot settings", grok_html)
+        self.assertNotIn("Routines catalog landing in a follow-up.", grok_html)
+        self.assertNotIn("Start routine", grok_html)
 
     def test_old_meme_paths_redirect(self):
         cases = (
