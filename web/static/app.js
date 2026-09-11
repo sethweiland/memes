@@ -826,19 +826,18 @@ function publishToInstagram() {
         return;
     }
     
-    if (!imageUrl) {
-        statusDiv.innerHTML = '<div class="error-box">Public image URL is required. Please upload your image to a public host first.</div>';
-        return;
-    }
-    
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
         statusDiv.innerHTML = '<div class="error-box">Image URL must start with http:// or https://</div>';
         return;
     }
     
     postBtn.disabled = true;
     postBtn.textContent = 'Publishing...';
-    statusDiv.innerHTML = '<div class="info-box">Creating Instagram post...</div>';
+    
+    var statusMessage = imageUrl 
+        ? '<div class="info-box">Creating Instagram post...</div>'
+        : '<div class="info-box">Uploading to S3, then creating Instagram post...</div>';
+    statusDiv.innerHTML = statusMessage;
     
     // Try both endpoints (generate and gallery have the same API)
     var endpoint = window.location.pathname.includes('/generate/')
