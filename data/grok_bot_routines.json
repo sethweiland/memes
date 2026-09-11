@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-11T13:27:16Z",
+  "updated_at": "2026-09-11T21:22:00Z",
   "routines": [
     {
       "id": "ceramic-support-thread-watch",
@@ -77,19 +77,6 @@
       "last_run_at": null,
       "status": "ok",
       "blurb": "Draft X tweet candidates for review",
-      "links": { "ops": null }
-    },
-    {
-      "id": "equinox-cancel-reply-watch",
-      "name": "Equinox cancel-reply watch",
-      "owner_agent": "jeffy",
-      "category": "health",
-      "enabled": true,
-      "schedule": "2 10,14,17 * * 1-5",
-      "schedule_human": "Weekdays at 10:02am, 2:02pm, and 5:02pm ET",
-      "last_run_at": null,
-      "status": "ok",
-      "blurb": "Watch Equinox cancel-reply thread",
       "links": { "ops": null }
     },
     {

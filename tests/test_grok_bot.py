@@ -29,7 +29,6 @@ SEED_IDS = {
     "x-follow-candidates",
     "x-reply-candidates",
     "x-tweet-drafts",
-    "equinox-cancel-reply-watch",
     "whole-foods-restock",
 }
 X_IDS = {"x-follow-candidates", "x-reply-candidates", "x-tweet-drafts"}
@@ -77,15 +76,18 @@ def _nav_app(*blueprints):
 
 
 class GrokBotNormalizeTests(unittest.TestCase):
-    def test_committed_seed_has_eight_enabled_crons(self):
+    def test_committed_seed_has_seven_live_crons(self):
         normalized = normalize_loaded(_seed())
         self.assertIsNotNone(normalized)
-        self.assertEqual(len(normalized["routines"]), 8)
+        self.assertEqual(len(normalized["routines"]), 7)
         ids = {r["id"] for r in normalized["routines"]}
         self.assertEqual(ids, SEED_IDS)
+        self.assertNotIn("equinox-cancel-reply-watch", ids)
         self.assertTrue(all(r["enabled"] for r in normalized["routines"]))
         x_ids = {r["id"] for r in normalized["routines"] if r["category"] == "x"}
         self.assertEqual(x_ids, X_IDS)
+        jeffy = [r for r in normalized["routines"] if r["owner_agent"] == "jeffy"]
+        self.assertEqual([r["id"] for r in jeffy], ["whole-foods-restock"])
         for routine in normalized["routines"]:
             if routine["id"] == "whole-foods-restock":
                 self.assertEqual(routine["last_run_at"], "2026-09-11T13:27:16Z")
@@ -98,7 +100,7 @@ class GrokBotNormalizeTests(unittest.TestCase):
         routines = _seed()["routines"]
         normalized = normalize_loaded(routines)
         self.assertEqual(normalized["updated_at"], None)
-        self.assertEqual(len(normalized["routines"]), 8)
+        self.assertEqual(len(normalized["routines"]), 7)
         self.assertEqual({r["id"] for r in normalized["routines"]}, SEED_IDS)
 
     def test_normalize_maps_unknown_category_to_other(self):
@@ -177,7 +179,7 @@ class GrokBotStoreTests(unittest.TestCase):
     def test_load_wraps_bare_json_array_from_s3(self):
         self.store.put_json(BucketLayout.grok_bot_routines_key(), _seed()["routines"])
         loaded = self.catalog.load()
-        self.assertEqual(len(loaded["routines"]), 8)
+        self.assertEqual(len(loaded["routines"]), 7)
         raw, _etag = self.store.get_json(BucketLayout.grok_bot_routines_key())
         self.assertIsInstance(raw, list)
         self.catalog.save(loaded)
@@ -189,7 +191,7 @@ class GrokBotStoreTests(unittest.TestCase):
         store = MemoryS3Store(configured=False)
         catalog = GrokBotRoutines(store=store, local_path=self.local_path)
         self.assertFalse(catalog.save(_seed()))
-        self.assertEqual(len(catalog.load()["routines"]), 8)
+        self.assertEqual(len(catalog.load()["routines"]), 7)
         self.assertEqual(store.objects, {})
 
     def test_s3_down_still_saves_local(self):
@@ -197,7 +199,7 @@ class GrokBotStoreTests(unittest.TestCase):
         ok = self.catalog.save(_seed())
         self.assertFalse(ok)
         local = json.loads(self.local_path.read_text(encoding="utf-8"))
-        self.assertEqual(len(local["routines"]), 8)
+        self.assertEqual(len(local["routines"]), 7)
 
     def test_ensure_seeded_write_through_when_s3_empty(self):
         self.local_path.write_text(json.dumps(_seed()), encoding="utf-8")
@@ -205,7 +207,7 @@ class GrokBotStoreTests(unittest.TestCase):
         key = BucketLayout.grok_bot_routines_key()
         self.assertEqual(key, "ops/grok-bot/routines.json")
         stored, _etag = self.store.get_json(key)
-        self.assertEqual(len(stored["routines"]), 8)
+        self.assertEqual(len(stored["routines"]), 7)
         self.assertTrue(all(k.startswith("ops/grok-bot/") for k in self.store.objects))
 
     def test_ensure_seeded_does_not_overwrite_s3(self):
@@ -253,7 +255,8 @@ class GrokBotFlaskTests(unittest.TestCase):
         self.assertIn("X follow candidates", html)
         self.assertIn("X reply candidates", html)
         self.assertIn("X tweet drafts", html)
-        self.assertIn("Equinox cancel-reply watch", html)
+        self.assertNotIn("Equinox cancel-reply watch", html)
+        self.assertNotIn("equinox-cancel-reply-watch", html)
         self.assertIn("Fiddle Lab presets homework nudge", html)
         self.assertIn("UCLA TBA kickoff watch", html)
         self.assertIn('data-category="x"', html)
@@ -291,7 +294,7 @@ class GrokBotFlaskTests(unittest.TestCase):
         self.catalog.save(payload)
         jeffy = self.client.get("/grok-bot/?filter=jeffy").get_data(as_text=True)
         self.assertIn("Whole Foods restock", jeffy)
-        self.assertIn("Equinox cancel-reply watch", jeffy)
+        self.assertNotIn("Equinox cancel-reply watch", jeffy)
         self.assertIn("Parked ops job", jeffy)
         self.assertNotIn("Ceramic support thread watch", jeffy)
 
