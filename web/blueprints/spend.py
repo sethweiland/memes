@@ -99,7 +99,8 @@ def _calculate_monthly_total(subscriptions: List[Dict], aws_live: Optional[Dict]
     total = 0.0
     
     for sub in subscriptions:
-        if sub.get('status') != 'active':
+        # Include active and cancelling (still paying until cancelled)
+        if sub.get('status') not in ('active', 'cancelling'):
             continue
             
         amount = sub.get('amount_usd', 0)
