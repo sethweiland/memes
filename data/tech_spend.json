@@ -59,7 +59,7 @@
       "amount_usd": 0.0,
       "cadence": "usage",
       "status": "active",
-      "notes": "Token usage from meme generation - tracked locally in data/token_usage.jsonl",
+      "notes": "Token usage from meme generation — shared S3 ops/usage/xai/{YYYY}/{MM}.json (heuristic cost, not xAI billing)",
       "url": "https://x.ai",
       "env_secret_hint": "XAI_API_KEY"
     },

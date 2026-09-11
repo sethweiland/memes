@@ -90,8 +90,9 @@ python web/run.py
 - **Spend**: Tech spending tracker for subscriptions and API costs
   - Tracks subscriptions (Imgflip, Vercel, etc.)
   - Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
+  - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
   - Monthly total with active/cancelled breakdown
-  - Data sourced from `data/tech_spend.json`
+  - Subscription ledger: `data/tech_spend.json`
 - **Generate**: Create memes with custom topics and settings
 - **Gallery**: Browse and filter generated memes
 - **Daily Queue**: Review daily candidate memes for Instagram
@@ -114,15 +115,23 @@ The brand selector appears automatically when multiple brands are configured.
 The daily candidate workflow uses S3-backed storage for both queue metadata and images, making it container-friendly (Fly, Docker, etc.):
 
 **Queue Storage:**
-- Candidate queue JSON files stored in S3 under `queue/daily-candidates/{date}.json`
-- Local cache maintained in `data/daily_candidates/` for backward compatibility
+- Candidate queue JSON stored in S3 under `ops/queue/daily-candidates/{date}.json` (private)
+- Local cache in `data/daily_candidates/` when S3 is unset or unreachable
 - Web UI loads from S3 with local fallback
 
 **Image Storage:**
-- Each candidate image uploaded to S3 at generation time under `public/memes/`
+- New generated JPEGs upload under `public/memes/generated/` (world-readable for Instagram)
+- Template catalog stays at `public/memes/templates/{id}.{ext}` (not migrated)
 - Candidate records include `public_url` and `s3_key` fields
 - Review UI displays images directly from S3 public URLs
 - Approve flow uses existing `public_url` (no local file dependency)
+
+**Token usage (Spend):**
+- Monthly JSON at `ops/usage/{provider}/{YYYY}/{MM}.json` (private; ETag concurrency)
+- Local cache at `data/usage/{provider}/{YYYY}/{MM}.json`
+- Logging a token call never breaks meme generation if S3 is down
+
+See `infra/meme-assets/README.md` for the full bucket tree and IAM.
 
 **Generation Flow:**
 ```bash
@@ -220,6 +229,9 @@ meme-generator/
 │   │   ├── rag.py                           # DomainRAG interface
 │   │   ├── pipeline.py                      # Main orchestration
 │   │   ├── grok.py                          # Grok-4 API client
+│   │   ├── s3_store.py                      # Shared S3 client + bucket layout
+│   │   ├── token_tracker.py                 # xAI usage → ops/usage monthly JSON
+│   │   ├── meme_assets.py                   # Public JPEG upload + queue JSON
 │   │   ├── templates.py                     # imgflip template catalog
 │   │   ├── evaluator.py                     # Meme scoring
 │   │   └── meme_generator.py                # imgflip image generation
@@ -417,7 +429,8 @@ The app exposes a `/healthz` endpoint that returns `{"status": "ok"}` for contai
 - The app runs on port 8080 by default (configurable via `$PORT`)
 - Uses gunicorn with 2 workers and 120s timeout
 - Data directories (`data/`, `output/`) are ephemeral in the container
-- For persistent storage, mount volumes or use S3 for asset storage
+- Persist queue JSON and xAI token usage in S3 under `ops/` (same bucket as public memes)
+- Generated Instagram JPEGs go under `public/memes/generated/`
 - ChromaDB indexes are stored in `data/*/chroma/` and need to be pre-built or regenerated on startup
 
 ## License

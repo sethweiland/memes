@@ -11,6 +11,16 @@ locals {
   all_tags = merge(local.default_tags, var.tags)
 }
 
+# Canonical object layout (application writers live in src/core/s3_store.py):
+#
+#   public/memes/templates/{id}.{ext}            # existing catalog; do not rename
+#   public/memes/generated/{hash}_{stem}.jpg     # IG-ready JPEGs
+#   ops/queue/daily-candidates/{YYYY-MM-DD}.json # private queue JSON
+#   ops/usage/{provider}/{YYYY}/{MM}.json        # private monthly token usage
+#
+# Bucket policy below grants public GetObject ONLY to var.public_prefix
+# (public/memes/*). Everything under var.ops_prefix stays private.
+
 # S3 bucket for meme assets
 resource "aws_s3_bucket" "meme_assets" {
   bucket = local.bucket_name

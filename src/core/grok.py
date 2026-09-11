@@ -86,7 +86,8 @@ class GrokClient:
             ) from e
         data = response.json()
         
-        # Log token usage for spend tracking
+        # Log token usage for spend tracking (S3 ops/usage + local fallback).
+        # Cost is a heuristic — xAI chat responses only include token counts.
         try:
             usage = data.get("usage", {})
             if usage:
@@ -96,7 +97,7 @@ class GrokClient:
                     model=request_json["model"],
                     prompt_tokens=usage.get("prompt_tokens", 0),
                     completion_tokens=usage.get("completion_tokens", 0),
-                    estimated_cost_usd=None,  # xAI doesn't provide cost in response
+                    estimated_cost_usd=None,
                 )
         except Exception:
             # Don't break generation if logging fails
