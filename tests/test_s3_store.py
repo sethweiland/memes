@@ -22,6 +22,13 @@ class BucketLayoutTests(unittest.TestCase):
         BucketLayout.require_ops_key(key)
         self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
 
+    def test_grok_bot_key_is_private_ops(self):
+        key = BucketLayout.grok_bot_routines_key()
+        self.assertEqual(key, "ops/grok-bot/routines.json")
+        BucketLayout.require_ops_key(key)
+        self.assertTrue(key.startswith(BucketLayout.GROK_BOT_PREFIX))
+        self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
+
     def test_ops_key_rejects_public_prefix(self):
         with self.assertRaises(ValueError):
             BucketLayout.require_ops_key("public/memes/usage/xai/2026/09.json")

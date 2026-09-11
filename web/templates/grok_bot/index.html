@@ -1,10 +1,153 @@
 {% extends "base.html" %}
-
+{% set active_page = "grok_bot" %}
 {% block title %}Grok Bot · Ops{% endblock %}
 
 {% block content %}
 <h1>Grok Bot</h1>
-<div class="empty-state">
-    <p>Routines catalog landing in a follow-up.</p>
+<p class="gallery-counts" style="margin-bottom:12px;">
+    Recurring Grok Bot routines. This page catalogs them only — start/stop lives in Grok Bot settings, not this app.
+</p>
+
+<div class="gallery-toolbar">
+    <div>
+        <div class="counter">
+            {{ summary.enabled_count }} enabled ·
+            {{ summary.total_count }} total ·
+            Jeffy {{ summary.agent_counts.jeffy }} ·
+            Stevie {{ summary.agent_counts.stevie }}
+        </div>
+        {% if summary.updated_at %}
+        <div class="gallery-counts" style="margin-top:4px;">
+            Catalog updated {{ summary.updated_at }}
+        </div>
+        {% endif %}
+    </div>
 </div>
+
+<div class="gallery-type-tabs">
+    <a href="{{ url_for('grok_bot.index') }}"
+       class="{{ 'active' if selected_filter == 'all' }}">All</a>
+    <a href="{{ url_for('grok_bot.index', filter='enabled') }}"
+       class="{{ 'active' if selected_filter == 'enabled' }}">Enabled</a>
+    <a href="{{ url_for('grok_bot.index', filter='jeffy') }}"
+       class="{{ 'active' if selected_filter == 'jeffy' }}">Jeffy</a>
+    <a href="{{ url_for('grok_bot.index', filter='stevie') }}"
+       class="{{ 'active' if selected_filter == 'stevie' }}">Stevie</a>
+</div>
+
+{% if data is none %}
+<div class="empty">
+    <p>No Grok Bot routines file — Jeffy writes to ops/grok-bot/routines.json</p>
+</div>
+{% elif filtered_count == 0 %}
+<div class="empty">
+    <p>No routines match this filter.</p>
+</div>
+{% endif %}
+
+{% if grouped %}
+{% for category, label, routines in grouped %}
+<section class="grok-bot-section" data-category="{{ category }}">
+    <h2>{{ label }}</h2>
+    <div class="grok-bot-grid">
+        {% for routine in routines %}
+        <article class="grok-card {% if routine.enabled %}is-enabled{% else %}is-disabled{% endif %}"
+                 data-id="{{ routine.id }}"
+                 data-agent="{{ routine.owner_agent }}"
+                 data-category="{{ routine.category }}">
+            <div class="grok-card-top">
+                <h3>{{ routine.name }}</h3>
+                <span class="grok-enabled-pill {{ 'on' if routine.enabled else 'off' }}">
+                    {% if routine.enabled %}Enabled{% else %}Disabled{% endif %}
+                </span>
+            </div>
+            <div class="grok-card-meta">
+                <span class="grok-agent-pill agent-{{ routine.owner_agent }}">{{ routine.owner_agent }}</span>
+                {% if routine.status %}
+                <span class="meta">{{ routine.status }}</span>
+                {% endif %}
+            </div>
+            <p class="grok-schedule">{{ routine.schedule_human or routine.schedule or '—' }}</p>
+            <p class="grok-last-run">
+                Last run
+                {% if routine.last_run_display %}
+                {{ routine.last_run_display }}
+                {% else %}
+                —
+                {% endif %}
+            </p>
+            {% if routine.blurb %}
+            <p class="grok-blurb">{{ routine.blurb }}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.grok-bot-section { margin-bottom: 28px; }
+.grok-bot-section h2 { font-size: 18px; margin-bottom: 12px; }
+.grok-bot-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 720px) {
+    .grok-bot-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+}
+.grok-card {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.grok-card.is-enabled { border-color: #10b981; }
+.grok-card.is-disabled { border-color: #9ca3af; opacity: 0.75; }
+.grok-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.grok-card h3 { font-size: 18px; margin: 0; line-height: 1.3; }
+.grok-enabled-pill {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    background: #fff;
+}
+.grok-enabled-pill.on { color: #047857; border-color: #10b981; background: #ecfdf5; }
+.grok-enabled-pill.off { color: #6b7280; border-color: #9ca3af; background: #f3f4f6; }
+.grok-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.grok-agent-pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize;
+    background: #eef2ff;
+    color: #33418a;
+}
+.grok-agent-pill.agent-jeffy { background: #f3e5f5; color: #7b1fa2; }
+.grok-agent-pill.agent-stevie { background: #e3f2fd; color: #1565c0; }
+.grok-schedule { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.grok-last-run { font-size: 13px; color: #666; margin-bottom: 8px; }
+.grok-blurb { font-size: 14px; color: #444; margin: 0; }
+</style>
 {% endblock %}

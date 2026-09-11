@@ -8,6 +8,7 @@ Bucket (default): bluegrass-meme-pipeline-dev-meme-assets (us-east-1)
 
     ops/queue/daily-candidates/{YYYY-MM-DD}.json   # private daily queue
     ops/queue/x-activity/{YYYY-MM-DD}.json         # private X drafts (Stevie)
+    ops/grok-bot/routines.json                     # private Grok Bot routine catalog
     ops/usage/{provider}/{YYYY}/{MM}.json          # private monthly token usage
 
 Public GET is ONLY ``public/memes/*`` (Terraform bucket policy). Queue and usage
@@ -44,6 +45,8 @@ class BucketLayout:
     QUEUE_PREFIX = "ops/queue/daily-candidates/"
     QUEUE_LEGACY_PREFIX = "queue/daily-candidates/"
     X_ACTIVITY_PREFIX = "ops/queue/x-activity/"
+    GROK_BOT_PREFIX = "ops/grok-bot/"
+    GROK_BOT_ROUTINES_KEY = "ops/grok-bot/routines.json"
     USAGE_PREFIX = "ops/usage/"
 
     @staticmethod
@@ -73,6 +76,10 @@ class BucketLayout:
     @classmethod
     def x_activity_key(cls, date_str: str) -> str:
         return f"{cls.X_ACTIVITY_PREFIX}{date_str}.json"
+
+    @classmethod
+    def grok_bot_routines_key(cls) -> str:
+        return cls.GROK_BOT_ROUTINES_KEY
 
     @classmethod
     def usage_key(cls, provider: str, year: int, month: int) -> str:

@@ -53,4 +53,11 @@ def create_app() -> Flask:
     app.register_blueprint(daily_candidates_bp)
     register_legacy_redirects(app)
 
+    try:
+        from src.core.grok_bot import get_grok_bot_routines
+
+        get_grok_bot_routines().ensure_seeded()
+    except Exception:
+        pass
+
     return app

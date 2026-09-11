@@ -351,7 +351,7 @@ class DashboardXBadgeTests(unittest.TestCase):
         self.assertNotIn("X Activity</h3>", html)
 
     def test_x_is_life_nav_not_meme_tool(self):
-        """X sits with Spend in the top nav; meme tools live in the Memes subnav."""
+        """X sits with Spend / Grok Bot in the top nav; meme tools live in the Memes subnav."""
         nav = (_WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
         spend_at = nav.find("url_for('spend.index')")
         x_at = nav.find("url_for('x_activity.index')")
