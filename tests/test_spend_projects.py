@@ -38,6 +38,7 @@ def _spend_app() -> Flask:
         ("video", "start", "/video/"),
         ("gallery", "index", "/gallery/"),
         ("daily_candidates", "index", "/gallery/daily-candidates/"),
+        ("x_activity", "index", "/x/"),
         ("templates_review", "review_page", "/templates/"),
     ]
     for name, endpoint, path in nav:
