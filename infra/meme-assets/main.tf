@@ -16,6 +16,7 @@ locals {
 #   public/memes/templates/{id}.{ext}            # existing catalog; do not rename
 #   public/memes/generated/{hash}_{stem}.jpg     # IG-ready JPEGs
 #   ops/queue/daily-candidates/{YYYY-MM-DD}.json # private queue JSON
+#   ops/queue/x-activity/{YYYY-MM-DD}.json       # private X drafts (Stevie)
 #   ops/usage/{provider}/{YYYY}/{MM}.json        # private monthly token usage
 #
 # Bucket policy below grants public GetObject ONLY to var.public_prefix

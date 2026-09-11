@@ -210,6 +210,19 @@
     </div>
     
     <div class="stat-card">
+        {% if stats.x_activity is not none and stats.x_activity > 0 %}
+        <div class="number pending">{{ stats.x_activity }}</div>
+        <div class="label">X Pending</div>
+        {% else %}
+        <div class="number">{{ stats.x_activity if stats.x_activity is not none else '—' }}</div>
+        <div class="label">X Pending</div>
+        {% if stats.x_activity is none %}
+        <div class="sublabel">No queue file</div>
+        {% endif %}
+        {% endif %}
+    </div>
+    
+    <div class="stat-card">
         <div class="number success">{{ stats.gallery_count }}</div>
         <div class="label">Gallery Memes</div>
     </div>
@@ -227,6 +240,14 @@
     <h2>📋 Daily Candidates Ready</h2>
     <p>{{ stats.daily_candidates }} meme{{ 's' if stats.daily_candidates != 1 else '' }} waiting for review before Instagram publish</p>
     <a href="{{ url_for('daily_candidates.index') }}" class="btn">Review Candidates →</a>
+</div>
+{% endif %}
+
+{% if stats.x_activity is not none and stats.x_activity > 0 %}
+<div class="cta-section">
+    <h2>X drafts ready</h2>
+    <p>{{ stats.x_activity }} draft{{ 's' if stats.x_activity != 1 else '' }} waiting for review. Approving does not post to X.</p>
+    <a href="{{ url_for('x_activity.index') }}" class="btn">Review X →</a>
 </div>
 {% endif %}
 

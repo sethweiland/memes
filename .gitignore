@@ -47,6 +47,7 @@ data/meme_templates_expanded.json
 data/usage/
 data/token_usage.jsonl
 data/daily_candidates/
+data/x_activity/
 
 # Output files (generated memes)
 output/

@@ -9,9 +9,14 @@
 </head>
 <body>
     <nav>
+        {# Life dashboard nav (Home / Projects / Spend / Memes / X).
+           Follow-up PR nests meme routes under /memes/ and adds those parents.
+           X is a top-level life item, not a meme tool. #}
         <a href="/" class="brand">Meme Pipeline</a>
         <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if active_page == 'dashboard' }}">Dashboard</a>
         <a href="{{ url_for('spend.index') }}" class="{{ 'active' if active_page == 'spend' }}">Spend</a>
+        <a href="{{ url_for('x_activity.index') }}" class="{{ 'active' if active_page == 'x_activity' }}">X</a>
+        {# Meme tools — follow-up PR nests these under /memes/ #}
         <a href="{{ url_for('generate.start') }}" class="{{ 'active' if active_page == 'generate' }}">Generate</a>
         <a href="{{ url_for('video.start') }}" class="{{ 'active' if active_page == 'video' }}">Video Memes</a>
         <a href="{{ url_for('gallery.index') }}" class="{{ 'active' if active_page == 'gallery' }}">Gallery</a>

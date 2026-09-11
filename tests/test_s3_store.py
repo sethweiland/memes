@@ -16,6 +16,12 @@ class BucketLayoutTests(unittest.TestCase):
         self.assertEqual(key, "ops/queue/daily-candidates/2026-09-11.json")
         BucketLayout.require_ops_key(key)
 
+    def test_x_activity_key_is_private_ops(self):
+        key = BucketLayout.x_activity_key("2026-09-11")
+        self.assertEqual(key, "ops/queue/x-activity/2026-09-11.json")
+        BucketLayout.require_ops_key(key)
+        self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
+
     def test_ops_key_rejects_public_prefix(self):
         with self.assertRaises(ValueError):
             BucketLayout.require_ops_key("public/memes/usage/xai/2026/09.json")
