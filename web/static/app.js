@@ -635,8 +635,9 @@ function initResultsPage(jobId) {
             }
             if (img.filename) {
                 html += '<div class="download-btns">';
+                html += '<button class="btn btn-instagram" onclick="showInstagramModalFromResults(event, \'' + escapeAttr(img.filename) + '\', \'' + escapeAttr(img.caption || '') + '\');">📸 Post to Instagram</button>';
                 html += '<a class="btn btn-download" href="/gallery/download/' + encodeURIComponent(img.filename) + '" download>&#8595; Download</a>';
-                html += '<a class="btn btn-download btn-download-ig" href="/gallery/download/' + encodeURIComponent(img.filename) + '?format=instagram" download>&#8595; Download for Instagram</a>';
+                html += '<a class="btn btn-download btn-download-ig" href="/gallery/download/' + encodeURIComponent(img.filename) + '?format=instagram" download>&#8595; Download for IG</a>';
                 html += '</div>';
             }
             // Feedback: star rating + textarea
@@ -770,6 +771,134 @@ function initGalleryLightbox() {
         if (e.key === 'Escape') lightbox.classList.remove('show');
     });
 }
+
+
+// ---------------------------------------------------------------------------
+// Instagram Publishing
+// ---------------------------------------------------------------------------
+
+var currentInstagramFilename = '';
+
+function showInstagramModal(event, filename, caption) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    var modal = document.getElementById('instagram-modal');
+    var previewImg = document.getElementById('instagram-preview-img');
+    var captionTextarea = document.getElementById('instagram-caption');
+    var imageUrlInput = document.getElementById('instagram-image-url');
+    var statusDiv = document.getElementById('instagram-status');
+    
+    if (!modal) return;
+    
+    currentInstagramFilename = filename;
+    previewImg.src = '/gallery/image/' + encodeURIComponent(filename);
+    captionTextarea.value = caption || '';
+    imageUrlInput.value = '';
+    statusDiv.innerHTML = '';
+    
+    modal.style.display = 'block';
+}
+
+function closeInstagramModal() {
+    var modal = document.getElementById('instagram-modal');
+    if (modal) modal.style.display = 'none';
+    currentInstagramFilename = '';
+}
+
+function showInstagramModalFromResults(event, filename, caption) {
+    event.stopPropagation();
+    event.preventDefault();
+    showInstagramModal(event, filename, caption);
+}
+
+function publishToInstagram() {
+    var captionTextarea = document.getElementById('instagram-caption');
+    var imageUrlInput = document.getElementById('instagram-image-url');
+    var postBtn = document.getElementById('instagram-post-btn');
+    var statusDiv = document.getElementById('instagram-status');
+    
+    var caption = captionTextarea.value.trim();
+    var imageUrl = imageUrlInput.value.trim();
+    
+    if (!caption) {
+        statusDiv.innerHTML = '<div class="error-box">Caption is required</div>';
+        return;
+    }
+    
+    if (!imageUrl) {
+        statusDiv.innerHTML = '<div class="error-box">Public image URL is required. Please upload your image to a public host first.</div>';
+        return;
+    }
+    
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        statusDiv.innerHTML = '<div class="error-box">Image URL must start with http:// or https://</div>';
+        return;
+    }
+    
+    postBtn.disabled = true;
+    postBtn.textContent = 'Publishing...';
+    statusDiv.innerHTML = '<div class="info-box">Creating Instagram post...</div>';
+    
+    // Try both endpoints (generate and gallery have the same API)
+    var endpoint = window.location.pathname.includes('/generate/')
+        ? '/generate/api/instagram/publish'
+        : '/gallery/api/instagram/publish';
+    
+    fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            public_image_url: imageUrl,
+            caption: caption,
+            filename: currentInstagramFilename,
+        }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            statusDiv.innerHTML = '<div class="success-box">✅ Successfully posted to Instagram!<br>' +
+                (data.permalink ? '<a href="' + escapeAttr(data.permalink) + '" target="_blank">View on Instagram</a>' : '') +
+                '</div>';
+            postBtn.textContent = 'Posted!';
+            setTimeout(function() {
+                closeInstagramModal();
+            }, 3000);
+        } else {
+            statusDiv.innerHTML = '<div class="error-box">❌ Failed to post: ' + escapeHtml(data.error || 'Unknown error') + '</div>';
+            postBtn.disabled = false;
+            postBtn.textContent = 'Post to Instagram';
+        }
+    })
+    .catch(function(err) {
+        statusDiv.innerHTML = '<div class="error-box">❌ Request failed: ' + escapeHtml(String(err)) + '</div>';
+        postBtn.disabled = false;
+        postBtn.textContent = 'Post to Instagram';
+    });
+}
+
+// Close modal when clicking the X or outside
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('instagram-modal');
+    if (!modal) return;
+    
+    var closeBtn = modal.querySelector('.instagram-modal-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeInstagramModal);
+    }
+    
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeInstagramModal();
+        }
+    });
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeInstagramModal();
+        }
+    });
+});
 
 
 // ---------------------------------------------------------------------------

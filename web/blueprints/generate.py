@@ -3,6 +3,10 @@ Generate blueprint — two-stage meme generation workflow.
 Supports domain-specific RAG, web search fallback, or pure LLM generation.
 """
 
+import json
+from datetime import datetime
+from pathlib import Path
+
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 
 from web import jobs
@@ -709,3 +713,132 @@ def api_surprise():
         return jsonify({"topic": "a niche community taking a tiny ritual way too seriously"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Instagram Publishing
+# ---------------------------------------------------------------------------
+
+PUBLISH_LOG_PATH = Path("data/instagram_publish_log.json")
+
+
+def _load_publish_log() -> list[dict]:
+    """Load Instagram publish history."""
+    if not PUBLISH_LOG_PATH.exists():
+        return []
+    try:
+        return json.loads(PUBLISH_LOG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_publish_log(entry: dict):
+    """Append a publish entry to the log."""
+    log = _load_publish_log()
+    log.append(entry)
+    PUBLISH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PUBLISH_LOG_PATH.write_text(
+        json.dumps(log, indent=2, ensure_ascii=False),
+        encoding="utf-8"
+    )
+
+
+@bp.route("/api/instagram/publish", methods=["POST"])
+def api_instagram_publish():
+    """
+    Publish an approved meme to Instagram.
+    
+    Expects JSON:
+    {
+        "public_image_url": "https://...",  # Publicly accessible image URL
+        "caption": "Your caption here",
+        "filename": "optional-for-logging.jpg"
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "post_id": "...",
+        "permalink": "https://instagram.com/p/...",
+        "error": null
+    }
+    """
+    data = request.get_json(silent=True) or {}
+    
+    public_image_url = data.get("public_image_url", "").strip()
+    caption = data.get("caption", "").strip()
+    filename = data.get("filename", "")
+    
+    if not public_image_url:
+        return jsonify({
+            "success": False,
+            "error": "public_image_url is required (must be a publicly accessible JPEG URL)"
+        }), 400
+    
+    if not caption:
+        return jsonify({
+            "success": False,
+            "error": "caption is required"
+        }), 400
+    
+    # Validate that credentials are available
+    try:
+        from src.core.instagram_publisher import publish_to_instagram
+        
+        result = publish_to_instagram(
+            image_url=public_image_url,
+            caption=caption,
+        )
+        
+        # Log the publish attempt
+        log_entry = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "filename": filename,
+            "caption": caption[:100] + ("..." if len(caption) > 100 else ""),
+            "success": result.success,
+            "post_id": result.post_id,
+            "permalink": result.permalink,
+            "error": result.error,
+            "container_id": result.container_id,
+        }
+        _save_publish_log(log_entry)
+        
+        if result.success:
+            return jsonify({
+                "success": True,
+                "post_id": result.post_id,
+                "permalink": result.permalink,
+                "error": None,
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "post_id": None,
+                "permalink": None,
+                "error": result.error,
+            }), 500
+            
+    except ValueError as e:
+        # Missing credentials
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+    except Exception as e:
+        # Unexpected error
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": f"Unexpected error: {str(e)}"
+        }), 500
+
+
+@bp.route("/api/instagram/history")
+def api_instagram_history():
+    """Get Instagram publish history."""
+    log = _load_publish_log()
+    return jsonify({
+        "history": log,
+        "count": len(log),
+    })

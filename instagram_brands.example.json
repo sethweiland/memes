@@ -1,0 +1,13 @@
+{
+  "brands": {
+    "default": {
+      "name": "High Lonesome Memes",
+      "ig_user_id": "17841449649203293",
+      "page_id": "1370368009487261",
+      "app_id": "1042489268787325",
+      "access_token_env": "META_IG_ACCESS_TOKEN",
+      "description": "Bluegrass memes for the High Lonesome Memes page"
+    }
+  },
+  "active_brand": "default"
+}
