@@ -128,6 +128,8 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("This week", html)
         self.assertIn("On the horizon", html)
         self.assertIn("No calendar snapshot yet.", html)
+        self.assertNotIn("America/New_York", html)
+        self.assertNotRegex(html, r"(?:America|Europe|Asia|Pacific|Africa|Australia)/[A-Za-z_]+")
         self.assertNotIn("Team standup", html)
         self.assertNotIn("Invented", html)
         peer = html.split("data-nav-folders")[0]
