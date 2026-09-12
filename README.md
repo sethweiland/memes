@@ -30,6 +30,8 @@ Full contract, S3 layout, and agent write rules: [`docs/life-ops.md`](docs/life-
 
 A RAG-powered pipeline that generates memes using historical content from any domain. Ships with a bluegrass music configuration using Bluegrass Unlimited magazine archives.
 
+**Friend who wants their own meme page** (not the life-ops dashboard): fork this repo. The dashboard lives in [`sethweiland/life-ops`](https://github.com/sethweiland/life-ops). Product sketch and milestones for a tenant you can copy: [`docs/meme-tenant.md`](docs/meme-tenant.md). The extract has not started.
+
 ## How It Works
 
 ```
