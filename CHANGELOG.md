@@ -7,6 +7,7 @@
 - Home is Waiting on you above This week / On the horizon. Hub cards are gone.
 - Horizon starts the Monday after this week's Sunday, not 14 days out.
 - `config/tenant.yaml` and `data/tech_spend.json` are gitignored. Friends use `config/tenant.example.yaml`. Fly reads S3 `ops/tenant.yaml`.
+- Spend ledger load order: S3 `ops/spend/tech_spend.json`, else local `data/tech_spend.json`, else empty `{subscriptions: []}`. No invented rows.
 
 ---
 

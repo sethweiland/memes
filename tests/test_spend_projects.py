@@ -17,7 +17,8 @@ from src.core.projects import (
     subscription_shares,
 )
 from src.core.tenant import load_tenant_from_path, reset_tenant
-from src.core.s3_store import reset_s3_store
+from src.core.s3_store import BucketLayout, reset_s3_store
+from src.core.tech_spend import TechSpendStore, reset_tech_spend
 from src.core.token_tracker import get_month_usage
 from tests.fakes import MemoryS3Store
 from web.blueprints.spend import bp as spend_bp
@@ -189,8 +190,10 @@ class ProjectAllocationTests(unittest.TestCase):
 class SpendProjectPageTests(unittest.TestCase):
     def setUp(self):
         reset_tenant(load_tenant_from_path(_SETH))
+        reset_tech_spend()
 
     def tearDown(self):
+        reset_tech_spend()
         reset_tenant()
 
     def test_unallocated_visible_on_spend_page(self):
@@ -273,6 +276,64 @@ class SpendProjectPageTests(unittest.TestCase):
         self.assertIn('id="tokens"', html)
         self.assertIn('data-token-project="memes"', html)
         self.assertIn("Missing project tag — shown on purpose.", html)
+
+    def test_spend_page_reads_s3_ledger(self):
+        tmp = tempfile.TemporaryDirectory()
+        memory = MemoryS3Store()
+        memory.put_json(
+            BucketLayout.tech_spend_key(),
+            json.loads(_LEDGER.read_text(encoding="utf-8")),
+        )
+        reset_tech_spend(
+            TechSpendStore(store=memory, local_path=Path(tmp.name) / "missing.json")
+        )
+        app = _spend_app()
+        try:
+            with patch("src.core.token_tracker.get_month_usage", return_value={
+                "total_tokens": 0,
+                "total_cost_usd": 0.0,
+                "call_count": 0,
+                "by_project": {},
+            }), patch(
+                "web.blueprints.spend._get_aws_current_month_cost", return_value=None
+            ):
+                html = app.test_client().get("/spend/").get_data(as_text=True)
+            self.assertIn("Example Hosting", html)
+            self.assertIn("Shared Tools", html)
+            self.assertIn("$30.00", html)
+            self.assertNotIn("Imgflip API Premium", html)
+            self.assertNotIn("vercel-pro", html)
+        finally:
+            tmp.cleanup()
+
+    def test_spend_page_empty_ledger_invents_no_rows(self):
+        tmp = tempfile.TemporaryDirectory()
+        reset_tech_spend(
+            TechSpendStore(
+                store=MemoryS3Store(),
+                local_path=Path(tmp.name) / "missing.json",
+            )
+        )
+        app = _spend_app()
+        try:
+            with patch("src.core.token_tracker.get_month_usage", return_value={
+                "total_tokens": 0,
+                "total_cost_usd": 0.0,
+                "call_count": 0,
+                "by_project": {},
+            }), patch(
+                "web.blueprints.spend._get_aws_current_month_cost", return_value=None
+            ):
+                html = app.test_client().get("/spend/").get_data(as_text=True)
+            self.assertIn("$0.00", html)
+            self.assertIn("No spend data configured", html)
+            self.assertNotIn("Example Hosting", html)
+            self.assertNotIn("Imgflip API Premium", html)
+            self.assertNotIn("vercel-pro", html)
+            self.assertNotIn("Cursor $", html)
+            self.assertNotIn("Invented", html)
+        finally:
+            tmp.cleanup()
 
 
 if __name__ == "__main__":

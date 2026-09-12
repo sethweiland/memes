@@ -125,7 +125,7 @@ python web/run.py
 - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
 - **By Project** rollup (tokens + allocated fixed): tenant project ids plus Spend-only `shared` / `unallocated`. Unallocated stay visible. `shared` and `unallocated` are not project rows.
 - Monthly total with active/cancelled breakdown
-- Subscription ledger: `data/tech_spend.json` (gitignored; operator-private. Tests use `tests/fixtures/tech_spend.json`)
+- Subscription ledger: S3 `ops/spend/tech_spend.json` when `MEME_ASSETS_BUCKET` is set, else `data/tech_spend.json` (gitignored). Empty `{subscriptions: []}` if both are missing. Tests use `tests/fixtures/tech_spend.json`. Do not invent rows.
 
 **More menu** (tenant `folders:`):
 - Folders and extra links come from YAML, not hardcoded Python

@@ -116,7 +116,9 @@ or with an agent the human already runs.
 Tokens and subscriptions stamp a project id.
 
 - Token events: `ops/usage/{provider}/{YYYY}/{MM}.json` (`project` on each event)
-- Subscriptions: `data/tech_spend.json` (`project` or `projects` shares)
+- Subscriptions: S3 `ops/spend/tech_spend.json` when `MEME_ASSETS_BUCKET` is
+  set, else local `data/tech_spend.json` (gitignored), else empty
+  `{subscriptions: []}`. `project` or `projects` shares. Do not invent rows.
 
 Leftovers stay visible as `shared` (overhead that is not one product) and
 `unallocated` (missing tag). Spend never hides unlabeled dollars to clean
@@ -264,6 +266,7 @@ s3://$MEME_ASSETS_BUCKET/
     ├── tenant.yaml                       # operator tenant (Jeffy uploads this)
     ├── projects/board.json               # project list
     ├── calendar/snapshot.json            # read-only Home calendar
+    ├── spend/tech_spend.json             # operator spend ledger (not in git)
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
     ├── grok-bot/routines.json
@@ -273,6 +276,7 @@ s3://$MEME_ASSETS_BUCKET/
 | Key | Local fallback when `MEME_ASSETS_BUCKET` is unset |
 |---|---|
 | `ops/tenant.yaml` | `config/tenant.yaml` or `config/tenant.example.yaml` |
+| `ops/spend/tech_spend.json` | `data/tech_spend.json` (gitignored). Empty `{subscriptions: []}` if both missing. |
 | `ops/projects/board.json` | `data/projects/board.json` |
 | `ops/calendar/snapshot.json` | `data/calendar/snapshot.json` |
 | `ops/queue/x-activity/{date}.json` | `data/x_activity/{date}.json` |
@@ -493,9 +497,10 @@ app without becoming Seth.
 
    You should see your projects in a list (not five empty swim lanes).
    Home is Waiting on you above This week / On the horizon — no hub cards.
-   Spend is empty-ish until you add a local `data/tech_spend.json` (also
-   gitignored); that is fine. Calendar widgets say “No calendar snapshot
-   yet.” until an agent writes the snapshot or you set `CALENDAR_ICS_URL`.
+   Spend is empty (`{subscriptions: []}`) until you add a local
+   `data/tech_spend.json` (gitignored) or upload `ops/spend/tech_spend.json`
+   to the bucket. Calendar widgets say “No calendar snapshot yet.” until
+   an agent writes the snapshot or you set `CALENDAR_ICS_URL`.
 
 5. **Fly (optional)** — same container as today (`fly.toml`, `Dockerfile`).
    Set Fly secrets for whatever modules you enabled. Point a hostname
