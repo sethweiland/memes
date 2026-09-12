@@ -1,5 +1,13 @@
 # Changelog
 
+## Projects list, Tokens widget, Home calendar (2026-09-12)
+
+- `/projects/` is a compact sorted list (status pill = lane). Empty swim lanes no longer dominate.
+- `/spend/` has a Tokens card at the top from `token_tracker` (heuristic $ is not the xAI invoice).
+- Home shows This week + On the horizon when `calendar: true`. Snapshot at `ops/calendar/snapshot.json` or optional `CALENDAR_ICS_URL`. No Google OAuth.
+
+---
+
 ## Meme Diversity Improvements (2026-02-03)
 
 ### Summary

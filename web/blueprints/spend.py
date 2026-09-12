@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any
 from flask import Blueprint, render_template
 
 from src.core.projects import (
+    SHARED_PROJECT,
     UNALLOCATED_PROJECT,
     build_project_rollup,
     format_project_label,
@@ -87,13 +88,20 @@ def _get_xai_token_usage() -> Optional[Dict[str, Any]]:
             meta = project_meta(str(project_id))
             cost = round(float((bucket or {}).get("total_cost_usd") or 0), 2)
             calls = int((bucket or {}).get("call_count") or 0)
+            pid = str(project_id)
+            note = ""
+            if pid == UNALLOCATED_PROJECT:
+                note = "Missing project tag — shown on purpose."
+            elif pid == SHARED_PROJECT:
+                note = "Overhead that is not one product."
             project_parts.append(
                 {
-                    "id": str(project_id),
+                    "id": pid,
                     "name": meta["name"],
                     "amount": cost,
                     "calls": calls,
                     "tokens": int((bucket or {}).get("total_tokens") or 0),
+                    "note": note,
                 }
             )
         project_parts.sort(key=lambda part: (-part["amount"], part["name"]))

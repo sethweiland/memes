@@ -57,7 +57,7 @@ class TenantLoadTests(unittest.TestCase):
         self.assertFalse(tenant.module_enabled("x"))
         self.assertFalse(tenant.module_enabled("grok_bot"))
         self.assertFalse(tenant.module_enabled("memes"))
-        self.assertFalse(tenant.calendar_enabled)
+        self.assertTrue(tenant.calendar_enabled)
         ids = tenant.project_ids()
         self.assertGreaterEqual(len(ids), 2)
         self.assertLessEqual(len(ids), 3)
@@ -76,7 +76,7 @@ class TenantLoadTests(unittest.TestCase):
         self.assertTrue(tenant.module_enabled("x"))
         self.assertTrue(tenant.module_enabled("grok_bot"))
         self.assertTrue(tenant.module_enabled("memes"))
-        self.assertFalse(tenant.calendar_enabled)
+        self.assertTrue(tenant.calendar_enabled)
         self.assertEqual(tenant.project_ids(), SETH_IDS)
         self.assertNotIn("equinox", tenant.project_ids())
         self.assertNotIn("equinox-cancel-reply-watch", tenant.project_ids())
@@ -121,6 +121,9 @@ class TenantLoadTests(unittest.TestCase):
             for needle in forbidden:
                 self.assertNotIn(needle.lower(), text, msg=f"{path} has {needle}")
             self.assertNotIn("Bearer ", _read(path))
+            self.assertNotIn("ics_url", text)
+            self.assertNotIn("calendar_ics", text)
+            self.assertNotIn("googleapis.com", text)
 
 
 class TenantNormalizeTests(unittest.TestCase):

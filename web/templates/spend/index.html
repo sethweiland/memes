@@ -272,10 +272,76 @@
         height: 100%;
         border-radius: 999px;
     }
-    .token-breakdown {
-        margin-top: 4px;
-        font-size: 11px;
+    .tokens-widget {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.12);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .tokens-widget h2 {
+        margin: 0 0 6px;
+        font-size: 20px;
+    }
+    .tokens-lede {
+        margin: 0 0 16px;
+        font-size: 13px;
         color: #555;
+        max-width: 42em;
+    }
+    .tokens-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .tokens-stat {
+        background: #f8f9fb;
+        border-radius: 8px;
+        padding: 12px 14px;
+    }
+    .tokens-stat .number {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .tokens-stat .label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 2px;
+    }
+    .tokens-projects {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .tokens-projects th,
+    .tokens-projects td {
+        text-align: left;
+        padding: 8px 10px 8px 0;
+        border-bottom: 1px solid #eee;
+        font-size: 13px;
+        vertical-align: top;
+    }
+    .tokens-projects th {
+        color: #555;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .tokens-projects tr[data-project="unallocated"] td:first-child .service-vendor,
+    .tokens-note {
+        color: #4b5563;
+    }
+    .tokens-legend {
+        margin: 12px 0 0;
+        font-size: 12px;
+        color: #555;
+        line-height: 1.45;
+    }
+    .tokens-empty {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
     }
     @media (max-width: 720px) {
         .project-layout {
@@ -302,6 +368,75 @@
     <strong>Note:</strong> {{ note }}
 </div>
 {% endif %}
+
+<div class="tokens-widget" id="tokens">
+    <h2>Tokens</h2>
+    {% if xai_usage and xai_usage.error %}
+    <p class="tokens-lede">Could not read this month’s usage log. No numbers invented.</p>
+    <div class="warning-box" style="margin-bottom: 0;">{{ xai_usage.error }}</div>
+    {% elif xai_usage and not xai_usage.error %}
+    <p class="tokens-lede">
+        xAI / application usage for {{ xai_usage.period }}.
+        Heuristic $ is <strong>not</strong> the xAI invoice — it is the documented blended rate on logged token counts.
+        {% if xai_usage.source == 's3' %}· S3
+        {% elif xai_usage.source == 'local' %}· local
+        {% elif xai_usage.source == 'local_legacy_jsonl' %}· local jsonl
+        {% endif %}
+    </p>
+    <div class="tokens-stats">
+        <div class="tokens-stat">
+            <div class="number">{{ xai_usage.calls }}</div>
+            <div class="label">{{ xai_usage.calls }} calls</div>
+        </div>
+        <div class="tokens-stat">
+            <div class="number">{{ "{:,}".format(xai_usage.tokens) }}</div>
+            <div class="label">{{ "{:,}".format(xai_usage.tokens) }} tokens</div>
+        </div>
+        <div class="tokens-stat">
+            <div class="number">${{ "%.2f"|format(xai_usage.amount) }}</div>
+            <div class="label">heuristic $</div>
+        </div>
+    </div>
+    {% if xai_usage.project_parts %}
+    <table class="tokens-projects">
+        <thead>
+            <tr>
+                <th>Project</th>
+                <th>Calls</th>
+                <th>Tokens</th>
+                <th>Heuristic $</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for part in xai_usage.project_parts %}
+            <tr data-token-project="{{ part.id }}">
+                <td>
+                    <div class="service-name">{{ part.name }} ${{ "%.2f"|format(part.amount) }}</div>
+                    {% if part.note %}
+                    <span class="service-vendor">{{ part.note }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ part.calls }}</td>
+                <td>{{ "{:,}".format(part.tokens) }}</td>
+                <td class="amount">${{ "%.2f"|format(part.amount) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    <p class="tokens-legend">
+        <strong>Unallocated:</strong> Missing project tag — shown on purpose.
+        <strong>Shared:</strong> overhead that is not one product.
+    </p>
+    {% else %}
+    <p class="tokens-lede">xAI / application usage this month. Heuristic $ is not the xAI invoice.</p>
+    <p class="tokens-empty">No token usage recorded this month.</p>
+    <p class="tokens-legend">
+        <strong>Unallocated:</strong> Missing project tag — shown on purpose.
+        <strong>Shared:</strong> overhead that is not one product.
+    </p>
+    {% endif %}
+</div>
 
 <!-- Summary Cards -->
 <div class="summary-cards">
@@ -477,17 +612,7 @@
                         </div>
                         {% elif xai_usage and not xai_usage.error and item.id == 'xai-tokens' %}
                         <div class="amount live">${{ "%.2f"|format(xai_usage.amount) }}</div>
-                        <div class="source-indicator live">
-                            ✓ {{ "{:,}".format(xai_usage.tokens) }} tokens ({{ xai_usage.calls }} calls, {{ xai_usage.period }})
-                            {% if xai_usage.source == 's3' %}· S3{% elif xai_usage.source == 'local' %}· local{% elif xai_usage.source == 'local_legacy_jsonl' %}· local jsonl{% endif %}
-                        </div>
-                        {% if xai_usage.project_parts %}
-                        <div class="token-breakdown">
-                            {% for part in xai_usage.project_parts %}
-                            {{ part.name }} ${{ "%.2f"|format(part.amount) }}{% if not loop.last %} · {% endif %}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
+                        <div class="source-indicator live">this month · see Tokens above</div>
                         {% else %}
                         <div class="amount">${{ "%.2f"|format(item.amount_usd) }}</div>
                         <div class="source-indicator">

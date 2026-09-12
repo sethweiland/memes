@@ -13,6 +13,7 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
 │   └── generated/{hash}_{stem}.jpg       # new IG-ready JPEGs from MemeAssetUploader
 └── ops/                                  # PRIVATE (no public GET)
     ├── projects/board.json
+    ├── calendar/snapshot.json
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
     ├── grok-bot/routines.json
@@ -23,7 +24,8 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
 |--------|------------|--------|--------|
 | `public/memes/templates/` | public | catalog harvest (existing) | Keep in place; no migration |
 | `public/memes/generated/` | public | `MemeAssetUploader` | Default `MEME_ASSETS_PUBLIC_PREFIX` |
-| `ops/projects/` | private | `ProjectBoard` | Kanban (`board.json`). Seeded from `config/tenant.yaml` when missing. |
+| `ops/projects/` | private | `ProjectBoard` | Project list (`board.json`). Seeded from `config/tenant.yaml` when missing. |
+| `ops/calendar/` | private | `CalendarStore` | Home snapshot (`snapshot.json`). Optional ICS cache. No OAuth. |
 | `ops/queue/` | private | `QueueStorage` / `XActivityQueue` | Daily candidates + X drafts |
 | `ops/grok-bot/` | private | `GrokBotRoutines` | Recurring routine catalog (`routines.json`) |
 | `ops/usage/` | private | `token_tracker` | Monthly JSON, ETag concurrency. Each event has `project`; rollup is on Spend, not a per-project prefix. |
