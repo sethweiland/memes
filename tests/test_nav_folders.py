@@ -1,7 +1,8 @@
-"""More menu folders + Home inbox (no hub cards)."""
+"""Folders menu + Home inbox (no hub cards)."""
 
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -56,7 +57,7 @@ def _nav_app():
     return app
 
 
-class MoreNavAndHomeTests(unittest.TestCase):
+class FoldersNavAndHomeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         reset_x_activity_queue()
@@ -84,47 +85,93 @@ class MoreNavAndHomeTests(unittest.TestCase):
         reset_tenant()
         self.tmp.cleanup()
 
-    def test_seth_more_nests_memes_and_grok_bot(self):
+    def test_seth_folders_nests_memes_and_grok_bot(self):
         reset_tenant(load_tenant_from_path(_SETH))
         html = self.client.get("/").get_data(as_text=True)
-        peer = html.split('class="nav-more"')[0]
-        more = html.split('data-nav-more-menu')[1].split("</nav>")[0]
-        self.assertIn("data-nav-more", html)
+        peer = html.split('data-nav-folders')[0]
+        folders = html.split("data-nav-folders-menu")[1].split("</nav>")[0]
+        self.assertIn("data-nav-folders", html)
         self.assertNotIn(">Grok Bot<", peer)
         self.assertNotIn(">Memes<", peer)
-        self.assertIn('data-nav-folder="music"', more)
-        self.assertIn('data-nav-folder="software"', more)
-        self.assertIn('data-nav-folder="social"', more)
-        self.assertIn('data-nav-folder="agents"', more)
-        self.assertIn('data-nav-item="memes"', more)
-        self.assertIn("/memes/generate/", more)
-        self.assertIn("/grok-bot/", more)
-        self.assertIn("Whippoorwill", more)
+        self.assertIn('data-nav-folder="music"', folders)
+        self.assertIn('data-nav-folder="software"', folders)
+        self.assertIn('data-nav-folder="social"', folders)
+        self.assertIn('data-nav-folder="agents"', folders)
+        self.assertIn('data-nav-item="memes"', folders)
+        self.assertIn("/memes/generate/", folders)
+        self.assertIn("/grok-bot/", folders)
+        self.assertIn("Whippoorwill", folders)
 
-    def test_example_more_hides_disabled_module_links(self):
+    def test_folder_project_links_deep_link(self):
+        reset_tenant(load_tenant_from_path(_SETH))
+        html = self.client.get("/").get_data(as_text=True)
+        folders = html.split("data-nav-folders-menu")[1].split("</nav>")[0]
+        self.assertIn('href="/projects/?project=sethweiland-com#sethweiland-com"', folders)
+        self.assertIn('href="/projects/?project=whippoorwill#whippoorwill"', folders)
+        self.assertIn('href="/projects/?project=millgrass#millgrass"', folders)
+        self.assertIn('href="/projects/?project=waiver-wire#waiver-wire"', folders)
+        self.assertIn('href="/projects/?project=linkmarketcap#linkmarketcap"', folders)
+        self.assertNotRegex(folders, r'href="/projects/"(?![?#])')
+        self.assertIn('href="/memes/"', folders)
+        self.assertIn('href="/x/"', folders)
+
+    def test_folders_label_not_more_or_menu(self):
+        reset_tenant(load_tenant_from_path(_SETH))
+        html = self.client.get("/").get_data(as_text=True)
+        nav = html.split("</nav>")[0]
+        self.assertIn("Folders", nav)
+        self.assertIn('aria-label="Folders"', nav)
+        self.assertNotIn(">More<", nav)
+        self.assertNotIn("More ▾", nav)
+        self.assertNotIn(">Menu<", nav)
+        self.assertNotIn('aria-label="More"', nav)
+        self.assertNotIn('aria-label="Menu"', nav)
+
+    def test_folders_control_is_details_not_hidden_button(self):
+        reset_tenant(load_tenant_from_path(_SETH))
+        html = self.client.get("/").get_data(as_text=True)
+        nav = html.split("</nav>")[0]
+        self.assertIn('<details class="nav-folders"', nav)
+        self.assertIn("<summary", nav)
+        self.assertNotIn("<button", nav)
+        self.assertNotIn(" data-nav-folders-menu hidden", nav)
+        self.assertNotIn('hidden role="navigation"', nav)
+
+    def test_folders_default_open(self):
+        reset_tenant(load_tenant_from_path(_SETH))
+        html = self.client.get("/").get_data(as_text=True)
+        tags = re.findall(r"<details class=\"nav-folders-folder\"[^>]*>", html)
+        self.assertGreaterEqual(len(tags), 4)
+        for tag in tags:
+            self.assertRegex(tag, r"(?:\sopen(?:\s|>)|(?:\sopen)$)")
+
+    def test_example_folders_hides_disabled_module_links(self):
         reset_tenant(load_tenant_from_path(_EXAMPLE))
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        more = html.split("data-nav-more-menu")[1].split("</nav>")[0]
-        self.assertIn("data-nav-more", html)
-        self.assertNotIn("/memes/", more)
-        self.assertNotIn("/grok-bot/", more)
-        self.assertNotIn('href="/x/"', more)
-        self.assertNotIn(">Grok Bot<", more)
-        peer = html.split('class="nav-more"')[0]
+        folders = html.split("data-nav-folders-menu")[1].split("</nav>")[0]
+        self.assertIn("data-nav-folders", html)
+        self.assertNotIn("/memes/", folders)
+        self.assertNotIn("/grok-bot/", folders)
+        self.assertNotIn('href="/x/"', folders)
+        self.assertNotIn(">Grok Bot<", folders)
+        peer = html.split("data-nav-folders")[0]
         self.assertNotIn(">X<", peer)
-        self.assertIn("Life", more)
-        self.assertIn("Work", more)
+        self.assertIn("Life", folders)
+        self.assertIn("Work", folders)
+        self.assertIn('href="/projects/?project=home-ops#home-ops"', folders)
+        self.assertIn('href="/projects/?project=side-project#side-project"', folders)
+        self.assertIn("Folders", html.split("</nav>")[0])
 
-    def test_more_is_active_on_grok_bot_and_memes(self):
+    def test_folders_is_active_on_grok_bot_and_memes(self):
         reset_tenant(load_tenant_from_path(_SETH))
         grok = self.client.get("/grok-bot/").get_data(as_text=True)
         memes = self.client.get("/memes/").get_data(as_text=True)
         home = self.client.get("/").get_data(as_text=True)
-        self.assertIn("nav-more-toggle active", grok)
-        self.assertIn("nav-more-toggle active", memes)
-        self.assertNotIn("nav-more-toggle active", home.split("</nav>")[0])
+        self.assertIn("nav-folders-toggle active", grok)
+        self.assertIn("nav-folders-toggle active", memes)
+        self.assertNotIn("nav-folders-toggle active", home.split("</nav>")[0])
         self.assertIn('class="subnav"', memes)
         self.assertIn("Daily Queue", memes)
 

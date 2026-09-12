@@ -16,11 +16,13 @@ from src.core.secrets_backend import (
 )
 from src.core.tenant import (
     SPEND_ONLY_PROJECT_IDS,
+    infer_href_module,
     load_tenant,
     load_tenant_from_path,
     normalize_lane,
     normalize_tenant,
     present_nav_folders,
+    project_nav_href,
     reset_tenant,
 )
 from tests.fakes import MemoryS3Store
@@ -119,6 +121,10 @@ class TenantLoadTests(unittest.TestCase):
             ["Dashboard", "Generate", "Gallery", "Daily Queue", "Templates", "Video", "Discovery"],
         )
         self.assertEqual(by_id["agents"].items[0].href, "/grok-bot/")
+        music = {item.id: item.href for item in by_id["music"].items}
+        self.assertEqual(music["sethweiland-com"], "/projects/?project=sethweiland-com#sethweiland-com")
+        self.assertEqual(music["whippoorwill"], "/projects/?project=whippoorwill#whippoorwill")
+        self.assertEqual(music["millgrass"], "/projects/?project=millgrass#millgrass")
 
     def test_example_folders_have_no_meme_or_x_links(self):
         tenant = load_tenant_from_path(_EXAMPLE)
@@ -133,8 +139,11 @@ class TenantLoadTests(unittest.TestCase):
         self.assertNotIn("/memes", blob)
         self.assertNotIn("/x/", blob)
         self.assertNotIn("/grok-bot", blob)
+        self.assertIn("/projects/?project=home-ops#home-ops", hrefs)
+        self.assertIn("/projects/?project=writing#writing", hrefs)
+        self.assertIn("/projects/?project=side-project#side-project", hrefs)
 
-    def test_disabled_module_links_are_hidden_from_more(self):
+    def test_disabled_module_links_are_hidden_from_folders(self):
         raw = {
             "modules": {"projects": True, "spend": True, "x": False, "grok_bot": False, "memes": False},
             "projects": [
@@ -169,10 +178,14 @@ class TenantLoadTests(unittest.TestCase):
         self.assertNotIn("/grok-bot/", hrefs)
         self.assertNotIn("/x/", hrefs)
         memes = next(item for item in by_id["software"].items if item.id == "memes")
-        self.assertEqual(memes.href, "/projects/")
+        self.assertEqual(memes.href, "/projects/?project=memes#memes")
         self.assertEqual(memes.children, ())
-        self.assertEqual(by_id["social"].items[0].href, "/projects/")
+        self.assertEqual(by_id["social"].items[0].href, "/projects/?project=x#x")
         self.assertEqual([item.id for item in by_id["software"].items], ["memes", "side"])
+        self.assertEqual(
+            next(item for item in by_id["software"].items if item.id == "side").href,
+            "/projects/?project=side#side",
+        )
 
     def test_tenant_config_env_overrides_path(self):
         reset_tenant()
@@ -226,6 +239,24 @@ class TenantLoadTests(unittest.TestCase):
             self.assertNotIn("ics_url", text)
             self.assertNotIn("calendar_ics", text)
             self.assertNotIn("googleapis.com", text)
+
+
+class ProjectDeepLinkTests(unittest.TestCase):
+    def test_project_nav_href_deep_links_list_rows(self):
+        modules = {"projects": True, "memes": True, "x": True}
+        self.assertEqual(
+            project_nav_href("sethweiland-com", modules),
+            "/projects/?project=sethweiland-com#sethweiland-com",
+        )
+        self.assertEqual(project_nav_href("memes", modules), "/memes/")
+        self.assertEqual(project_nav_href("x", modules), "/x/")
+        self.assertEqual(
+            project_nav_href("memes", {"projects": True, "memes": False, "x": False}),
+            "/projects/?project=memes#memes",
+        )
+        self.assertIsNone(project_nav_href("side", {"projects": False}))
+        self.assertEqual(infer_href_module("/projects/?project=side#side"), "projects")
+        self.assertEqual(infer_href_module("/projects/#sethweiland-com"), "projects")
 
 
 class TenantNormalizeTests(unittest.TestCase):

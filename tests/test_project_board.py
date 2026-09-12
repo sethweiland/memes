@@ -303,6 +303,22 @@ class ProjectsPageTests(unittest.TestCase):
         self.assertNotIn("No cards", html)
         self.assertIn("project-row", html)
         self.assertIn("project-chip", html)
+        for project_id in SETH_IDS:
+            self.assertIn(f'id="project-{project_id}"', html)
+
+    def test_projects_deep_link_highlights_row(self):
+        response = self.client.get("/projects/?project=sethweiland-com")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertRegex(
+            html,
+            r'<article class="project-row is-target"\s+id="project-sethweiland-com"',
+        )
+        self.assertIn('id="project-memes"', html)
+        self.assertNotRegex(
+            html,
+            r'<article class="project-row is-target"\s+id="project-memes"',
+        )
 
     def test_projects_list_sorts_waiting_blocked_active_idea_parked(self):
         self.board.save(
@@ -319,7 +335,7 @@ class ProjectsPageTests(unittest.TestCase):
             }
         )
         html = self.client.get("/projects/").get_data(as_text=True)
-        ids = re.findall(r'<article class="project-row"\s+data-id="([^"]+)"', html)
+        ids = re.findall(r'<article class="project-row(?: is-target)?"\s+id="project-([^"]+)"', html)
         expected = ["beta", "gamma", "aaa", "alpha", "delta", "zebra"]
         self.assertEqual([pid for pid in ids if pid in expected], expected)
         self.assertIn("Jeffy", html)

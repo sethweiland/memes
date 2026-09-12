@@ -1,9 +1,17 @@
 # Changelog
 
-## More menu, Home inbox, private tenant (2026-09-12)
+## Folders nav, project deep-links (2026-09-12)
 
-- Top nav is Home · Projects · Spend · X · **More ▾**. Grok Bot and Memes are no longer peer tabs.
-- More is a bookmarks-style dropdown from tenant `folders:` (nav config, not a sixth primitive). Disabled-module links are hidden.
+- Top nav control is **Folders ▾** (was More). Native `<details>` so it opens without JS. Inner folders default open.
+- Folder project links deep-link to `/projects/?project=<id>#<id>`. The projects list scrolls, highlights, and selects that row.
+- `nav` is `overflow: visible` so the Folders panel is not clipped.
+
+---
+
+## Folders menu, Home inbox, private tenant (2026-09-12)
+
+- Top nav is Home · Projects · Spend · X · **Folders ▾**. Grok Bot and Memes are no longer peer tabs.
+- Folders is a bookmarks-style dropdown from tenant `folders:` (nav config, not a sixth primitive). Disabled-module links are hidden.
 - Home is Waiting on you above This week / On the horizon. Hub cards are gone.
 - Horizon starts the Monday after this week's Sunday, not 14 days out.
 - `config/tenant.yaml` and `data/tech_spend.json` are gitignored. Friends use `config/tenant.example.yaml`. Fly reads S3 `ops/tenant.yaml`.

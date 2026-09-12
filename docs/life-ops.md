@@ -35,16 +35,16 @@ Domain UIs (memes, X, shopping, calendar) are optional modules. They must
 not own the shell. The shell owns navigation, Home, Projects, and the
 five primitives below.
 
-Top nav is always **Home · Projects · Spend · X · More ▾**. X stays a
-peer tab (human-gate inbox). Grok Bot and Memes tools nest under More
-folders from tenant `folders:` — navigation config, not a sixth primitive.
+Top nav is always **Home · Projects · Spend · X · Folders ▾**. X stays a
+peer tab (human-gate inbox). Grok Bot and Memes tools nest under Folders
+from tenant `folders:` — navigation config, not a sixth primitive.
 
 ---
 
 ## Five primitives
 
 This release refuses a sixth. Do not add Goals, Areas, People, or a
-generic “Workspace” object. Tenant `folders:` are More-menu bookmarks
+generic “Workspace” object. Tenant `folders:` are Folders menu bookmarks
 only. They are not stored as objects and they are not a sixth primitive.
 
 ### 1. Project
@@ -211,7 +211,7 @@ agents:                    # the humans-you-already-have, as ids
 defaults:
   usage_project: home-ops  # stamped on token events when USAGE_PROJECT is unset
 
-folders:                   # More menu. Nav only — not a sixth primitive.
+folders:                   # Folders menu. Nav only — not a sixth primitive.
   - id: life
     name: Life
     project_ids: [home-ops]
@@ -243,11 +243,12 @@ Rules:
 - `lane` must be one of the five lanes (or the `waiting_on_seth` alias)
 - `shared` and `unallocated` in `projects:` are ignored (Spend-only)
 - Folder `project_ids` that are not in `projects:` are skipped. Projects
-  with no folder still appear on `/projects/`; they just do not show in More.
+  with no folder still appear on `/projects/`; they just do not show in Folders.
 - Extra `links` may use `href` or a Flask `route`. If the href/route belongs
   to a disabled module, the link is omitted so the menu never 404s.
 - A project with a module homepage (`memes` → `/memes/`, `x` → `/x/`) links
-  there when that module is on; otherwise it links to `/projects/`.
+  there when that module is on; otherwise it deep-links to `/projects/#<id>`
+  (and `?project=<id>`). `/projects/` rows use `id="project-<id>"`.
 - No API keys, tokens, passwords, or ARNs in the YAML
 
 ---
@@ -300,12 +301,12 @@ Never write ops JSON under `public/`.
 | `projects` | `/projects/` | Compact list (status pill = lane). Required for the friend path. |
 | `spend` | `/spend/` | Ledger plus a Tokens widget at the top. Project ids from tenant. |
 | `x` | `/x/` | Existing Stevie draft review. Stays a top-level tab (human-gate inbox). |
-| `grok_bot` | `/grok-bot/` | Existing routine catalog. Nested under More → Agents, not a peer tab. |
-| `memes` | `/memes/` and children | Existing pipeline. Nested under More → Software → Memes. Subnav remains on `/memes/`. |
+| `grok_bot` | `/grok-bot/` | Existing routine catalog. Nested under Folders → Agents, not a peer tab. |
+| `memes` | `/memes/` and children | Existing pipeline. Nested under Folders → Software → Memes. Subnav remains on `/memes/`. |
 | `calendar` | Home widgets only | This week + On the horizon (Monday after this Sunday through ~3 months). Snapshot or optional `CALENDAR_ICS_URL`. No in-app Google OAuth. Not a sixth primitive. |
 
-Disabled modules are hidden from the top nav and from More (module links
-only). Their URLs still 404. The More menu itself never 404s. Home is
+Disabled modules are hidden from the top nav and from Folders (module links
+only). Their URLs still 404. The Folders menu itself never 404s. Home is
 always on. Empty folders after filtering are omitted.
 
 A friend who only wants a board and a spend page leaves `x`, `grok_bot`,
