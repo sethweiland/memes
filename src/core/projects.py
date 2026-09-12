@@ -1,7 +1,7 @@
 """
 Shared project ids for token events and the tech-spend ledger.
 
-Kanban project ids come from tenant config (``config/tenant.yaml``).
+Kanban project ids come from tenant config (example, local, or S3 ``ops/tenant.yaml``).
 ``shared`` and ``unallocated`` are Spend-only — never kanban cards.
 
 Token writers default to the tenant ``defaults.usage_project`` (this repo:

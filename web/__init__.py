@@ -53,18 +53,9 @@ def create_app() -> Flask:
     app.register_blueprint(daily_candidates_bp)
     register_legacy_redirects(app)
 
-    @app.context_processor
-    def inject_life_ops():
-        tenant = None
-        modules = None
-        try:
-            from src.core.tenant import load_tenant
+    from .context import register_life_ops_context
 
-            tenant = load_tenant()
-            modules = tenant.modules
-        except Exception:
-            pass
-        return {"tenant": tenant, "modules": modules}
+    register_life_ops_context(app)
 
     @app.before_request
     def gate_disabled_modules():

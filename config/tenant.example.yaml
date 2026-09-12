@@ -1,5 +1,7 @@
 # Friend template — copy to config/tenant.yaml and put YOUR bets in.
+# config/tenant.yaml is gitignored. On Fly, upload yours to S3 ops/tenant.yaml.
 # Safe to commit. Never put API keys, tokens, passwords, or ARNs here.
+# folders: are More-menu nav only — not a sixth primitive.
 
 human:
   name: Your Name
@@ -32,6 +34,16 @@ agents:
 
 defaults:
   usage_project: home-ops
+
+# Bookmarks-style More menu. Not a sixth primitive — nav only.
+# Leave meme / X / Grok Bot links out when those modules are off.
+folders:
+  - id: life
+    name: Life
+    project_ids: [home-ops, writing]
+  - id: work
+    name: Work
+    project_ids: [side-project]
 
 projects:
   - id: home-ops

@@ -31,7 +31,7 @@ from web.blueprints.projects import bp as projects_bp
 
 _ROOT = Path(__file__).resolve().parents[1]
 _WEB_ROOT = _ROOT / "web"
-_SETH = _ROOT / "config" / "tenant.yaml"
+_SETH = Path(__file__).resolve().parent / "fixtures" / "seth_tenant.yaml"
 _EXAMPLE = _ROOT / "config" / "tenant.example.yaml"
 
 SETH_IDS = {

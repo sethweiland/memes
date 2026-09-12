@@ -21,6 +21,13 @@ env/
 secrets.local.json
 instagram_brands.json
 
+# Operator-private life-ops config. Friends copy tenant.example.yaml.
+# Jeffy / operators upload the real file to s3://$MEME_ASSETS_BUCKET/ops/tenant.yaml
+config/tenant.yaml
+
+# Operator spend ledger (tests use tests/fixtures/tech_spend.json)
+data/tech_spend.json
+
 # Terraform local state and plans
 .terraform/
 *.tfstate

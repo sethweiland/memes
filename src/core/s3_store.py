@@ -6,6 +6,7 @@ Bucket (default): bluegrass-meme-pipeline-dev-meme-assets (us-east-1)
     public/memes/templates/{id}.{ext}              # existing catalog — do not rename
     public/memes/generated/{hash}_{stem}.jpg       # IG-ready JPEGs (MemeAssetUploader)
 
+    ops/tenant.yaml                                # private operator tenant (not in git)
     ops/projects/board.json                        # private project board
     ops/calendar/snapshot.json                     # private calendar snapshot (no OAuth)
     ops/queue/daily-candidates/{YYYY-MM-DD}.json   # private daily queue
@@ -53,6 +54,7 @@ class BucketLayout:
     CALENDAR_SNAPSHOT_KEY = "ops/calendar/snapshot.json"
     GROK_BOT_PREFIX = "ops/grok-bot/"
     GROK_BOT_ROUTINES_KEY = "ops/grok-bot/routines.json"
+    TENANT_KEY = "ops/tenant.yaml"
     USAGE_PREFIX = "ops/usage/"
 
     @staticmethod
@@ -94,6 +96,10 @@ class BucketLayout:
     @classmethod
     def calendar_snapshot_key(cls) -> str:
         return cls.CALENDAR_SNAPSHOT_KEY
+
+    @classmethod
+    def tenant_key(cls) -> str:
+        return cls.TENANT_KEY
 
     @classmethod
     def usage_key(cls, provider: str, year: int, month: int) -> str:

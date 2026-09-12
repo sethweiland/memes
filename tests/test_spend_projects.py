@@ -16,14 +16,15 @@ from src.core.projects import (
     project_order,
     subscription_shares,
 )
-from src.core.tenant import reset_tenant
+from src.core.tenant import load_tenant_from_path, reset_tenant
 from src.core.s3_store import reset_s3_store
 from src.core.token_tracker import get_month_usage
 from tests.fakes import MemoryS3Store
 from web.blueprints.spend import bp as spend_bp
 
 _ROOT = Path(__file__).resolve().parents[1]
-_LEDGER = _ROOT / "data" / "tech_spend.json"
+_LEDGER = Path(__file__).resolve().parent / "fixtures" / "tech_spend.json"
+_SETH = Path(__file__).resolve().parent / "fixtures" / "seth_tenant.yaml"
 _WEB_ROOT = _ROOT / "web"
 
 
@@ -56,7 +57,7 @@ def _spend_app() -> Flask:
 
 class ProjectAllocationTests(unittest.TestCase):
     def setUp(self):
-        reset_tenant()
+        reset_tenant(load_tenant_from_path(_SETH))
 
     def tearDown(self):
         reset_tenant()
@@ -93,13 +94,13 @@ class ProjectAllocationTests(unittest.TestCase):
             self.assertAlmostEqual(sum(shares.values()), 1.0, places=3, msg=item.get("id"))
             self.assertGreater(len(shares), 0)
 
-    def test_vercel_round_split_sums_to_invoice(self):
+    def test_hosting_round_split_sums_to_invoice(self):
         data = json.loads(_LEDGER.read_text(encoding="utf-8"))
-        vercel = next(item for item in data["subscriptions"] if item["id"] == "vercel-pro")
-        shares = subscription_shares(vercel)
-        self.assertAlmostEqual(shares["sethweiland-com"], 0.75)
+        hosting = next(item for item in data["subscriptions"] if item["id"] == "hosting-pro")
+        shares = subscription_shares(hosting)
+        self.assertAlmostEqual(shares["home-ops"], 0.75)
         self.assertAlmostEqual(shares["unallocated"], 0.25)
-        amount = monthly_equivalent(vercel["amount_usd"], vercel["cadence"])
+        amount = monthly_equivalent(hosting["amount_usd"], hosting["cadence"])
         allocated = allocate_amount(amount, shares)
         self.assertAlmostEqual(sum(allocated.values()), round(amount, 2), places=2)
 
@@ -186,6 +187,12 @@ class ProjectAllocationTests(unittest.TestCase):
 
 
 class SpendProjectPageTests(unittest.TestCase):
+    def setUp(self):
+        reset_tenant(load_tenant_from_path(_SETH))
+
+    def tearDown(self):
+        reset_tenant()
+
     def test_unallocated_visible_on_spend_page(self):
         app = _spend_app()
         usage = {

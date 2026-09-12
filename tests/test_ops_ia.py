@@ -15,7 +15,8 @@ import tests.bootstrap  # noqa: F401
 from src.core.calendar import CalendarStore, reset_calendar
 from src.core.grok_bot import reset_grok_bot_routines
 from src.core.project_board import ProjectBoard, reset_project_board
-from src.core.tenant import reset_tenant
+from src.core.tenant import load_tenant_from_path, reset_tenant
+from web.context import register_life_ops_context
 from src.core.x_activity import XActivityQueue, reset_x_activity_queue
 from tests.fakes import MemoryS3Store
 from web.blueprints.dashboard import bp as dashboard_bp
@@ -26,6 +27,7 @@ from web.blueprints.projects import bp as projects_bp
 from web.blueprints.x_activity import bp as x_activity_bp
 
 _WEB_ROOT = Path(__file__).resolve().parents[1] / "web"
+_SETH = Path(__file__).resolve().parent / "fixtures" / "seth_tenant.yaml"
 
 
 def _ops_app() -> Flask:
@@ -62,6 +64,7 @@ def _ops_app() -> Flask:
     app.register_blueprint(grok_bot_bp, url_prefix="/grok-bot")
     app.register_blueprint(dashboard_bp, url_prefix="/memes")
     register_legacy_redirects(app)
+    register_life_ops_context(app)
     return app
 
 
@@ -82,7 +85,7 @@ class OpsIaTests(unittest.TestCase):
         )
         reset_x_activity_queue(self.queue)
         reset_grok_bot_routines()
-        reset_tenant()
+        reset_tenant(load_tenant_from_path(_SETH))
         self.board = ProjectBoard(
             store=MemoryS3Store(configured=False),
             local_path=Path(self.tmp.name) / "board.json",
@@ -105,17 +108,18 @@ class OpsIaTests(unittest.TestCase):
         reset_tenant()
         self.tmp.cleanup()
 
-    def test_home_is_life_ops_hub(self):
+    def test_home_is_life_ops_inbox_not_hub_cards(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         self.assertIn(">Ops<", html)
         self.assertIn("Life overview", html)
-        self.assertIn("Projects", html)
-        self.assertIn("Spend", html)
-        self.assertIn(">X<", html)
-        self.assertIn("Grok Bot", html)
-        self.assertIn("Memes", html)
+        self.assertNotIn("ops-hub", html)
+        self.assertNotIn("ops-card", html)
+        waiting_at = html.find('id="waiting-heading"')
+        week_at = html.find('id="cal-week-heading"')
+        self.assertGreater(waiting_at, 0)
+        self.assertGreater(week_at, waiting_at)
         self.assertIn("Waiting on you", html)
         self.assertIn("Cloudflare Access", html)
         self.assertNotIn("Meme Pipeline", html)
@@ -126,6 +130,18 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("No calendar snapshot yet.", html)
         self.assertNotIn("Team standup", html)
         self.assertNotIn("Invented", html)
+        peer = html.split('class="nav-more"')[0]
+        self.assertIn(">Projects<", peer)
+        self.assertIn(">Spend<", peer)
+        self.assertIn(">X<", peer)
+        self.assertNotIn(">Grok Bot<", peer)
+        self.assertNotIn(">Memes<", peer)
+        more = html.split("data-nav-more-menu")[1]
+        self.assertIn("More", more)
+        self.assertIn("Software", more)
+        self.assertIn("Grok Bot", more)
+        self.assertIn("/grok-bot/", more)
+        self.assertIn("/memes/generate/", more)
 
     def test_healthz_still_at_root(self):
         response = self.client.get("/healthz")

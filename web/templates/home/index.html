@@ -7,38 +7,28 @@
     <h1>Home</h1>
     <p class="ops-lede">Life overview. Agents write work; you decide. Not a meme dashboard.</p>
 
-    <div class="ops-hub">
-        {% if modules is not defined or modules.projects %}
-        <a href="{{ url_for('projects.index') }}" class="ops-card">
-            <h2>Projects</h2>
-            <p>Named bets in a list. Change a status when you decide.</p>
-        </a>
+    <section class="ops-waiting" aria-labelledby="waiting-heading">
+        <h2 id="waiting-heading">Waiting on you</h2>
+        {% if waiting_projects or pending_x_count %}
+        <ul class="ops-waiting-list">
+            {% for project in waiting_projects %}
+            <li>
+                <a href="{{ url_for('projects.index') }}">{{ project.name }}</a>
+                {% if project.next_steps %}
+                <span class="ops-waiting-note">{{ project.next_steps }}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            {% if pending_x_count %}
+            <li>
+                <a href="{{ url_for('x_activity.index') }}">{{ pending_x_count }} pending X draft{% if pending_x_count != 1 %}s{% endif %}</a>
+            </li>
+            {% endif %}
+        </ul>
+        {% else %}
+        <p>Nothing queued. Project blockers and X drafts will show up here.</p>
         {% endif %}
-        {% if modules is not defined or modules.spend %}
-        <a href="{{ url_for('spend.index') }}" class="ops-card">
-            <h2>Spend</h2>
-            <p>Tech subscriptions and usage. Open the ledger for live numbers.</p>
-        </a>
-        {% endif %}
-        {% if modules is not defined or modules.x %}
-        <a href="{{ url_for('x_activity.index') }}" class="ops-card">
-            <h2>X</h2>
-            <p>Review Stevie drafts. Approve or skip — this app never posts to X.</p>
-        </a>
-        {% endif %}
-        {% if modules is not defined or modules.grok_bot %}
-        <a href="{{ url_for('grok_bot.index') }}" class="ops-card">
-            <h2>Grok Bot</h2>
-            <p>Recurring Grok Bot routines catalog.</p>
-        </a>
-        {% endif %}
-        {% if modules is not defined or modules.memes %}
-        <a href="{{ url_for('dashboard.index') }}" class="ops-card">
-            <h2>Memes</h2>
-            <p>Pipeline, generate, gallery, daily queue, templates, video, discovery.</p>
-        </a>
-        {% endif %}
-    </div>
+    </section>
 
     {% if calendar %}
     <div class="ops-cal-grid">
@@ -98,28 +88,5 @@
         </section>
     </div>
     {% endif %}
-
-    <section class="ops-waiting" aria-labelledby="waiting-heading">
-        <h2 id="waiting-heading">Waiting on you</h2>
-        {% if waiting_projects or pending_x_count %}
-        <ul class="ops-waiting-list">
-            {% for project in waiting_projects %}
-            <li>
-                <a href="{{ url_for('projects.index') }}">{{ project.name }}</a>
-                {% if project.next_steps %}
-                <span class="ops-waiting-note">{{ project.next_steps }}</span>
-                {% endif %}
-            </li>
-            {% endfor %}
-            {% if pending_x_count %}
-            <li>
-                <a href="{{ url_for('x_activity.index') }}">{{ pending_x_count }} pending X draft{% if pending_x_count != 1 %}s{% endif %}</a>
-            </li>
-            {% endif %}
-        </ul>
-        {% else %}
-        <p>Nothing queued. Project blockers and X drafts will show up here.</p>
-        {% endif %}
-    </section>
 </div>
 {% endblock %}

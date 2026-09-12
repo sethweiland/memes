@@ -15,7 +15,7 @@ YAML. There is no Google OAuth in this app.
 Home lists (America/New_York unless the snapshot says otherwise):
 
 - This week: now through Sunday ET
-- On the horizon: 14 days from now through ~3 months
+- On the horizon: Monday after this Sunday through ~3 months
 
 Events outside those windows are kept in the snapshot and hidden on Home.
 Do not invent events.
@@ -48,7 +48,6 @@ DEFAULT_TZ = "America/New_York"
 ICS_CACHE_SECONDS = 15 * 60
 ICS_MAX_BYTES = 1_000_000
 ICS_TIMEOUT_SECONDS = 10
-HORIZON_START_DAYS = 14
 EMPTY_SNAPSHOT_MESSAGE = "No calendar snapshot yet."
 _UNSET = object()
 
@@ -173,8 +172,12 @@ def this_week_bounds(now: datetime, tz: ZoneInfo) -> tuple[datetime, datetime]:
 
 
 def horizon_bounds(now: datetime, tz: ZoneInfo) -> tuple[datetime, datetime]:
+    """Horizon starts the Monday after this week's Sunday, not 14 days out."""
     now = now.astimezone(tz)
-    return now + timedelta(days=HORIZON_START_DAYS), now + relativedelta(months=3)
+    _week_start, week_end = this_week_bounds(now, tz)
+    next_day = week_end.date() + timedelta(days=1)
+    horizon_start = datetime(next_day.year, next_day.month, next_day.day, tzinfo=tz)
+    return horizon_start, now + relativedelta(months=3)
 
 
 def _in_this_week(event: dict[str, Any], now: datetime, week_end: datetime) -> bool:

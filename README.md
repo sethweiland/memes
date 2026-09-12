@@ -22,7 +22,7 @@ pip install -r requirements.txt
 python web/run.py             # http://localhost:5050
 ```
 
-`TENANT_CONFIG` overrides the default `config/tenant.yaml`. Secrets stay in env / Fly secrets / (later) AWS or Bitwarden — never in the YAML. Optional S3: set `MEME_ASSETS_BUCKET` and the board lives at `ops/projects/board.json`; otherwise `data/projects/board.json`. Cloudflare Access is optional on localhost and recommended in front of a public hostname.
+Tenant load order: `TENANT_CONFIG`, then S3 `ops/tenant.yaml` (when `MEME_ASSETS_BUCKET` is set), then `config/tenant.yaml` if present (gitignored), then `config/tenant.example.yaml`. Secrets stay in env / Fly secrets / (later) AWS or Bitwarden — never in the YAML. Optional S3: set `MEME_ASSETS_BUCKET` and the board lives at `ops/projects/board.json`; otherwise `data/projects/board.json`. Cloudflare Access is optional on localhost and recommended in front of a public hostname.
 
 Full contract, S3 layout, and agent write rules: [`docs/life-ops.md`](docs/life-ops.md).
 
@@ -111,12 +111,11 @@ python web/run.py
 
 | Section | Path | What it is |
 |---|---|---|
-| **Home** | `/` | Life overview — cards to Projects, Spend, X, Grok Bot, Memes. Calendar module adds This week + On the horizon from a snapshot/ICS (no Google OAuth). |
-| **Projects** | `/projects/` | Compact list of named bets. Status pill is the existing lane (`idea`, `active`, `blocked`, `waiting_on_you`, `parked`). Seeded from `config/tenant.yaml`. Board JSON: `ops/projects/board.json`. |
+| **Home** | `/` | Waiting on you, then This week / On the horizon from a snapshot/ICS (no Google OAuth). No hub cards. |
+| **Projects** | `/projects/` | Compact list of named bets. Status pill is the existing lane (`idea`, `active`, `blocked`, `waiting_on_you`, `parked`). Seeded from tenant config. Board JSON: `ops/projects/board.json`. |
 | **Spend** | `/spend/` | Tech spending tracker. Tokens widget at the top (this month’s calls / tokens / heuristic $). |
-| **X** | `/x/` | Real X Activity tab — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Queue is `ops/queue/x-activity/` |
-| **Grok Bot** | `/grok-bot/` | Catalog of recurring routines. Private JSON at `ops/grok-bot/routines.json` (git seed / local fallback `data/grok_bot_routines.json`). This page does not start or stop routines. |
-| **Memes** | `/memes/` | Meme pipeline dashboard (the old `/` page) |
+| **X** | `/x/` | Human-gate inbox — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Stays a top-level tab. Queue is `ops/queue/x-activity/` |
+| **More ▾** | — | Bookmarks-style folders from tenant `folders:` (nav config, not a sixth primitive). Grok Bot and Memes tools nest here, not as peer tabs. |
 
 **Spend:**
 - Tracks subscriptions (Imgflip, Vercel, etc.)
@@ -126,7 +125,14 @@ python web/run.py
 - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
 - **By Project** rollup (tokens + allocated fixed): tenant project ids plus Spend-only `shared` / `unallocated`. Unallocated stay visible. `shared` and `unallocated` are not project rows.
 - Monthly total with active/cancelled breakdown
-- Subscription ledger: `data/tech_spend.json`
+- Subscription ledger: `data/tech_spend.json` (gitignored; operator-private. Tests use `tests/fixtures/tech_spend.json`)
+
+**More menu** (tenant `folders:`):
+- Folders and extra links come from YAML, not hardcoded Python
+- A project with a module homepage (`memes` → `/memes/`, `x` → `/x/`) links there when that module is on
+- Memes tools nest under Software → Memes; Grok Bot routines nest under Agents
+- Disabled-module links are omitted so the menu never 404s
+- Grok Bot catalog: `/grok-bot/` — private JSON at `ops/grok-bot/routines.json` (git seed / local fallback `data/grok_bot_routines.json`). This page does not start or stop routines.
 
 **Memes module** (`/memes/` and children):
 - **Dashboard** `/memes/` — template catalog size, pending daily candidates, gallery count, S3, brand selector, tool links
@@ -173,7 +179,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 - Monthly JSON at `ops/usage/{provider}/{YYYY}/{MM}.json` (private; ETag concurrency)
 - Local cache at `data/usage/{provider}/{YYYY}/{MM}.json`
 - Each event includes `project` (string id). This repo defaults to `memes`.
-- Project ids come from `config/tenant.yaml`. Spend also always includes `shared` and `unallocated`.
+- Project ids come from tenant config. Spend also always includes `shared` and `unallocated`.
 - Other jobs set `USAGE_PROJECT` or `MEME_PROJECT` before `log_token_usage` (e.g. `USAGE_PROJECT=waiver-wire`, X-draft calls `USAGE_PROJECT=x`). Same monthly S3 object — no per-project prefixes and no extra xAI keys.
 - Logging a token call never breaks meme generation if S3 is down
 

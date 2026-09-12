@@ -43,6 +43,12 @@ class BucketLayoutTests(unittest.TestCase):
         self.assertTrue(key.startswith(BucketLayout.CALENDAR_PREFIX))
         self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
 
+    def test_tenant_key_is_private_ops(self):
+        key = BucketLayout.tenant_key()
+        self.assertEqual(key, "ops/tenant.yaml")
+        BucketLayout.require_ops_key(key)
+        self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
+
     def test_ops_key_rejects_public_prefix(self):
         with self.assertRaises(ValueError):
             BucketLayout.require_ops_key("public/memes/usage/xai/2026/09.json")

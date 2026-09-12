@@ -16,16 +16,49 @@ nav .brand { font-size: 18px; font-weight: 700; margin-right: 16px; color: #fff;
 nav.subnav { background: #16213e; padding: 8px 24px; gap: 16px; flex-wrap: wrap; }
 nav.subnav a.active { border-bottom-color: #81d4fa; }
 
-/* Ops hub */
+/* More — bookmarks-style dropdown, not wrap-around peer tabs */
+.nav-more { position: relative; }
+.nav-more-toggle {
+    appearance: none; background: none; border: none; border-bottom: 2px solid transparent;
+    color: #e0e0e0; font: inherit; font-size: 14px; cursor: pointer;
+    padding: 0 0 2px; line-height: inherit;
+}
+.nav-more-toggle:hover { color: #fff; }
+.nav-more-toggle.active { color: #fff; font-weight: 600; border-bottom-color: #4fc3f7; }
+.nav-more-caret { font-size: 11px; margin-left: 1px; }
+.nav-more-menu {
+    position: absolute; top: calc(100% + 10px); right: 0; left: auto;
+    min-width: 240px; max-width: min(320px, calc(100vw - 32px));
+    max-height: min(70vh, 480px); overflow: auto;
+    background: #fff; color: #1a1a2e; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.22); padding: 4px 0; z-index: 80;
+}
+.nav-more-folder { border-bottom: 1px solid #eee; }
+.nav-more-folder:last-child { border-bottom: none; }
+.nav-more-folder > summary {
+    list-style: none; cursor: pointer; padding: 8px 14px;
+    font-size: 12px; font-weight: 700; letter-spacing: .02em;
+    text-transform: uppercase; color: #555;
+}
+.nav-more-folder > summary::-webkit-details-marker { display: none; }
+.nav-more-folder > summary::after {
+    content: "▸"; float: right; color: #888; font-weight: 400; text-transform: none;
+}
+.nav-more-folder[open] > summary::after { content: "▾"; }
+.nav-more-folder-list { list-style: none; margin: 0; padding: 0 0 6px; }
+.nav-more-folder-list a {
+    display: block; padding: 6px 14px 6px 18px;
+    color: #1a1a2e; font-size: 14px; border-bottom: none; font-weight: 400;
+}
+.nav-more-folder-list a:hover { background: #f3f4f6; color: #1a73e8; }
+.nav-more-folder-list a.active { font-weight: 600; color: #1a73e8; border-bottom: none; }
+.nav-more-children { list-style: none; margin: 0; padding: 0; }
+.nav-more-children a { padding-left: 32px; font-size: 13px; color: #444; }
+
+/* Home — waiting inbox + calendar. No hub cards. */
 .ops-lede { color: #3d3d3d; margin-bottom: 16px; max-width: 40em; font-size: 15px; line-height: 1.45; }
-.ops-hub { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
-.ops-card { display: block; background: #fff; border-radius: 10px; padding: 16px 18px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.12); text-decoration: none; color: inherit; }
-.ops-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.15); }
-.ops-card h2 { margin: 0 0 4px; font-size: 16px; }
-.ops-card p { margin: 0; color: #555; font-size: 13px; }
 .ops-waiting { background: #fff; border-radius: 10px; padding: 16px 18px;
-               box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+               box-shadow: 0 1px 3px rgba(0,0,0,.12); margin-bottom: 20px; }
 .ops-waiting h2 { margin: 0 0 8px; font-size: 16px; }
 .ops-waiting p { margin: 0; color: #555; font-size: 14px; }
 .ops-waiting-list { margin: 0; padding-left: 18px; }
@@ -111,12 +144,6 @@ nav.subnav a.active { border-bottom-color: #81d4fa; }
 }
 .ops-footer { max-width: 1100px; margin: 48px auto 24px; padding: 0 16px;
               color: #888; font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; }
-@media (min-width: 640px) {
-    .ops-hub { grid-template-columns: 1fr 1fr; }
-}
-@media (min-width: 900px) {
-    .ops-hub { grid-template-columns: 1fr 1fr 1fr; }
-}
 
 /* Layout */
 .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
