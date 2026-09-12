@@ -12,10 +12,10 @@ If ``CALENDAR_ICS_URL`` is set, fetch that feed, parse VEVENTs into the same
 shape, and cache the result as the snapshot. Credentials never go in tenant
 YAML. There is no Google OAuth in this app.
 
-Home lists (America/New_York unless the snapshot says otherwise):
+Home (America/New_York unless the snapshot says otherwise; zone is not printed):
 
-- This week: now through Sunday ET
-- On the horizon: Monday after this Sunday through ~3 months
+- This week: now through Sunday, grouped by day
+- On the horizon: Monday after this Sunday through ~3 months, grouped by date
 
 Events outside those windows are kept in the snapshot and hidden on Home.
 Do not invent events.
@@ -50,6 +50,17 @@ ICS_MAX_BYTES = 1_000_000
 ICS_TIMEOUT_SECONDS = 10
 EMPTY_SNAPSHOT_MESSAGE = "No calendar snapshot yet."
 _UNSET = object()
+_STREET_WORD = re.compile(
+    r"\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|"
+    r"ct|court|pl|place|way|pkwy|parkway|hwy|highway|apt|apartment|"
+    r"suite|ste|unit|fl|floor|bldg|building)\.?\b",
+    re.I,
+)
+_HOUSE_NUM = re.compile(r"(?:^|[\s,])\d+[A-Za-z]?\s+\S+")
+_CITY_STATE = re.compile(
+    r"\b([A-Za-z][A-Za-z .'-]+),\s*[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?\b"
+)
+_IANA_ZONE = re.compile(r"^[A-Za-z]+/[A-Za-z_+\-]+$")
 
 
 def utc_now() -> str:
@@ -203,52 +214,158 @@ def _day_label(value: datetime | date) -> str:
     return f"{value.strftime('%a %b')} {value.day}"
 
 
+def _week_day_heading(value: date, *, include_month: bool) -> str:
+    weekday = value.strftime("%a")
+    if include_month:
+        return f"{weekday} {value.strftime('%b')} {value.day}"
+    return f"{weekday} {value.day}"
+
+
+def _each_date(start: date, end: date):
+    cursor = start
+    while cursor <= end:
+        yield cursor
+        cursor += timedelta(days=1)
+
+
 def _time_label(value: datetime) -> str:
     hour = value.hour % 12 or 12
     suffix = "AM" if value.hour < 12 else "PM"
+    if value.minute == 0:
+        return f"{hour} {suffix}"
     return f"{hour}:{value.minute:02d} {suffix}"
 
 
-def _format_range_label(start: datetime, end: datetime, tz: ZoneInfo) -> str:
-    start = start.astimezone(tz)
-    end = end.astimezone(tz)
-    zone = tz.key
-    if start.date() == end.date():
-        return f"{_day_label(start)} · {zone}"
-    if start.year == end.year:
-        return f"{_day_label(start)} – {_day_label(end)} · {zone}"
-    return f"{start.strftime('%b')} {start.day}, {start.year} – {end.strftime('%b')} {end.day}, {end.year} · {zone}"
-
-
 def _format_event_when(event: dict[str, Any], tz: ZoneInfo) -> str:
+    """Time only — day lives on the section header, never the zone name."""
     start: datetime = event["_start"].astimezone(tz)
     end: datetime = event["_end"].astimezone(tz)
     if event.get("all_day"):
         last = (end - timedelta(microseconds=1)).date() if end.date() > start.date() else start.date()
         if last <= start.date():
-            return _day_label(start)
-        if start.year == last.year:
-            return f"{_day_label(start)} – {_day_label(last)}"
-        return (
-            f"{start.strftime('%b')} {start.day}, {start.year} – "
-            f"{last.strftime('%b')} {last.day}, {last.year}"
-        )
+            return "All day"
+        return f"through {_day_label(last)}"
+    start_t = _time_label(start)
     if start.date() == end.date() and end > start:
-        return f"{_day_label(start)} · {_time_label(start)}–{_time_label(end)}"
-    return f"{_day_label(start)} · {_time_label(start)}"
+        end_t = _time_label(end)
+        if start_t[-2:] == end_t[-2:] and start_t.endswith(("AM", "PM")):
+            return f"{start_t[:-3]}–{end_t}"
+        return f"{start_t}–{end_t}"
+    if end.date() > start.date() and end > start:
+        return f"{start_t} – {_day_label(end)}"
+    return start_t
+
+
+def _norm_place(value: str) -> str:
+    text = value.casefold()
+    for src, dst in (("→", "->"), ("⟶", "->"), ("–", "-"), ("—", "-"), ("\u00a0", " ")):
+        text = text.replace(src, dst)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _looks_like_street_address(text: str) -> bool:
+    if _STREET_WORD.search(text) and _HOUSE_NUM.search(text):
+        return True
+    first = re.split(r"[\n,]", text, 1)[0].strip()
+    return bool(re.match(r"^\d+\s+.+", first) and ("," in text or "\n" in text))
+
+
+def present_location(title: str, location: Optional[str]) -> Optional[str]:
+    """Venue or city for Home. Hide title repeats and apartment street dumps."""
+    loc = _blank(location)
+    if not loc:
+        return None
+    loc = loc.replace("\r\n", "\n").strip()
+    if _IANA_ZONE.fullmatch(loc):
+        return None
+    normalized_loc = _norm_place(loc)
+    normalized_title = _norm_place(title)
+    if normalized_loc == normalized_title:
+        return None
+    if len(normalized_loc) >= 4 and normalized_loc in normalized_title:
+        return None
+    if not _looks_like_street_address(loc):
+        return loc
+    parts = [part.strip() for part in re.split(r"[\n,]", loc) if part.strip()]
+    first = parts[0] if parts else ""
+    if first and not re.match(r"^\d+\s+", first) and not _STREET_WORD.search(first):
+        return first
+    match = _CITY_STATE.search(loc)
+    if match:
+        return match.group(1).strip()
+    for part in reversed(parts):
+        if re.fullmatch(r"\d{5}(?:-\d{4})?", part):
+            continue
+        if re.fullmatch(r"[A-Z]{2}", part):
+            continue
+        if re.fullmatch(r"(?:apt|apartment|suite|ste|unit|fl|floor)\s*\S+", part, re.I):
+            continue
+        if _STREET_WORD.search(part) or re.match(r"^\d+\s+", part):
+            continue
+        return part
+    return None
 
 
 def _present_event(event: dict[str, Any], tz: ZoneInfo) -> dict[str, Any]:
+    title = event["title"]
     return {
         "id": event["id"],
-        "title": event["title"],
+        "title": title,
         "start": event["start"],
         "end": event["end"],
         "all_day": bool(event.get("all_day")),
-        "location": event.get("location"),
+        "location": present_location(title, event.get("location")),
         "url": event.get("url"),
         "when_label": _format_event_when(event, tz),
     }
+
+
+def _placement_date(event: dict[str, Any], tz: ZoneInfo, floor: Optional[date] = None) -> date:
+    start = event["_start"].astimezone(tz).date()
+    if floor and start < floor:
+        return floor
+    return start
+
+
+def _group_week_days(
+    hydrated: list[dict[str, Any]],
+    clock: datetime,
+    week_end: datetime,
+    tz: ZoneInfo,
+) -> list[dict[str, Any]]:
+    today = clock.astimezone(tz).date()
+    last = week_end.astimezone(tz).date()
+    include_month = today.month != last.month or today.year != last.year
+    buckets: dict[date, list[dict[str, Any]]] = {day: [] for day in _each_date(today, last)}
+    for event in hydrated:
+        day = _placement_date(event, tz, today)
+        if day not in buckets:
+            day = today if day < today else last
+        buckets[day].append(_present_event(event, tz))
+    return [
+        {
+            "date": day.isoformat(),
+            "label": _week_day_heading(day, include_month=include_month),
+            "is_today": day == today,
+            "events": buckets[day],
+        }
+        for day in _each_date(today, last)
+    ]
+
+
+def _group_horizon_days(hydrated: list[dict[str, Any]], tz: ZoneInfo) -> list[dict[str, Any]]:
+    buckets: dict[date, list[dict[str, Any]]] = {}
+    for event in hydrated:
+        day = _placement_date(event, tz)
+        buckets.setdefault(day, []).append(_present_event(event, tz))
+    return [
+        {
+            "date": day.isoformat(),
+            "label": _day_label(day),
+            "events": buckets[day],
+        }
+        for day in sorted(buckets)
+    ]
 
 
 def split_home_events(
@@ -268,30 +385,36 @@ def split_home_events(
         or DEFAULT_TZ
     )
     clock = (now or datetime.now(tz)).astimezone(tz)
-    week_start, week_end = this_week_bounds(clock, tz)
+    _week_start, week_end = this_week_bounds(clock, tz)
     horizon_start, horizon_end = horizon_bounds(clock, tz)
     has_snapshot = snapshot is not None
     events = list((snapshot or {}).get("events") or []) if has_snapshot else []
 
-    this_week: list[dict[str, Any]] = []
-    horizon: list[dict[str, Any]] = []
+    this_week_hydrated: list[dict[str, Any]] = []
+    horizon_hydrated: list[dict[str, Any]] = []
     for raw in events:
         hydrated = _hydrate(raw, tz)
         if hydrated is None:
             continue
         if _in_this_week(hydrated, clock, week_end):
-            this_week.append(_present_event(hydrated, tz))
+            this_week_hydrated.append(hydrated)
         elif _in_horizon(hydrated, horizon_start, horizon_end):
-            horizon.append(_present_event(hydrated, tz))
+            horizon_hydrated.append(hydrated)
 
+    this_week = [_present_event(event, tz) for event in this_week_hydrated]
+    horizon = [_present_event(event, tz) for event in horizon_hydrated]
     return {
         "has_snapshot": has_snapshot,
         "updated_at": (snapshot or {}).get("updated_at") if has_snapshot else None,
         "timezone": tz.key,
         "this_week": this_week,
         "horizon": horizon,
-        "this_week_label": _format_range_label(week_start, week_end, tz),
-        "horizon_label": _format_range_label(horizon_start, horizon_end, tz),
+        "this_week_days": _group_week_days(this_week_hydrated, clock, week_end, tz)
+        if has_snapshot
+        else [],
+        "horizon_days": _group_horizon_days(horizon_hydrated, tz) if has_snapshot else [],
+        "this_week_label": "",
+        "horizon_label": "",
         "empty_message": None if has_snapshot else EMPTY_SNAPSHOT_MESSAGE,
     }
 

@@ -56,11 +56,12 @@ def _calendar_home():
             "has_snapshot": False,
             "this_week": [],
             "horizon": [],
+            "this_week_days": [],
+            "horizon_days": [],
             "empty_message": "No calendar snapshot yet.",
             "this_week_label": "",
             "horizon_label": "",
             "updated_at": None,
-            "timezone": "America/New_York",
         }
 
 

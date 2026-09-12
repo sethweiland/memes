@@ -34,54 +34,64 @@
     <div class="ops-cal-grid">
         <section class="ops-cal" aria-labelledby="cal-week-heading" data-calendar="this-week">
             <h2 id="cal-week-heading">This week</h2>
-            {% if calendar.this_week_label %}
-            <p class="ops-cal-range">{{ calendar.this_week_label }}</p>
-            {% endif %}
             {% if not calendar.has_snapshot %}
             <p class="ops-cal-empty">{{ calendar.empty_message or "No calendar snapshot yet." }}</p>
-            {% elif calendar.this_week %}
-            <ul class="ops-cal-list">
-                {% for event in calendar.this_week %}
-                <li data-event-id="{{ event.id }}">
-                    <span class="ops-cal-when">{{ event.when_label }}</span>
-                    {% if event.url %}
-                    <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
-                    {% else %}
-                    <span class="ops-cal-title">{{ event.title }}</span>
+            {% elif calendar.this_week_days %}
+            <div class="ops-cal-week">
+                {% for day in calendar.this_week_days %}
+                <section class="ops-cal-day{% if day.is_today %} is-today{% endif %}" data-cal-day="{{ day.date }}">
+                    <h3 class="ops-cal-day-h">{{ day.label }}</h3>
+                    {% if day.events %}
+                    <ul class="ops-cal-list">
+                        {% for event in day.events %}
+                        <li data-event-id="{{ event.id }}">
+                            <span class="ops-cal-when">{{ event.when_label }}</span>
+                            {% if event.url %}
+                            <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
+                            {% else %}
+                            <span class="ops-cal-title">{{ event.title }}</span>
+                            {% endif %}
+                            {% if event.location %}
+                            <span class="ops-cal-location">{{ event.location }}</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
                     {% endif %}
-                    {% if event.location %}
-                    <span class="ops-cal-location">{{ event.location }}</span>
-                    {% endif %}
-                </li>
+                </section>
                 {% endfor %}
-            </ul>
+            </div>
             {% else %}
             <p class="ops-cal-empty">Nothing this week.</p>
             {% endif %}
         </section>
         <section class="ops-cal" aria-labelledby="cal-horizon-heading" data-calendar="horizon">
             <h2 id="cal-horizon-heading">On the horizon</h2>
-            {% if calendar.horizon_label %}
-            <p class="ops-cal-range">{{ calendar.horizon_label }}</p>
-            {% endif %}
             {% if not calendar.has_snapshot %}
             <p class="ops-cal-empty">{{ calendar.empty_message or "No calendar snapshot yet." }}</p>
-            {% elif calendar.horizon %}
-            <ul class="ops-cal-list">
-                {% for event in calendar.horizon %}
-                <li data-event-id="{{ event.id }}">
-                    <span class="ops-cal-when">{{ event.when_label }}</span>
-                    {% if event.url %}
-                    <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
-                    {% else %}
-                    <span class="ops-cal-title">{{ event.title }}</span>
-                    {% endif %}
-                    {% if event.location %}
-                    <span class="ops-cal-location">{{ event.location }}</span>
-                    {% endif %}
-                </li>
+            {% elif calendar.horizon_days %}
+            <div class="ops-cal-agenda">
+                {% for day in calendar.horizon_days %}
+                <section class="ops-cal-agenda-day" data-cal-day="{{ day.date }}">
+                    <h3 class="ops-cal-day-h">{{ day.label }}</h3>
+                    <ul class="ops-cal-list">
+                        {% for event in day.events %}
+                        <li data-event-id="{{ event.id }}">
+                            <span class="ops-cal-when">{{ event.when_label }}</span>
+                            {% if event.url %}
+                            <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
+                            {% else %}
+                            <span class="ops-cal-title">{{ event.title }}</span>
+                            {% endif %}
+                            {% if event.location %}
+                            <span class="ops-cal-location">{{ event.location }}</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </section>
                 {% endfor %}
-            </ul>
+            </div>
             {% else %}
             <p class="ops-cal-empty">Nothing on the horizon.</p>
             {% endif %}

@@ -73,23 +73,47 @@ nav.subnav a.active { border-bottom-color: #81d4fa; }
 .ops-waiting-list a:hover { text-decoration: underline; }
 .ops-waiting-note { display: block; color: #555; font-size: 13px; }
 
-/* Home calendar — snapshot/ICS only, never invented events */
+/* Home calendar — week columns + horizon agenda. Never invented events. */
 .ops-cal-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
 .ops-cal { background: #fff; border-radius: 10px; padding: 16px 18px;
            box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.ops-cal h2 { margin: 0 0 2px; font-size: 16px; }
-.ops-cal-range { margin: 0 0 10px; font-size: 12px; color: #666; }
+.ops-cal h2 { margin: 0 0 8px; font-size: 16px; }
 .ops-cal-empty { margin: 0; color: #666; font-size: 14px; }
+.ops-cal-week { display: flex; flex-direction: column; gap: 0; }
+.ops-cal-day { min-width: 0; padding: 10px 0; border-top: 1px solid #eee; }
+.ops-cal-day:first-child { border-top: none; padding-top: 0; }
+.ops-cal-day-h { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #1a1a2e; }
+.ops-cal-day.is-today .ops-cal-day-h { color: #1a73e8; }
+.ops-cal-agenda { display: flex; flex-direction: column; gap: 12px; }
+.ops-cal-agenda-day { min-width: 0; }
 .ops-cal-list { margin: 0; padding: 0; list-style: none; }
-.ops-cal-list li { padding: 8px 0; border-top: 1px solid #eee; }
-.ops-cal-list li:first-child { border-top: none; padding-top: 0; }
+.ops-cal-list li { padding: 6px 0 0; }
 .ops-cal-when { display: block; font-size: 12px; color: #555; font-weight: 600; }
+.ops-cal-agenda-day .ops-cal-when { display: inline; margin-right: 8px; }
 .ops-cal-title, .ops-cal-list a { font-size: 14px; color: #1a1a2e; }
 .ops-cal-list a { text-decoration: none; }
 .ops-cal-list a:hover { text-decoration: underline; color: #1a73e8; }
 .ops-cal-location { display: block; font-size: 12px; color: #666; }
-@media (min-width: 800px) {
-    .ops-cal-grid { grid-template-columns: 1fr 1fr; }
+@media (min-width: 720px) {
+    .ops-cal-week {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+        gap: 0;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f7f7f8;
+    }
+    .ops-cal-day {
+        padding: 10px 10px 12px;
+        border-top: none;
+        border-right: 1px solid #eee;
+        background: #fafafa;
+    }
+    .ops-cal-day:first-child { padding-top: 10px; }
+    .ops-cal-day:last-child { border-right: none; }
+    .ops-cal-day.is-today { background: #fff; }
+    .ops-cal-list li { padding: 8px 0 0; }
 }
 
 /* Projects list — mobile-first, one row per bet. Empty lanes do not get columns. */
