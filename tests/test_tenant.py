@@ -20,12 +20,15 @@ from src.core.tenant import (
     load_tenant_from_path,
     normalize_lane,
     normalize_tenant,
+    present_nav_folders,
     reset_tenant,
 )
+from tests.fakes import MemoryS3Store
 
 
 _ROOT = Path(__file__).resolve().parents[1]
-_SETH = _ROOT / "config" / "tenant.yaml"
+_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+_SETH = _FIXTURES / "seth_tenant.yaml"
 _EXAMPLE = _ROOT / "config" / "tenant.example.yaml"
 
 SETH_IDS = (
@@ -92,17 +95,116 @@ class TenantLoadTests(unittest.TestCase):
             self.assertIsNone(project.last_done)
             self.assertIsNone(project.next_steps)
 
-    def test_default_load_path_is_seth_tenant(self):
-        reset_tenant()
-        tenant = load_tenant(reload=True)
-        self.assertEqual(tenant.project_ids(), SETH_IDS)
+    def test_seth_folders_are_nav_not_a_sixth_primitive(self):
+        tenant = load_tenant_from_path(_SETH)
+        self.assertEqual(tuple(f.id for f in tenant.folders), ("music", "software", "social", "agents"))
+        self.assertEqual(
+            tenant.folders[0].project_ids,
+            ("sethweiland-com", "whippoorwill", "millgrass"),
+        )
+        software = tenant.folders[1]
+        self.assertEqual(software.project_ids, ("memes", "waiver-wire", "linkmarketcap"))
+        self.assertEqual(
+            [link.label for link in software.links],
+            ["Dashboard", "Generate", "Gallery", "Daily Queue", "Templates", "Video", "Discovery"],
+        )
+        self.assertEqual(tenant.folders[2].project_ids, ("x",))
+        self.assertEqual(tenant.folders[3].links[0].href, "/grok-bot/")
+        presented = present_nav_folders(tenant)
+        by_id = {folder.id: folder for folder in presented}
+        memes = next(item for item in by_id["software"].items if item.id == "memes")
+        self.assertEqual(memes.href, "/memes/")
+        self.assertEqual(
+            [child.label for child in memes.children],
+            ["Dashboard", "Generate", "Gallery", "Daily Queue", "Templates", "Video", "Discovery"],
+        )
+        self.assertEqual(by_id["agents"].items[0].href, "/grok-bot/")
+
+    def test_example_folders_have_no_meme_or_x_links(self):
+        tenant = load_tenant_from_path(_EXAMPLE)
+        self.assertGreaterEqual(len(tenant.folders), 1)
+        self.assertLessEqual(len(tenant.folders), 2)
+        hrefs = []
+        for folder in present_nav_folders(tenant):
+            for item in folder.items:
+                hrefs.append(item.href)
+                hrefs.extend(child.href for child in item.children)
+        blob = " ".join(hrefs)
+        self.assertNotIn("/memes", blob)
+        self.assertNotIn("/x/", blob)
+        self.assertNotIn("/grok-bot", blob)
+
+    def test_disabled_module_links_are_hidden_from_more(self):
+        raw = {
+            "modules": {"projects": True, "spend": True, "x": False, "grok_bot": False, "memes": False},
+            "projects": [
+                {"id": "memes", "name": "Memes", "lane": "active"},
+                {"id": "x", "name": "X", "lane": "active"},
+                {"id": "side", "name": "Side", "lane": "idea"},
+            ],
+            "folders": [
+                {
+                    "id": "software",
+                    "name": "Software",
+                    "project_ids": ["memes", "side", "unknown-bet"],
+                    "links": [
+                        {"label": "Dashboard", "href": "/memes/", "project_id": "memes"},
+                        {"label": "Grok Bot", "href": "/grok-bot/"},
+                    ],
+                },
+                {"id": "social", "name": "Social", "project_ids": ["x"]},
+                {"id": "agents", "name": "Agents", "links": [{"label": "Grok Bot", "href": "/grok-bot/"}]},
+            ],
+        }
+        tenant = normalize_tenant(raw, source_path="memory")
+        presented = present_nav_folders(tenant)
+        by_id = {folder.id: folder for folder in presented}
+        self.assertNotIn("agents", by_id)
+        hrefs = []
+        for folder in presented:
+            for item in folder.items:
+                hrefs.append(item.href)
+                hrefs.extend(child.href for child in item.children)
+        self.assertNotIn("/memes/", hrefs)
+        self.assertNotIn("/grok-bot/", hrefs)
+        self.assertNotIn("/x/", hrefs)
+        memes = next(item for item in by_id["software"].items if item.id == "memes")
+        self.assertEqual(memes.href, "/projects/")
+        self.assertEqual(memes.children, ())
+        self.assertEqual(by_id["social"].items[0].href, "/projects/")
+        self.assertEqual([item.id for item in by_id["software"].items], ["memes", "side"])
 
     def test_tenant_config_env_overrides_path(self):
         reset_tenant()
-        with patch.dict(os.environ, {"TENANT_CONFIG": str(_EXAMPLE)}):
+        with patch.dict(os.environ, {"TENANT_CONFIG": str(_EXAMPLE)}, clear=False):
             tenant = load_tenant(reload=True)
         self.assertEqual(tenant.human_name, "Your Name")
         self.assertIn("home-ops", tenant.project_ids())
+
+    def test_falls_back_to_example_when_no_local_or_s3(self):
+        reset_tenant()
+        missing = Path("/tmp/does-not-exist-tenant.yaml")
+        store = MemoryS3Store(configured=False)
+        with patch.dict(os.environ, {"TENANT_CONFIG": "", "MEME_ASSETS_BUCKET": ""}, clear=False):
+            with patch("src.core.tenant.DEFAULT_TENANT_PATH", missing):
+                tenant = load_tenant(reload=True, store=store)
+        self.assertEqual(tenant.human_name, "Your Name")
+        self.assertIn("home-ops", tenant.project_ids())
+
+    def test_s3_tenant_wins_over_local_file(self):
+        reset_tenant()
+        store = MemoryS3Store()
+        store.put_object(
+            "ops/tenant.yaml",
+            _SETH.read_bytes(),
+            kind="private_ops",
+            content_type="text/yaml",
+        )
+        with patch.dict(os.environ, {"TENANT_CONFIG": ""}, clear=False):
+            tenant = load_tenant(reload=True, store=store)
+        self.assertEqual(tenant.human_name, "Seth")
+        self.assertEqual(tenant.project_ids(), SETH_IDS)
+        self.assertTrue(tenant.source_path.startswith("s3://"))
 
     def test_yaml_files_contain_no_secrets(self):
         forbidden = (

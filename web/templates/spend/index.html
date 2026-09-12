@@ -693,7 +693,7 @@
 {% if not fixed_items and not variable_items and not cancelled %}
 <div class="empty-state">
     <p><strong>No spend data configured</strong></p>
-    <p>Add subscription and usage data to <code>data/tech_spend.json</code></p>
+    <p>When <code>MEME_ASSETS_BUCKET</code> is set, the page reads <code>ops/spend/tech_spend.json</code> from S3. Otherwise it reads local <code>data/tech_spend.json</code>. Missing files render an empty ledger — nothing is invented.</p>
 </div>
 {% endif %}
 

@@ -12,8 +12,10 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
 │   ├── templates/{id}.{ext}              # existing catalog (~3195 objects) — do not rename
 │   └── generated/{hash}_{stem}.jpg       # new IG-ready JPEGs from MemeAssetUploader
 └── ops/                                  # PRIVATE (no public GET)
+    ├── tenant.yaml
     ├── projects/board.json
     ├── calendar/snapshot.json
+    ├── spend/tech_spend.json
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
     ├── grok-bot/routines.json
@@ -24,7 +26,9 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
 |--------|------------|--------|--------|
 | `public/memes/templates/` | public | catalog harvest (existing) | Keep in place; no migration |
 | `public/memes/generated/` | public | `MemeAssetUploader` | Default `MEME_ASSETS_PUBLIC_PREFIX` |
-| `ops/projects/` | private | `ProjectBoard` | Project list (`board.json`). Seeded from `config/tenant.yaml` when missing. |
+| `ops/tenant.yaml` | private | Jeffy / operator upload | Life-ops tenant. Not in git. |
+| `ops/spend/` | private | operator upload | Spend ledger (`tech_spend.json`). Not in git. |
+| `ops/projects/` | private | `ProjectBoard` | Project list (`board.json`). Seeded from tenant config when missing. |
 | `ops/calendar/` | private | `CalendarStore` | Home snapshot (`snapshot.json`). Optional ICS cache. No OAuth. |
 | `ops/queue/` | private | `QueueStorage` / `XActivityQueue` | Daily candidates + X drafts |
 | `ops/grok-bot/` | private | `GrokBotRoutines` | Recurring routine catalog (`routines.json`) |

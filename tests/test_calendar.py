@@ -15,6 +15,7 @@ import tests.bootstrap  # noqa: F401
 from src.core.calendar import (
     EMPTY_SNAPSHOT_MESSAGE,
     CalendarStore,
+    horizon_bounds,
     normalize_event,
     normalize_snapshot,
     parse_ics,
@@ -30,7 +31,7 @@ from web.blueprints.home import bp as home_bp
 
 _ROOT = Path(__file__).resolve().parents[1]
 _WEB_ROOT = _ROOT / "web"
-_SETH = _ROOT / "config" / "tenant.yaml"
+_SETH = Path(__file__).resolve().parent / "fixtures" / "seth_tenant.yaml"
 ET = ZoneInfo("America/New_York")
 NOW = datetime(2026, 9, 12, 12, 0, tzinfo=ET)
 
@@ -127,10 +128,9 @@ class NormalizeAndSplitTests(unittest.TestCase):
         week_titles = [event["title"] for event in lists["this_week"]]
         horizon_titles = [event["title"] for event in lists["horizon"]]
         self.assertEqual(week_titles, ["Saturday dinner", "Sunday hike"])
-        self.assertEqual(horizon_titles, ["October trip"])
+        self.assertEqual(horizon_titles, ["Next Friday gap", "October trip"])
         hidden = " ".join(week_titles + horizon_titles)
         self.assertNotIn("Past standup", hidden)
-        self.assertNotIn("Next Friday gap", hidden)
         self.assertNotIn("Far away", hidden)
         self.assertNotIn("Invented Birthday", hidden)
         self.assertNotIn("Team standup", hidden)
@@ -151,6 +151,16 @@ class NormalizeAndSplitTests(unittest.TestCase):
         self.assertEqual(lists["this_week"], [])
         self.assertEqual(lists["horizon"], [])
         self.assertIsNone(lists["empty_message"])
+
+    def test_horizon_starts_monday_after_this_week(self):
+        start, _end = horizon_bounds(NOW, ET)
+        self.assertEqual(start.date().isoformat(), "2026-09-14")
+        self.assertEqual(start.weekday(), 0)
+        sunday_end = datetime(2026, 9, 13, 23, 59, 59, tzinfo=ET)
+        self.assertGreater(start, sunday_end)
+        monday_now = datetime(2026, 9, 14, 9, 0, tzinfo=ET)
+        monday_start, _monday_end = horizon_bounds(monday_now, ET)
+        self.assertEqual(monday_start.date().isoformat(), "2026-09-21")
 
 
 class IcsParseTests(unittest.TestCase):
@@ -247,7 +257,8 @@ class CalendarStoreAndHomeTests(unittest.TestCase):
         self.assertIn("October trip", horizon)
         self.assertNotIn("Saturday dinner", horizon)
         self.assertNotIn("Past standup", html)
-        self.assertNotIn("Next Friday gap", html)
+        self.assertIn("Next Friday gap", horizon)
+        self.assertNotIn("Next Friday gap", week)
         self.assertNotIn("Far away", html)
         self.assertNotIn("Invented Birthday", html)
         self.assertIn("https://example.com/trip", html)

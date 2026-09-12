@@ -1,6 +1,6 @@
-# Seth's reference tenant. Safe to commit — no secrets.
-# Lanes are a hypothesis from this repo (spend ledger, Grok Bot catalog,
-# live Fly/X/Vercel surfaces). last_done / next_steps stay empty when unknown.
+# Test fixture: operator-shaped tenant with modules on (More menu, X, memes).
+# Not the product default. Friends copy config/tenant.example.yaml.
+# last_done / next_steps stay empty when unknown.
 
 human:
   name: Seth
@@ -37,6 +37,46 @@ agents:
 
 defaults:
   usage_project: memes
+
+# Bookmarks-style More menu. Not a sixth primitive — nav only.
+# Projects omitted here still appear on /projects/.
+folders:
+  - id: music
+    name: Music
+    project_ids: [sethweiland-com, whippoorwill, millgrass]
+  - id: software
+    name: Software
+    project_ids: [memes, waiver-wire, linkmarketcap]
+    links:
+      - label: Dashboard
+        href: /memes/
+        project_id: memes
+      - label: Generate
+        href: /memes/generate/
+        project_id: memes
+      - label: Gallery
+        href: /memes/gallery/
+        project_id: memes
+      - label: Daily Queue
+        href: /memes/gallery/daily-candidates/
+        project_id: memes
+      - label: Templates
+        href: /memes/templates/
+        project_id: memes
+      - label: Video
+        href: /memes/video/
+        project_id: memes
+      - label: Discovery
+        href: /memes/discovery/
+        project_id: memes
+  - id: social
+    name: Social
+    project_ids: [x]
+  - id: agents
+    name: Agents
+    links:
+      - label: Grok Bot
+        href: /grok-bot/
 
 projects:
   - id: memes

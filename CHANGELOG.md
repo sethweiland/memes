@@ -1,5 +1,16 @@
 # Changelog
 
+## More menu, Home inbox, private tenant (2026-09-12)
+
+- Top nav is Home · Projects · Spend · X · **More ▾**. Grok Bot and Memes are no longer peer tabs.
+- More is a bookmarks-style dropdown from tenant `folders:` (nav config, not a sixth primitive). Disabled-module links are hidden.
+- Home is Waiting on you above This week / On the horizon. Hub cards are gone.
+- Horizon starts the Monday after this week's Sunday, not 14 days out.
+- `config/tenant.yaml` and `data/tech_spend.json` are gitignored. Friends use `config/tenant.example.yaml`. Fly reads S3 `ops/tenant.yaml`.
+- Spend ledger load order: S3 `ops/spend/tech_spend.json`, else local `data/tech_spend.json`, else empty `{subscriptions: []}`. No invented rows.
+
+---
+
 ## Projects list, Tokens widget, Home calendar (2026-09-12)
 
 - `/projects/` is a compact sorted list (status pill = lane). Empty swim lanes no longer dominate.

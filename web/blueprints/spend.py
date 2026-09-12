@@ -3,10 +3,8 @@ Spend blueprint - Tech spending tracker for ops/engineering costs.
 Tracks subscriptions, API/usage costs, and provides live AWS data when available.
 """
 
-import json
 import os
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from flask import Blueprint, render_template
@@ -40,26 +38,10 @@ def _annotate_items(items: List[Dict]) -> List[Dict]:
 
 
 def _load_tech_spend() -> Dict[str, Any]:
-    """Load tech spend data from data/tech_spend.json."""
-    spend_path = Path("data/tech_spend.json")
-    if not spend_path.exists():
-        return {
-            "subscriptions": [],
-            "cancelled": [],
-            "last_updated": None,
-            "note": "No spend data found"
-        }
-    
-    try:
-        data = json.loads(spend_path.read_text(encoding="utf-8"))
-        return data
-    except Exception as e:
-        return {
-            "subscriptions": [],
-            "cancelled": [],
-            "last_updated": None,
-            "note": f"Error loading spend data: {e}"
-        }
+    """S3 ops/spend/tech_spend.json, else local data/tech_spend.json, else empty."""
+    from src.core.tech_spend import load_tech_spend
+
+    return load_tech_spend()
 
 
 def _get_xai_token_usage() -> Optional[Dict[str, Any]]:

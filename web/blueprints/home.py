@@ -1,12 +1,13 @@
 """
-Home blueprint — life/ops hub.
+Home blueprint — life/ops inbox.
 
-`/` is a section index (Projects, Spend, X, Grok Bot, Memes), not the meme
-stats dashboard. Waiting on you lists `waiting_on_you` project cards and,
-when the X module is on, a pending-draft count — never invented X rows.
+`/` is Waiting on you plus, when the calendar module is on, This week and
+On the horizon. It is not a hub of section cards and not the meme stats
+dashboard. Waiting on you lists `waiting_on_you` project cards and, when
+the X module is on, a pending-draft count — never invented X rows.
 
 Calendar is a read-only module (snapshot or optional ICS). Not a sixth
-primitive. Home shows This week and On the horizon from that snapshot only.
+primitive. Horizon starts the Monday after this week's Sunday.
 """
 
 from datetime import datetime

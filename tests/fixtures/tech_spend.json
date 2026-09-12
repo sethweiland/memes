@@ -1,0 +1,43 @@
+{
+  "$schema": "Fixture spend ledger for tests. Not an operator's real subscriptions.",
+  "last_updated": "2026-01-01",
+  "note": "Synthetic shares for allocation tests. Tag each subscription with project or projects (shares summing to 1.0).",
+  "subscriptions": [
+    {
+      "id": "hosting-pro",
+      "name": "Example Hosting",
+      "vendor": "Example",
+      "category": "fixed",
+      "amount_usd": 20.00,
+      "cadence": "monthly",
+      "status": "active",
+      "projects": {
+        "home-ops": 0.75,
+        "unallocated": 0.25
+      },
+      "notes": "Round 75/25 split used by allocation tests."
+    },
+    {
+      "id": "shared-tools",
+      "name": "Shared Tools",
+      "vendor": "Example",
+      "category": "fixed",
+      "amount_usd": 10.00,
+      "cadence": "monthly",
+      "status": "active",
+      "project": "shared"
+    }
+  ],
+  "cancelled": [
+    {
+      "id": "old-saas",
+      "name": "Old SaaS",
+      "vendor": "Example",
+      "category": "fixed",
+      "amount_usd": 8.00,
+      "cadence": "monthly",
+      "status": "cancelled",
+      "project": "unallocated"
+    }
+  ]
+}

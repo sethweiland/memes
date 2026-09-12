@@ -1,25 +1,37 @@
 """
 Tenant config for the life-ops shell.
 
-Load path: TENANT_CONFIG if set, else config/tenant.yaml.
+Load order (never crash a friend clone):
+
+1. ``TENANT_CONFIG`` if set
+2. S3 ``ops/tenant.yaml`` when ``MEME_ASSETS_BUCKET`` is set
+3. ``config/tenant.yaml`` if present on disk (gitignored; operator-private)
+4. ``config/tenant.example.yaml``
+
 Relative paths resolve from cwd, then the repo root.
 
-No secrets belong in the YAML. credentials stay in a SecretsBackend.
+No secrets belong in the YAML. Credentials stay in a SecretsBackend.
+Folders are navigation config, not a sixth primitive.
 """
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import yaml
 
 
+logger = logging.getLogger(__name__)
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TENANT_PATH = _REPO_ROOT / "config" / "tenant.yaml"
+EXAMPLE_TENANT_PATH = _REPO_ROOT / "config" / "tenant.example.yaml"
+_S3_TENANT_SENTINEL = Path("__s3__/ops/tenant.yaml")
 
 PROJECT_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -36,6 +48,30 @@ LANE_LABELS = {
 MODULE_NAMES = ("projects", "spend", "x", "grok_bot", "memes", "calendar")
 SECRET_BACKENDS = ("env", "aws", "bitwarden")
 SPEND_ONLY_PROJECT_IDS = ("shared", "unallocated")
+MORE_ACTIVE_SECTIONS = frozenset({"memes", "grok_bot"})
+ROUTE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
+
+# Project ids that have a dedicated module homepage. Folders themselves
+# stay in tenant YAML — this is only "link to the module if it is on."
+PROJECT_MODULE_HREFS = {
+    "memes": ("memes", "/memes/"),
+    "x": ("x", "/x/"),
+}
+
+ROUTE_MODULES = {
+    "dashboard.index": "memes",
+    "generate.start": "memes",
+    "gallery.index": "memes",
+    "daily_candidates.index": "memes",
+    "templates_review.review_page": "memes",
+    "video.start": "memes",
+    "discovery.dashboard": "memes",
+    "grok_bot.index": "grok_bot",
+    "x_activity.index": "x",
+    "projects.index": "projects",
+    "spend.index": "spend",
+    "home.index": None,
+}
 
 _FALLBACK_COLORS = {
     "memes": "#2563eb",
@@ -80,6 +116,48 @@ class TenantProject:
 
 
 @dataclass(frozen=True)
+class TenantFolderLink:
+    """Optional extra bookmark inside a More folder. Not a stored object."""
+
+    label: str
+    href: Optional[str] = None
+    route: Optional[str] = None
+    module: Optional[str] = None
+    project_id: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class TenantFolder:
+    """Tenant navigation folder. Not a sixth primitive — config only."""
+
+    id: str
+    name: str
+    project_ids: tuple[str, ...] = ()
+    links: tuple[TenantFolderLink, ...] = ()
+
+
+@dataclass(frozen=True)
+class NavChild:
+    label: str
+    href: str
+
+
+@dataclass(frozen=True)
+class NavItem:
+    label: str
+    href: str
+    id: str = ""
+    children: tuple[NavChild, ...] = ()
+
+
+@dataclass(frozen=True)
+class NavFolder:
+    id: str
+    name: str
+    items: tuple[NavItem, ...]
+
+
+@dataclass(frozen=True)
 class Tenant:
     human_name: str
     timezone: str
@@ -93,6 +171,7 @@ class Tenant:
     calendar_enabled: bool
     default_usage_project: str
     source_path: str
+    folders: tuple[TenantFolder, ...] = ()
 
     def module_enabled(self, name: str) -> bool:
         return bool(self.modules.get(name))
@@ -108,6 +187,9 @@ class Tenant:
             if project.id == project_id:
                 return project
         return None
+
+    def nav_folders(self, *, url_for: Optional[Callable[..., str]] = None) -> tuple[NavFolder, ...]:
+        return present_nav_folders(self, url_for=url_for)
 
 
 _tenant: Optional[Tenant] = None
@@ -143,6 +225,7 @@ def _link(value: Any) -> Optional[str]:
 
 
 def resolve_tenant_path(explicit: Optional[str] = None) -> Path:
+    """Resolve a filesystem tenant path (TENANT_CONFIG or an explicit path)."""
     raw = (explicit if explicit is not None else os.environ.get("TENANT_CONFIG", "")).strip()
     if raw:
         path = Path(raw)
@@ -152,7 +235,9 @@ def resolve_tenant_path(explicit: Optional[str] = None) -> Path:
         if cwd_path.exists():
             return cwd_path
         return _REPO_ROOT / path
-    return DEFAULT_TENANT_PATH
+    if DEFAULT_TENANT_PATH.exists():
+        return DEFAULT_TENANT_PATH
+    return EXAMPLE_TENANT_PATH
 
 
 def _default_modules() -> dict[str, bool]:
@@ -215,6 +300,178 @@ def _parse_agents(raw: Any) -> list[dict[str, str]]:
     return agents
 
 
+def _safe_href(value: Any) -> Optional[str]:
+    text = _blank(value)
+    if not text:
+        return None
+    if text.startswith("/") and not text.startswith("//"):
+        return text
+    if text.startswith("https://") or text.startswith("http://"):
+        return text
+    return None
+
+
+def _parse_folder_link(raw: Any) -> Optional[TenantFolderLink]:
+    if not isinstance(raw, dict):
+        return None
+    label = _blank(raw.get("label"))
+    if not label:
+        return None
+    href = _safe_href(raw.get("href"))
+    route = _blank(raw.get("route"))
+    if route and not ROUTE_NAME_RE.fullmatch(route):
+        route = None
+    if not href and not route:
+        return None
+    module = _blank(raw.get("module"))
+    if module and module not in MODULE_NAMES:
+        module = None
+    project_id = normalize_project_id(raw.get("project_id")) or None
+    return TenantFolderLink(
+        label=label,
+        href=href,
+        route=route,
+        module=module,
+        project_id=project_id,
+    )
+
+
+def _parse_folders(raw: Any) -> tuple[TenantFolder, ...]:
+    if not isinstance(raw, list):
+        return ()
+    folders: list[TenantFolder] = []
+    seen: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        folder_id = normalize_project_id(entry.get("id"))
+        if not folder_id or folder_id in seen:
+            continue
+        seen.add(folder_id)
+        project_ids: list[str] = []
+        seen_pids: set[str] = set()
+        for pid in entry.get("project_ids") or []:
+            cleaned = normalize_project_id(pid)
+            if not cleaned or cleaned in seen_pids:
+                continue
+            seen_pids.add(cleaned)
+            project_ids.append(cleaned)
+        links: list[TenantFolderLink] = []
+        for link_raw in entry.get("links") or []:
+            link = _parse_folder_link(link_raw)
+            if link:
+                links.append(link)
+        folders.append(
+            TenantFolder(
+                id=folder_id,
+                name=_blank(entry.get("name")) or folder_id,
+                project_ids=tuple(project_ids),
+                links=tuple(links),
+            )
+        )
+    return tuple(folders)
+
+
+def infer_href_module(href: Optional[str]) -> Optional[str]:
+    if not href:
+        return None
+    path = href.split("?", 1)[0]
+    if path == "/x" or path.startswith("/x/"):
+        return "x"
+    if path == "/memes" or path.startswith("/memes/"):
+        return "memes"
+    if path == "/grok-bot" or path.startswith("/grok-bot/"):
+        return "grok_bot"
+    if path == "/projects" or path.startswith("/projects/"):
+        return "projects"
+    if path == "/spend" or path.startswith("/spend/"):
+        return "spend"
+    return None
+
+
+def project_nav_href(project_id: str, modules: dict[str, bool]) -> Optional[str]:
+    spec = PROJECT_MODULE_HREFS.get(project_id)
+    if spec and modules.get(spec[0]):
+        return spec[1]
+    if modules.get("projects"):
+        return "/projects/"
+    return None
+
+
+def more_nav_active(section: Optional[str]) -> bool:
+    return (section or "") in MORE_ACTIVE_SECTIONS
+
+
+def _resolve_folder_href(
+    link: TenantFolderLink,
+    *,
+    url_for: Optional[Callable[..., str]] = None,
+) -> Optional[str]:
+    if link.route and url_for is not None:
+        try:
+            return url_for(link.route)
+        except Exception:
+            pass
+    return link.href
+
+
+def _link_module(link: TenantFolderLink, href: Optional[str]) -> Optional[str]:
+    if link.module:
+        return link.module
+    if link.route and link.route in ROUTE_MODULES:
+        return ROUTE_MODULES[link.route]
+    return infer_href_module(href)
+
+
+def present_nav_folders(
+    tenant: Tenant,
+    *,
+    url_for: Optional[Callable[..., str]] = None,
+) -> tuple[NavFolder, ...]:
+    """
+    Folders for the More menu.
+
+    Disabled-module links are omitted so the menu never points at a 404.
+    Unknown project ids are skipped. Empty folders are hidden.
+    """
+    known = {project.id: project for project in tenant.kanban_projects()}
+    modules = tenant.modules
+    folders: list[NavFolder] = []
+    for folder in tenant.folders:
+        nested: dict[str, list[NavChild]] = {}
+        loose: list[NavItem] = []
+        folder_project_ids = set(folder.project_ids)
+        for link in folder.links:
+            href = _resolve_folder_href(link, url_for=url_for)
+            module = _link_module(link, href)
+            if not href or (module and not modules.get(module)):
+                continue
+            if link.project_id and link.project_id in folder_project_ids and link.project_id in known:
+                nested.setdefault(link.project_id, []).append(NavChild(label=link.label, href=href))
+            else:
+                loose.append(NavItem(label=link.label, href=href, id=""))
+        items: list[NavItem] = []
+        for project_id in folder.project_ids:
+            project = known.get(project_id)
+            if not project:
+                continue
+            href = project_nav_href(project_id, modules)
+            if not href:
+                continue
+            items.append(
+                NavItem(
+                    label=project.name,
+                    href=href,
+                    id=project.id,
+                    children=tuple(nested.get(project_id, ())),
+                )
+            )
+        items.extend(loose)
+        if items:
+            folders.append(NavFolder(id=folder.id, name=folder.name, items=tuple(items)))
+    return tuple(folders)
+
+
 def normalize_tenant(raw: Any, *, source_path: str) -> Tenant:
     data = raw if isinstance(raw, dict) else {}
     human = data.get("human") if isinstance(data.get("human"), dict) else {}
@@ -257,6 +514,7 @@ def normalize_tenant(raw: Any, *, source_path: str) -> Tenant:
         calendar_enabled=calendar_enabled,
         default_usage_project=default_usage,
         source_path=source_path,
+        folders=_parse_folders(data.get("folders")),
     )
 
 
@@ -267,15 +525,75 @@ def load_tenant_from_path(path: Path) -> Tenant:
     return normalize_tenant(raw, source_path=str(path))
 
 
-def load_tenant(*, path: Optional[Path | str] = None, reload: bool = False) -> Tenant:
+def load_tenant_from_bytes(body: bytes, *, source_path: str) -> Tenant:
+    raw = yaml.safe_load(body.decode("utf-8"))
+    return normalize_tenant(raw, source_path=source_path)
+
+
+def _try_load_s3_tenant(store: Any = None) -> Optional[Tenant]:
+    """Load ops/tenant.yaml from S3 when a bucket is configured. Never raises."""
+    try:
+        from src.core.s3_store import BucketLayout, get_s3_store
+
+        s3 = store if store is not None else get_s3_store()
+        if not getattr(s3, "configured", False):
+            return None
+        key = BucketLayout.tenant_key()
+        BucketLayout.require_ops_key(key)
+        result = s3.get_object(key)
+        if result is None or not result.body:
+            return None
+        bucket = getattr(s3, "bucket", "") or "bucket"
+        return load_tenant_from_bytes(
+            result.body,
+            source_path=f"s3://{bucket}/{key}",
+        )
+    except Exception as exc:
+        logger.warning("Failed to load tenant from S3; continuing: %s", exc)
+        return None
+
+
+def _load_example_or_empty() -> Tenant:
+    if EXAMPLE_TENANT_PATH.exists():
+        return load_tenant_from_path(EXAMPLE_TENANT_PATH)
+    return normalize_tenant({}, source_path=str(EXAMPLE_TENANT_PATH))
+
+
+def _resolve_default_tenant(store: Any = None) -> Tenant:
+    env_path = os.environ.get("TENANT_CONFIG", "").strip()
+    if env_path:
+        return load_tenant_from_path(resolve_tenant_path(env_path))
+    s3_tenant = _try_load_s3_tenant(store)
+    if s3_tenant is not None:
+        return s3_tenant
+    if DEFAULT_TENANT_PATH.exists():
+        return load_tenant_from_path(DEFAULT_TENANT_PATH)
+    return _load_example_or_empty()
+
+
+def load_tenant(
+    *,
+    path: Optional[Path | str] = None,
+    reload: bool = False,
+    store: Any = None,
+) -> Tenant:
     """Process-wide tenant. Tests should call reset_tenant()."""
     global _tenant, _tenant_path
-    resolved = Path(path) if path is not None else resolve_tenant_path()
-    if path is not None and not resolved.is_absolute():
-        resolved = resolve_tenant_path(str(path))
-    if reload or _tenant is None or _tenant_path != resolved:
-        _tenant = load_tenant_from_path(resolved)
-        _tenant_path = resolved
+    if path is not None:
+        resolved = Path(path)
+        if not resolved.is_absolute():
+            resolved = resolve_tenant_path(str(path))
+        if reload or _tenant is None or _tenant_path != resolved:
+            _tenant = load_tenant_from_path(resolved)
+            _tenant_path = resolved
+        return _tenant
+    if not reload and _tenant is not None:
+        return _tenant
+    _tenant = _resolve_default_tenant(store)
+    if _tenant.source_path.startswith("s3://"):
+        _tenant_path = _S3_TENANT_SENTINEL
+    else:
+        _tenant_path = Path(_tenant.source_path)
     return _tenant
 
 

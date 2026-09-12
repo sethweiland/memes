@@ -1306,3 +1306,50 @@ function initVideoResultsPage(jobId) {
         resultsContainer.innerHTML = html;
     }
 }
+
+
+// ---------------------------------------------------------------------------
+// More nav — tap to open, click-away / Escape to close
+// ---------------------------------------------------------------------------
+
+function initNavMore() {
+    var root = document.querySelector("[data-nav-more]");
+    if (!root) return;
+    var toggle = root.querySelector("[data-nav-more-toggle]");
+    var menu = root.querySelector("[data-nav-more-menu]");
+    if (!toggle || !menu) return;
+
+    function isOpen() {
+        return toggle.getAttribute("aria-expanded") === "true";
+    }
+
+    function setOpen(open) {
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        menu.hidden = !open;
+        root.classList.toggle("is-open", open);
+    }
+
+    toggle.addEventListener("click", function(event) {
+        event.stopPropagation();
+        setOpen(!isOpen());
+    });
+
+    document.addEventListener("click", function(event) {
+        if (!root.contains(event.target)) {
+            setOpen(false);
+        }
+    });
+
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape" && isOpen()) {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initNavMore);
+} else {
+    initNavMore();
+}

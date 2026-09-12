@@ -11,6 +11,8 @@
     {% set _page = active_page|default('') %}
     {% set _meme_pages = ['dashboard', 'generate', 'gallery', 'daily_candidates', 'templates', 'video', 'discovery'] %}
     {% set _section = section|default('memes' if _page in _meme_pages else ('x' if _page == 'x_activity' else _page)) %}
+    {% set _more_active = _section in ['memes', 'grok_bot'] %}
+    {% set _path = request.path %}
     <nav class="topnav">
         <a href="{{ url_for('home.index') }}" class="brand">{{ tenant.site_title if tenant is defined and tenant else 'Ops' }}</a>
         <a href="{{ url_for('home.index') }}" class="{{ 'active' if _section == 'home' }}">Home</a>
@@ -23,11 +25,52 @@
         {% if modules is not defined or modules.x %}
         <a href="{{ url_for('x_activity.index') }}" class="{{ 'active' if _section == 'x' }}">X</a>
         {% endif %}
-        {% if modules is not defined or modules.grok_bot %}
-        <a href="{{ url_for('grok_bot.index') }}" class="{{ 'active' if _section == 'grok_bot' }}">Grok Bot</a>
-        {% endif %}
-        {% if modules is not defined or modules.memes %}
-        <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if _section == 'memes' }}">Memes</a>
+        {% if nav_folders %}
+        <div class="nav-more" data-nav-more>
+            <button type="button"
+                    class="nav-more-toggle {{ 'active' if _more_active }}"
+                    data-nav-more-toggle
+                    id="nav-more-toggle"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    aria-controls="nav-more-menu">
+                More <span class="nav-more-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="nav-more-menu" id="nav-more-menu" data-nav-more-menu hidden role="navigation" aria-label="More">
+                {% for folder in nav_folders %}
+                {% set ns = namespace(open=false) %}
+                {% for item in folder.items %}
+                    {% if item.href.rstrip('/') == _path.rstrip('/') %}{% set ns.open = true %}{% endif %}
+                    {% for child in item.children %}
+                        {% if child.href.rstrip('/') == _path.rstrip('/') %}{% set ns.open = true %}{% endif %}
+                    {% endfor %}
+                {% endfor %}
+                <details class="nav-more-folder" data-nav-folder="{{ folder.id }}" {% if ns.open %}open{% endif %}>
+                    <summary>{{ folder.name }}</summary>
+                    <ul class="nav-more-folder-list">
+                        {% for item in folder.items %}
+                        <li>
+                            <a href="{{ item.href }}"
+                               data-nav-item="{{ item.id }}"
+                               class="{{ 'active' if item.href.rstrip('/') == _path.rstrip('/') }}">{{ item.label }}</a>
+                            {% if item.children %}
+                            <ul class="nav-more-children">
+                                {% for child in item.children %}
+                                <li>
+                                    <a href="{{ child.href }}"
+                                       data-nav-link
+                                       class="{{ 'active' if child.href.rstrip('/') == _path.rstrip('/') }}">{{ child.label }}</a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endfor %}
+            </div>
+        </div>
         {% endif %}
     </nav>
     {% if _section == 'memes' %}

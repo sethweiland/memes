@@ -18,9 +18,10 @@ Agents write work. The human decides. Spend and routines attribute to
 projects.
 
 Home is an inbox of decisions, not a chatbot log and not a project-management
-suite. When the calendar module is on, Home also shows This week and On the
-horizon from a snapshot or optional ICS feed — never invented events. The app
-never posts, buys, or cancels.
+suite. It is Waiting on you first, then — when the calendar module is on —
+This week and On the horizon from a snapshot or optional ICS feed. Never
+invented events. Horizon starts the Monday after this week's Sunday, not
+14 days out. The app never posts, buys, or cancels. There are no hub cards.
 
 ## What it is not
 
@@ -34,12 +35,17 @@ Domain UIs (memes, X, shopping, calendar) are optional modules. They must
 not own the shell. The shell owns navigation, Home, Projects, and the
 five primitives below.
 
+Top nav is always **Home · Projects · Spend · X · More ▾**. X stays a
+peer tab (human-gate inbox). Grok Bot and Memes tools nest under More
+folders from tenant `folders:` — navigation config, not a sixth primitive.
+
 ---
 
 ## Five primitives
 
 This release refuses a sixth. Do not add Goals, Areas, People, or a
-generic “Workspace” object.
+generic “Workspace” object. Tenant `folders:` are More-menu bookmarks
+only. They are not stored as objects and they are not a sixth primitive.
 
 ### 1. Project
 
@@ -110,7 +116,9 @@ or with an agent the human already runs.
 Tokens and subscriptions stamp a project id.
 
 - Token events: `ops/usage/{provider}/{YYYY}/{MM}.json` (`project` on each event)
-- Subscriptions: `data/tech_spend.json` (`project` or `projects` shares)
+- Subscriptions: S3 `ops/spend/tech_spend.json` when `MEME_ASSETS_BUCKET` is
+  set, else local `data/tech_spend.json` (gitignored), else empty
+  `{subscriptions: []}`. `project` or `projects` shares. Do not invent rows.
 
 Leftovers stay visible as `shared` (overhead that is not one product) and
 `unallocated` (missing tag). Spend never hides unlabeled dollars to clean
@@ -147,11 +155,24 @@ Projects belong in config, not code.
 
 | Path | Who |
 |---|---|
-| `config/tenant.example.yaml` | Friend template. Placeholder name. 2–3 example projects. Modules off except `projects` + `spend` + `calendar` (empty snapshot is fine). `secrets.backend: env`. |
-| `config/tenant.yaml` | The operator’s tenant. Seth’s reference file is committed here (no secrets). |
+| `config/tenant.example.yaml` | Friend template. Committed. Placeholder name. 2–3 example projects. 1–2 example folders. Modules off except `projects` + `spend` + `calendar` (empty snapshot is fine). No meme / X / Grok Bot links. `secrets.backend: env`. |
+| `config/tenant.yaml` | Operator-private. **Gitignored.** Copy the example and put your bets in. Never commit this file. |
+| `s3://$MEME_ASSETS_BUCKET/ops/tenant.yaml` | What Fly / Jeffy use after the local file is gone from git. Same YAML shape. No secrets. |
+| `tests/fixtures/` | Example tenants and spend ledgers for tests only. |
 
-**Load path:** `TENANT_CONFIG` if set, else `config/tenant.yaml`.
-Relative paths resolve from the process cwd, then the repo root.
+A friend configures their instance from the five primitives plus the
+example files. Operator-private life data does not live in git.
+
+**Load order** (never crash a friend clone):
+
+1. `TENANT_CONFIG` if set
+2. S3 `ops/tenant.yaml` when `MEME_ASSETS_BUCKET` is set
+3. `config/tenant.yaml` if present on disk
+4. `config/tenant.example.yaml`
+
+Relative `TENANT_CONFIG` paths resolve from the process cwd, then the repo root.
+Jeffy / operators upload their tenant to `ops/tenant.yaml`. Do not put secrets
+in the YAML. This is not a multi-tenant SaaS — one human, one file.
 
 ### Reference
 
@@ -190,6 +211,17 @@ agents:                    # the humans-you-already-have, as ids
 defaults:
   usage_project: home-ops  # stamped on token events when USAGE_PROJECT is unset
 
+folders:                   # More menu. Nav only — not a sixth primitive.
+  - id: life
+    name: Life
+    project_ids: [home-ops]
+    links:                 # optional extra bookmarks
+      - label: Home
+        href: /            # or named route: route: home.index
+  - id: work
+    name: Work
+    project_ids: [side-project]
+
 projects:                  # named bets (list rows). Not shared / unallocated.
   - id: home-ops
     name: Home Ops
@@ -207,9 +239,15 @@ projects:                  # named bets (list rows). Not shared / unallocated.
 
 Rules:
 
-- `id` must match `^[a-z0-9]+(?:-[a-z0-9]+)*$`
+- `id` must match `^[a-z0-9]+(?:-[a-z0-9]+)*$` (projects and folders)
 - `lane` must be one of the five lanes (or the `waiting_on_seth` alias)
 - `shared` and `unallocated` in `projects:` are ignored (Spend-only)
+- Folder `project_ids` that are not in `projects:` are skipped. Projects
+  with no folder still appear on `/projects/`; they just do not show in More.
+- Extra `links` may use `href` or a Flask `route`. If the href/route belongs
+  to a disabled module, the link is omitted so the menu never 404s.
+- A project with a module homepage (`memes` → `/memes/`, `x` → `/x/`) links
+  there when that module is on; otherwise it links to `/projects/`.
 - No API keys, tokens, passwords, or ARNs in the YAML
 
 ---
@@ -225,8 +263,10 @@ s3://$MEME_ASSETS_BUCKET/
 │   ├── templates/{id}.{ext}
 │   └── generated/{hash}_{stem}.jpg
 └── ops/                                  # PRIVATE
+    ├── tenant.yaml                       # operator tenant (Jeffy uploads this)
     ├── projects/board.json               # project list
     ├── calendar/snapshot.json            # read-only Home calendar
+    ├── spend/tech_spend.json             # operator spend ledger (not in git)
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
     ├── grok-bot/routines.json
@@ -235,6 +275,8 @@ s3://$MEME_ASSETS_BUCKET/
 
 | Key | Local fallback when `MEME_ASSETS_BUCKET` is unset |
 |---|---|
+| `ops/tenant.yaml` | `config/tenant.yaml` or `config/tenant.example.yaml` |
+| `ops/spend/tech_spend.json` | `data/tech_spend.json` (gitignored). Empty `{subscriptions: []}` if both missing. |
 | `ops/projects/board.json` | `data/projects/board.json` |
 | `ops/calendar/snapshot.json` | `data/calendar/snapshot.json` |
 | `ops/queue/x-activity/{date}.json` | `data/x_activity/{date}.json` |
@@ -257,17 +299,19 @@ Never write ops JSON under `public/`.
 |---|---|---|
 | `projects` | `/projects/` | Compact list (status pill = lane). Required for the friend path. |
 | `spend` | `/spend/` | Ledger plus a Tokens widget at the top. Project ids from tenant. |
-| `x` | `/x/` | Existing Stevie draft review. Unchanged. |
-| `grok_bot` | `/grok-bot/` | Existing routine catalog. Unchanged. |
-| `memes` | `/memes/` and children | Existing pipeline. Unchanged. |
-| `calendar` | Home widgets only | This week + On the horizon. Snapshot or optional `CALENDAR_ICS_URL`. No in-app Google OAuth. Not a sixth primitive. |
+| `x` | `/x/` | Existing Stevie draft review. Stays a top-level tab (human-gate inbox). |
+| `grok_bot` | `/grok-bot/` | Existing routine catalog. Nested under More → Agents, not a peer tab. |
+| `memes` | `/memes/` and children | Existing pipeline. Nested under More → Software → Memes. Subnav remains on `/memes/`. |
+| `calendar` | Home widgets only | This week + On the horizon (Monday after this Sunday through ~3 months). Snapshot or optional `CALENDAR_ICS_URL`. No in-app Google OAuth. Not a sixth primitive. |
 
-Disabled modules are hidden from Home and the top nav. Their URLs 404.
-Home itself is always on.
+Disabled modules are hidden from the top nav and from More (module links
+only). Their URLs still 404. The More menu itself never 404s. Home is
+always on. Empty folders after filtering are omitted.
 
 A friend who only wants a board and a spend page leaves `x`, `grok_bot`,
 and `memes` false. They can leave `calendar` on with an empty snapshot.
-They do not need Imgflip, Instagram, X, or Google credentials.
+They do not need Imgflip, Instagram, X, or Google credentials. Their
+example folders have no meme / X / Grok Bot links.
 
 ---
 
@@ -288,8 +332,8 @@ SecretsBackend.get(name, default="") -> str
 Tenant YAML may name the backend and, later, a secret *container* id
 (ARN, collection). It must never contain the credential value.
 
-Runtime today: set `TENANT_CONFIG` if you want a non-default file, then
-put keys in the environment:
+Runtime today: set `TENANT_CONFIG` if you want a non-default file, or
+upload `ops/tenant.yaml` to the bucket. Then put keys in the environment:
 
 ```
 XAI_API_KEY=...
@@ -373,8 +417,8 @@ writes the snapshot. Flask does not talk to Google.
    secret ICS set `CALENDAR_ICS_URL` in the environment; the app fetches,
    parses, and caches that feed into the same snapshot shape.
 5. Home shows two lists only: **This week** (now through Sunday ET) and
-   **On the horizon** (14 days from now through ~3 months). Other events stay
-   in the snapshot and are not shown.
+   **On the horizon** (Monday after this Sunday through ~3 months). Other
+   events stay in the snapshot and are not shown.
 
 Python helper: `CalendarStore.save(...)` / `CalendarStore.home_lists()`.
 
@@ -420,9 +464,12 @@ app without becoming Seth.
    cp config/tenant.example.yaml config/tenant.yaml
    ```
 
-   Edit `human`, `site.domain`, and `projects`. Leave `shared` /
-   `unallocated` out. Leave `last_done` / `next_steps` null if you do
-   not know them.
+   Edit `human`, `site.domain`, `projects`, and optional `folders`.
+   Leave `shared` / `unallocated` out. Leave `last_done` / `next_steps`
+   null if you do not know them. `config/tenant.yaml` is gitignored.
+
+   For a deploy with S3, Jeffy (or you) uploads that file to
+   `ops/tenant.yaml`. Do not put secrets in it.
 
 3. **Secrets** — use the backend you already use. For localhost:
 
@@ -449,9 +496,11 @@ app without becoming Seth.
    ```
 
    You should see your projects in a list (not five empty swim lanes).
-   Spend is empty-ish until you add a ledger; that is fine. Home calendar
-   widgets say “No calendar snapshot yet.” until an agent writes the
-   snapshot or you set `CALENDAR_ICS_URL`.
+   Home is Waiting on you above This week / On the horizon — no hub cards.
+   Spend is empty (`{subscriptions: []}`) until you add a local
+   `data/tech_spend.json` (gitignored) or upload `ops/spend/tech_spend.json`
+   to the bucket. Calendar widgets say “No calendar snapshot yet.” until
+   an agent writes the snapshot or you set `CALENDAR_ICS_URL`.
 
 5. **Fly (optional)** — same container as today (`fly.toml`, `Dockerfile`).
    Set Fly secrets for whatever modules you enabled. Point a hostname
@@ -464,8 +513,8 @@ app without becoming Seth.
 7. **Agents** — point Grok Bot / Codex / whatever you already run at the
    board and queue contracts above. The app will not provision agents.
 
-`TENANT_CONFIG=/absolute/path/to/tenant.yaml` overrides the default file
-(useful in tests or a second checkout).
+`TENANT_CONFIG=/absolute/path/to/tenant.yaml` wins over S3 and the local
+file (useful in tests or a second checkout).
 
 ---
 
@@ -484,3 +533,5 @@ app without becoming Seth.
 - Hardcoded `waiting_on_seth` product copy
 - Project rows for `shared` / `unallocated`
 - Equinox (or any other) project that is not in the tenant file
+- Committing an operator `config/tenant.yaml` or a personal spend ledger
+- Multi-tenant SaaS (one human, one tenant file, optionally uploaded to S3)
