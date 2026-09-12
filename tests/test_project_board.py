@@ -15,9 +15,11 @@ from src.core.calendar import CalendarStore, reset_calendar
 from src.core.project_board import (
     ProjectBoard,
     clip_one_line,
+    line_is_clipped,
     merge_missing_from_tenant,
     normalize_board,
     normalize_project_card,
+    present_project,
     reset_project_board,
     seed_projects_from_tenant,
     sort_projects,
@@ -251,6 +253,38 @@ class SeedAndMoveTests(unittest.TestCase):
         self.assertNotIn("\n", clipped)
         self.assertLessEqual(len(clipped), 80)
         self.assertTrue(clipped.endswith("…"))
+        self.assertTrue(line_is_clipped(wall, clipped))
+        self.assertFalse(line_is_clipped("fits on one line", clip_one_line("fits on one line", 80)))
+        self.assertFalse(line_is_clipped(None, None))
+
+    def test_present_project_marks_clipped_fields(self):
+        shown = present_project(
+            {
+                "id": "long-bet",
+                "summary": "S" * 200,
+                "last_done": "Shipped the list",
+                "next_steps": "N" * 180,
+            }
+        )
+        self.assertTrue(shown["summary_clipped"])
+        self.assertFalse(shown["last_done_clipped"])
+        self.assertTrue(shown["next_steps_clipped"])
+        self.assertTrue(shown["summary_short"].endswith("…"))
+        self.assertEqual(shown["last_done_short"], "Shipped the list")
+        self.assertLess(len(shown["summary_short"]), 200)
+        short = present_project(
+            {
+                "id": "short-bet",
+                "summary": "One line bet",
+                "last_done": None,
+                "next_steps": "",
+            }
+        )
+        self.assertFalse(short["summary_clipped"])
+        self.assertFalse(short["last_done_clipped"])
+        self.assertFalse(short["next_steps_clipped"])
+        self.assertEqual(short["summary_short"], "One line bet")
+        self.assertIsNone(short["last_done_short"])
 
 
 class ProjectsPageTests(unittest.TestCase):
@@ -420,3 +454,80 @@ class ProjectsPageTests(unittest.TestCase):
         self.assertIn("/projects/", html)
         self.assertNotIn("waiting_on_seth", html)
         self.assertNotIn("Nothing queued", html)
+
+    def _article(self, html: str, project_id: str) -> str:
+        match = re.search(
+            rf'<article class="project-row(?: is-target)?"\s+id="project-{re.escape(project_id)}".*?</article>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(match, f"missing article for {project_id}")
+        return match.group(0)
+
+    def test_clipped_fields_get_expandable_markup(self):
+        long_summary = ("Summary wall " + ("keep going " * 20)).strip()
+        long_next = ("Next wall " + ("then another step " * 16)).strip()
+        short_last = "Wrote the tenant seed"
+        short_summary = "Fits on one line"
+        self.board.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "projects": [
+                    {
+                        "id": "long-card",
+                        "name": "Long Card",
+                        "lane": "active",
+                        "summary": long_summary,
+                        "last_done": short_last,
+                        "next_steps": long_next,
+                    },
+                    {
+                        "id": "short-card",
+                        "name": "Short Card",
+                        "lane": "idea",
+                        "summary": short_summary,
+                        "last_done": "Did a thing",
+                        "next_steps": "Do next",
+                    },
+                ],
+            }
+        )
+        html = self.client.get("/projects/").get_data(as_text=True)
+        long_row = self._article(html, "long-card")
+        short_row = self._article(html, "short-card")
+
+        summary_preview = clip_one_line(long_summary, 140)
+        next_preview = clip_one_line(long_next, 120)
+        self.assertTrue(summary_preview.endswith("…"))
+        self.assertTrue(next_preview.endswith("…"))
+
+        self.assertRegex(
+            long_row,
+            r'<details class="project-expand project-summary" data-field="summary">',
+        )
+        self.assertRegex(
+            long_row,
+            r'<details class="project-expand project-meta" data-field="next_steps">',
+        )
+        self.assertNotRegex(long_row, r'<details[^>]*data-field="last_done"')
+        self.assertIn(f'<span class="project-expand-preview">{summary_preview}</span>', long_row)
+        self.assertIn(f'<span class="project-expand-preview">{next_preview}</span>', long_row)
+        self.assertIn(f'<p class="project-expand-full">{long_summary}</p>', long_row)
+        self.assertIn(
+            f'<p class="project-expand-full"><span class="project-field-label">Next</span> {long_next}</p>',
+            long_row,
+        )
+        self.assertEqual(long_row.count(summary_preview), 1)
+        self.assertEqual(long_row.count(next_preview), 1)
+        self.assertIn(short_last, long_row)
+        self.assertIn('<p class="project-meta" data-field="last_done"', long_row)
+        self.assertNotIn(f'<p class="project-summary" data-field="summary">{summary_preview}</p>', long_row)
+
+        self.assertNotIn("<details", short_row)
+        self.assertNotIn("project-expand", short_row)
+        self.assertNotIn("More", short_row)
+        self.assertIn(f'<p class="project-summary" data-field="summary" title="{short_summary}">{short_summary}</p>', short_row)
+        self.assertIn('data-field="last_done"', short_row)
+        self.assertIn('data-field="next_steps"', short_row)
+        self.assertIn("Did a thing", short_row)
+        self.assertIn("Do next", short_row)

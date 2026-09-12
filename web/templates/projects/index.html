@@ -3,6 +3,22 @@
 {% block title %}Projects · Ops{% endblock %}
 
 {% block content %}
+{% macro project_line(field, short, full, clipped, css_class, label=None) -%}
+{% if short %}
+{% if clipped %}
+<details class="project-expand {{ css_class }}" data-field="{{ field }}">
+    <summary>
+        {% if label %}<span class="project-field-label">{{ label }}</span>{% endif %}
+        <span class="project-expand-preview">{{ short }}</span>
+        <span class="project-expand-toggle"><span class="project-expand-more">More</span><span class="project-expand-less">Less</span></span>
+    </summary>
+    <p class="project-expand-full">{% if label %}<span class="project-field-label">{{ label }}</span> {% endif %}{{ full }}</p>
+</details>
+{% else %}
+<p class="{{ css_class }}" data-field="{{ field }}"{% if full %} title="{{ full }}"{% endif %}>{% if label %}<span>{{ label }}</span> {% endif %}{{ short }}</p>
+{% endif %}
+{% endif %}
+{%- endmacro %}
 <h1>Projects</h1>
 <p class="ops-lede">Named bets you and your agents are working. Change a project’s status when you decide. This page does not post, buy, or start routines.</p>
 
@@ -45,9 +61,7 @@
                     <span class="project-agent">{{ agent_names.get(project.owner_agent, project.owner_agent) }}</span>
                     {% endif %}
                 </div>
-                {% if project.summary_short %}
-                <p class="project-summary" title="{{ project.summary }}">{{ project.summary_short }}</p>
-                {% endif %}
+                {{ project_line("summary", project.summary_short, project.summary, project.summary_clipped, "project-summary") }}
             </div>
             <div class="project-lane-wrap">
                 <label class="project-lane-label" for="lane-{{ project.id }}">Status</label>
@@ -64,12 +78,8 @@
         </div>
         {% if project.last_done_short or project.next_steps_short %}
         <div class="project-secondary">
-            {% if project.last_done_short %}
-            <p class="project-meta" title="{{ project.last_done }}"><span>Last done</span> {{ project.last_done_short }}</p>
-            {% endif %}
-            {% if project.next_steps_short %}
-            <p class="project-meta" title="{{ project.next_steps }}"><span>Next</span> {{ project.next_steps_short }}</p>
-            {% endif %}
+            {{ project_line("last_done", project.last_done_short, project.last_done, project.last_done_clipped, "project-meta", "Last done") }}
+            {{ project_line("next_steps", project.next_steps_short, project.next_steps, project.next_steps_clipped, "project-meta", "Next") }}
         </div>
         {% endif %}
         {% if project.links.repo or project.links.prod %}

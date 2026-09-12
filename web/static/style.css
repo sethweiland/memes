@@ -153,12 +153,61 @@ nav.subnav a.active { border-bottom-color: #81d4fa; }
     margin: 0; font-size: 13px; color: #444;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.project-secondary { margin-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.project-secondary { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
 .project-meta {
     margin: 0; font-size: 12px; color: #555;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.project-meta span { font-weight: 700; color: #444; }
+.project-meta span, .project-field-label { font-weight: 700; color: #444; }
+.project-expand {
+    margin: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+}
+.project-expand > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.project-expand > summary::-webkit-details-marker { display: none; }
+.project-expand > summary::marker { content: ""; }
+.project-expand-preview {
+    min-width: 0;
+    flex: 0 1 auto;
+    max-width: calc(100% - 52px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.project-expand-toggle {
+    flex: 0 0 auto;
+    color: #1a73e8;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 2px;
+    min-width: 44px;
+    text-align: left;
+}
+.project-expand-less { display: none; }
+.project-expand[open] > summary > :not(.project-expand-toggle) { display: none; }
+.project-expand[open] > summary { justify-content: flex-start; }
+.project-expand[open] .project-expand-more { display: none; }
+.project-expand[open] .project-expand-less { display: inline; }
+.project-expand-full {
+    margin: 4px 0 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.45;
+}
+.project-expand.project-summary .project-expand-full { font-size: 13px; color: #444; }
+.project-expand.project-meta .project-expand-full { font-size: 12px; color: #555; }
 .project-links { margin: 8px 0 0; font-size: 13px; display: flex; gap: 12px; }
 .project-links a { color: #1a73e8; text-decoration: none; }
 .project-links a:hover { text-decoration: underline; }

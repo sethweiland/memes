@@ -298,7 +298,7 @@ Never write ops JSON under `public/`.
 
 | Flag | Routes | This release |
 |---|---|---|
-| `projects` | `/projects/` | Compact list (status pill = lane). Required for the friend path. |
+| `projects` | `/projects/` | Compact list (status pill = lane). Clipped summary / last done / next expand in place. Required for the friend path. |
 | `spend` | `/spend/` | Ledger plus a Tokens widget at the top. Project ids from tenant. |
 | `x` | `/x/` | Existing Stevie draft review. Stays a top-level tab (human-gate inbox). |
 | `grok_bot` | `/grok-bot/` | Existing routine catalog. Nested under Folders → Agents, not a peer tab. |
