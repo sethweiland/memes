@@ -189,12 +189,25 @@ def clip_one_line(value: Any, limit: int = 120) -> Optional[str]:
     return cleaned[: max(1, limit - 1)].rstrip() + "…"
 
 
+def line_is_clipped(value: Any, short: Optional[str]) -> bool:
+    """True when the preview is shorter than the collapsed source text."""
+    if not short or value is None:
+        return False
+    cleaned = " ".join(str(value).split())
+    return bool(cleaned) and short != cleaned
+
+
 def present_project(card: dict[str, Any]) -> dict[str, Any]:
     """View model: stored fields plus clipped secondary lines. Not persisted."""
     shown = dict(card)
     shown["summary_short"] = clip_one_line(card.get("summary"), 140)
     shown["last_done_short"] = clip_one_line(card.get("last_done"), 120)
     shown["next_steps_short"] = clip_one_line(card.get("next_steps"), 120)
+    shown["summary_clipped"] = line_is_clipped(card.get("summary"), shown["summary_short"])
+    shown["last_done_clipped"] = line_is_clipped(card.get("last_done"), shown["last_done_short"])
+    shown["next_steps_clipped"] = line_is_clipped(
+        card.get("next_steps"), shown["next_steps_short"]
+    )
     return shown
 
 
