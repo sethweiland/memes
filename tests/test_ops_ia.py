@@ -12,6 +12,7 @@ from flask import Blueprint, Flask
 
 import tests.bootstrap  # noqa: F401
 
+from src.core.calendar import CalendarStore, reset_calendar
 from src.core.grok_bot import reset_grok_bot_routines
 from src.core.project_board import ProjectBoard, reset_project_board
 from src.core.tenant import reset_tenant
@@ -87,12 +88,20 @@ class OpsIaTests(unittest.TestCase):
             local_path=Path(self.tmp.name) / "board.json",
         )
         reset_project_board(self.board)
+        reset_calendar(
+            CalendarStore(
+                store=MemoryS3Store(configured=False),
+                local_path=Path(self.tmp.name) / "calendar.json",
+                ics_url=None,
+            )
+        )
         self.client = _ops_app().test_client()
 
     def tearDown(self):
         reset_x_activity_queue()
         reset_grok_bot_routines()
         reset_project_board()
+        reset_calendar()
         reset_tenant()
         self.tmp.cleanup()
 
@@ -112,6 +121,11 @@ class OpsIaTests(unittest.TestCase):
         self.assertNotIn("Meme Pipeline", html)
         self.assertNotIn("Meme Ops Dashboard", html)
         self.assertNotIn("Pending Today", html)
+        self.assertIn("This week", html)
+        self.assertIn("On the horizon", html)
+        self.assertIn("No calendar snapshot yet.", html)
+        self.assertNotIn("Team standup", html)
+        self.assertNotIn("Invented", html)
 
     def test_healthz_still_at_root(self):
         response = self.client.get("/healthz")

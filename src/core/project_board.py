@@ -1,11 +1,14 @@
 """
-Private project kanban.
+Private project board.
 
 Canonical object: ``ops/projects/board.json`` (never under ``public/``).
 Local fallback: ``data/projects/board.json``.
 
 If no board file exists, seed from tenant.yaml projects and write through
 once. ``shared`` / ``unallocated`` are Spend-only and never become cards.
+
+The UI is a sorted list. ``lane`` is still the status enum (idea / active /
+blocked / waiting_on_you / parked) — not a sixth primitive.
 """
 
 from __future__ import annotations
@@ -137,6 +140,11 @@ def merge_missing_from_tenant(
     return merged, True
 
 
+# Default list order: attention first, then name. Parked last.
+LANE_SORT_ORDER = ("waiting_on_you", "blocked", "active", "idea", "parked")
+LANE_SORT_INDEX = {lane: index for index, lane in enumerate(LANE_SORT_ORDER)}
+
+
 def group_by_lane(projects: list[dict[str, Any]]) -> list[tuple[str, str, list[dict[str, Any]]]]:
     grouped = []
     for lane in LANES:
@@ -145,13 +153,58 @@ def group_by_lane(projects: list[dict[str, Any]]) -> list[tuple[str, str, list[d
     return grouped
 
 
+def sort_projects(projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """waiting_on_you, blocked, active, idea, parked — then name."""
+
+    def key(card: dict[str, Any]) -> tuple[int, str]:
+        lane = str(card.get("lane") or "")
+        rank = LANE_SORT_INDEX.get(lane, len(LANE_SORT_ORDER))
+        name = str(card.get("name") or card.get("id") or "").casefold()
+        return (rank, name)
+
+    return sorted(projects, key=key)
+
+
+def project_owners(projects: list[dict[str, Any]]) -> list[str]:
+    owners: list[str] = []
+    seen: set[str] = set()
+    for card in projects:
+        owner = (card.get("owner_agent") or "").strip()
+        if not owner or owner in seen:
+            continue
+        seen.add(owner)
+        owners.append(owner)
+    return sorted(owners, key=str.casefold)
+
+
+def clip_one_line(value: Any, limit: int = 120) -> Optional[str]:
+    """Collapse whitespace and truncate. Used for list secondary lines."""
+    if value is None:
+        return None
+    cleaned = " ".join(str(value).split())
+    if not cleaned:
+        return None
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: max(1, limit - 1)].rstrip() + "…"
+
+
+def present_project(card: dict[str, Any]) -> dict[str, Any]:
+    """View model: stored fields plus clipped secondary lines. Not persisted."""
+    shown = dict(card)
+    shown["summary_short"] = clip_one_line(card.get("summary"), 140)
+    shown["last_done_short"] = clip_one_line(card.get("last_done"), 120)
+    shown["next_steps_short"] = clip_one_line(card.get("next_steps"), 120)
+    return shown
+
+
 def waiting_on_you(projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [p for p in projects if p.get("lane") == "waiting_on_you"]
 
 
 class ProjectBoard:
     """
-    S3-backed kanban.
+    S3-backed project board.
 
     Reads ``ops/projects/board.json`` first, then local
     ``data/projects/board.json``. Writes go to both when the bucket is set.

@@ -111,9 +111,9 @@ python web/run.py
 
 | Section | Path | What it is |
 |---|---|---|
-| **Home** | `/` | Life overview — cards to Projects, Spend, X, Grok Bot, Memes |
-| **Projects** | `/projects/` | Kanban of named bets (`idea`, `active`, `blocked`, `waiting_on_you`, `parked`). Seeded from `config/tenant.yaml`. Board JSON: `ops/projects/board.json`. |
-| **Spend** | `/spend/` | Tech spending tracker (unchanged path) |
+| **Home** | `/` | Life overview — cards to Projects, Spend, X, Grok Bot, Memes. Calendar module adds This week + On the horizon from a snapshot/ICS (no Google OAuth). |
+| **Projects** | `/projects/` | Compact list of named bets. Status pill is the existing lane (`idea`, `active`, `blocked`, `waiting_on_you`, `parked`). Seeded from `config/tenant.yaml`. Board JSON: `ops/projects/board.json`. |
+| **Spend** | `/spend/` | Tech spending tracker. Tokens widget at the top (this month’s calls / tokens / heuristic $). |
 | **X** | `/x/` | Real X Activity tab — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Queue is `ops/queue/x-activity/` |
 | **Grok Bot** | `/grok-bot/` | Catalog of recurring routines. Private JSON at `ops/grok-bot/routines.json` (git seed / local fallback `data/grok_bot_routines.json`). This page does not start or stop routines. |
 | **Memes** | `/memes/` | Meme pipeline dashboard (the old `/` page) |
@@ -121,8 +121,10 @@ python web/run.py
 **Spend:**
 - Tracks subscriptions (Imgflip, Vercel, etc.)
 - Shows API/usage costs (AWS Cost Explorer, xAI tokens, Fly.io hosting)
+- **Tokens** widget at the top of `/spend/`: this month’s calls, tokens, and heuristic $ (not the xAI invoice), broken down by project from `token_tracker`
+- **Unallocated** = missing project tag — shown on purpose. **Shared** = overhead that is not one product
 - xAI / Grok tokens from shared S3 `ops/usage/` (local fallback if S3 is unset)
-- **By Project** rollup (tokens + allocated fixed): tenant project ids plus Spend-only `shared` / `unallocated`. Unallocated stay visible. `shared` and `unallocated` are not kanban cards.
+- **By Project** rollup (tokens + allocated fixed): tenant project ids plus Spend-only `shared` / `unallocated`. Unallocated stay visible. `shared` and `unallocated` are not project rows.
 - Monthly total with active/cancelled breakdown
 - Subscription ledger: `data/tech_spend.json`
 
@@ -155,6 +157,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 - Candidate queue JSON stored in S3 under `ops/queue/daily-candidates/{date}.json` (private)
 - X activity drafts at `ops/queue/x-activity/{date}.json` (private; local fallback `data/x_activity/`)
 - Project board at `ops/projects/board.json` (private; local fallback `data/projects/board.json`; seeded from tenant config when missing)
+- Calendar snapshot at `ops/calendar/snapshot.json` (private; local fallback `data/calendar/snapshot.json`). Optional `CALENDAR_ICS_URL` caches into that file. No Google OAuth in Flask.
 - Grok Bot routines at `ops/grok-bot/routines.json` (private; git seed / local fallback `data/grok_bot_routines.json`)
 - Local cache in `data/daily_candidates/` when S3 is unset or unreachable
 - Web UI loads from S3 with local fallback

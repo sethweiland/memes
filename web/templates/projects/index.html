@@ -4,47 +4,53 @@
 
 {% block content %}
 <h1>Projects</h1>
-<p class="ops-lede">Named bets. Agents write the card; you move the lane. This page does not post, buy, or start routines.</p>
+<p class="ops-lede">Named bets you and your agents are working. Change a project’s status when you decide. This page does not post, buy, or start routines.</p>
 
-<div class="counter">{{ project_count }} projects</div>
+<div class="counter" id="project-count">{{ project_count }} project{% if project_count != 1 %}s{% endif %}</div>
 
-<div class="kanban" data-board="projects">
-    {% for lane, label, cards in grouped %}
-    <section class="kanban-col" data-lane="{{ lane }}">
-        <h2>
-            {{ label }}
-            <span class="kanban-count">{{ cards|length }}</span>
-        </h2>
-        <div class="kanban-cards">
-            {% for project in cards %}
-            <article class="kanban-card" data-id="{{ project.id }}" data-lane="{{ project.lane }}">
-                <div class="kanban-card-top">
-                    <h3>{{ project.name }}</h3>
+{% if projects %}
+<div class="project-filters" role="group" aria-label="Filter projects">
+    <div class="project-filter-row">
+        <span class="project-filter-label">Status</span>
+        <button type="button" class="project-chip is-active" data-filter="lane" data-value="all">All</button>
+        {% for option in lanes %}
+        <button type="button" class="project-chip" data-filter="lane" data-value="{{ option }}">{{ lane_labels[option] }}</button>
+        {% endfor %}
+    </div>
+    {% if owner_filters %}
+    <div class="project-filter-row">
+        <span class="project-filter-label">Owner</span>
+        <button type="button" class="project-chip is-active" data-filter="owner" data-value="all">All</button>
+        {% for owner in owner_filters %}
+        <button type="button" class="project-chip" data-filter="owner" data-value="{{ owner.id }}">{{ owner.name }}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="project-list" data-board="projects">
+    {% for project in projects %}
+    <article class="project-row"
+             data-id="{{ project.id }}"
+             data-lane="{{ project.lane }}"
+             data-name="{{ project.name }}"
+             data-owner="{{ project.owner_agent or '' }}">
+        <div class="project-row-top">
+            <div class="project-identity">
+                <h2 class="project-name">{{ project.name }}</h2>
+                <div class="project-chips">
+                    <span class="project-status lane-{{ project.lane }}" data-role="status">{{ lane_labels[project.lane] }}</span>
                     {% if project.owner_agent %}
-                    <span class="kanban-agent">{{ project.owner_agent }}</span>
+                    <span class="project-agent">{{ agent_names.get(project.owner_agent, project.owner_agent) }}</span>
                     {% endif %}
                 </div>
-                {% if project.summary %}
-                <p class="kanban-summary">{{ project.summary }}</p>
+                {% if project.summary_short %}
+                <p class="project-summary" title="{{ project.summary }}">{{ project.summary_short }}</p>
                 {% endif %}
-                {% if project.last_done %}
-                <p class="kanban-meta">Last done {{ project.last_done }}</p>
-                {% endif %}
-                {% if project.next_steps %}
-                <p class="kanban-meta">Next {{ project.next_steps }}</p>
-                {% endif %}
-                {% if project.links.repo or project.links.prod %}
-                <p class="kanban-links">
-                    {% if project.links.repo %}
-                    <a href="{{ project.links.repo }}" target="_blank" rel="noopener">Repo</a>
-                    {% endif %}
-                    {% if project.links.prod %}
-                    <a href="{{ project.links.prod }}" target="_blank" rel="noopener">Prod</a>
-                    {% endif %}
-                </p>
-                {% endif %}
-                <label class="kanban-lane-label" for="lane-{{ project.id }}">Lane</label>
-                <select id="lane-{{ project.id }}" class="kanban-lane-select"
+            </div>
+            <div class="project-lane-wrap">
+                <label class="project-lane-label" for="lane-{{ project.id }}">Status</label>
+                <select id="lane-{{ project.id }}" class="project-lane-select"
                         data-id="{{ project.id }}"
                         aria-label="Move {{ project.name }}">
                     {% for option in lanes %}
@@ -53,70 +59,140 @@
                     </option>
                     {% endfor %}
                 </select>
-                <div class="kanban-status" id="status-{{ project.id }}"></div>
-            </article>
-            {% else %}
-            <p class="kanban-empty">No cards</p>
-            {% endfor %}
+            </div>
         </div>
-    </section>
+        {% if project.last_done_short or project.next_steps_short %}
+        <div class="project-secondary">
+            {% if project.last_done_short %}
+            <p class="project-meta" title="{{ project.last_done }}"><span>Last done</span> {{ project.last_done_short }}</p>
+            {% endif %}
+            {% if project.next_steps_short %}
+            <p class="project-meta" title="{{ project.next_steps }}"><span>Next</span> {{ project.next_steps_short }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if project.links.repo or project.links.prod %}
+        <p class="project-links">
+            {% if project.links.repo %}
+            <a href="{{ project.links.repo }}" target="_blank" rel="noopener">Repo</a>
+            {% endif %}
+            {% if project.links.prod %}
+            <a href="{{ project.links.prod }}" target="_blank" rel="noopener">Prod</a>
+            {% endif %}
+        </p>
+        {% endif %}
+        <div class="project-status-msg" id="status-{{ project.id }}"></div>
+    </article>
     {% endfor %}
 </div>
+<p class="project-empty-filter" id="project-empty-filter" hidden>No projects match these filters.</p>
+{% else %}
+<p class="project-empty">No projects yet. Add named bets in <code>config/tenant.yaml</code>.</p>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
+var LANE_ORDER = {waiting_on_you: 0, blocked: 1, active: 2, idea: 3, parked: 4};
+var LANE_LABELS = {
+    idea: "Idea",
+    active: "Active",
+    blocked: "Blocked",
+    waiting_on_you: "Waiting on you",
+    parked: "Parked"
+};
+var laneFilter = "all";
+var ownerFilter = "all";
+
+function sortProjectList() {
+    var list = document.querySelector(".project-list");
+    if (!list) return;
+    var rows = Array.prototype.slice.call(list.querySelectorAll(".project-row"));
+    rows.sort(function(a, b) {
+        var laneA = a.getAttribute("data-lane") || "";
+        var laneB = b.getAttribute("data-lane") || "";
+        var rank = (LANE_ORDER[laneA] != null ? LANE_ORDER[laneA] : 9) -
+                   (LANE_ORDER[laneB] != null ? LANE_ORDER[laneB] : 9);
+        if (rank !== 0) return rank;
+        return (a.getAttribute("data-name") || "").localeCompare(b.getAttribute("data-name") || "", undefined, {sensitivity: "base"});
+    });
+    rows.forEach(function(row) { list.appendChild(row); });
+}
+
+function applyProjectFilters() {
+    var rows = document.querySelectorAll(".project-row");
+    var visible = 0;
+    rows.forEach(function(row) {
+        var laneOk = laneFilter === "all" || row.getAttribute("data-lane") === laneFilter;
+        var owner = row.getAttribute("data-owner") || "";
+        var ownerOk = ownerFilter === "all" || owner === ownerFilter;
+        var show = laneOk && ownerOk;
+        row.hidden = !show;
+        if (show) visible += 1;
+    });
+    var empty = document.getElementById("project-empty-filter");
+    if (empty) empty.hidden = visible !== 0 || rows.length === 0;
+    var count = document.getElementById("project-count");
+    if (count) {
+        var total = rows.length;
+        if (visible === total) {
+            count.textContent = total + (total === 1 ? " project" : " projects");
+        } else {
+            count.textContent = "Showing " + visible + " of " + total;
+        }
+    }
+}
+
 function moveProjectLane(projectId, lane, selectEl) {
-    var card = document.querySelector('.kanban-card[data-id="' + projectId + '"]');
-    var statusEl = document.getElementById('status-' + projectId);
+    var row = document.querySelector('.project-row[data-id="' + projectId + '"]');
+    var statusEl = document.getElementById("status-" + projectId);
     selectEl.disabled = true;
-    fetch('/projects/api/projects/' + encodeURIComponent(projectId) + '/lane', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lane: lane }),
+    fetch("/projects/api/projects/" + encodeURIComponent(projectId) + "/lane", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lane: lane })
     })
     .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
     .then(function(res) {
         if (res.data.success) {
-            var dest = document.querySelector('.kanban-col[data-lane="' + lane + '"] .kanban-cards');
-            if (card && dest) {
-                var empty = dest.querySelector('.kanban-empty');
-                if (empty) empty.remove();
-                var oldCol = card.closest('.kanban-col');
-                dest.appendChild(card);
-                card.setAttribute('data-lane', lane);
-                if (oldCol) refreshCount(oldCol);
-                refreshCount(dest.closest('.kanban-col'));
+            if (row) {
+                row.setAttribute("data-lane", lane);
+                var pill = row.querySelector('[data-role="status"]');
+                if (pill) {
+                    pill.textContent = LANE_LABELS[lane] || lane;
+                    pill.className = "project-status lane-" + lane;
+                }
             }
-            if (statusEl) statusEl.textContent = '';
+            sortProjectList();
+            applyProjectFilters();
+            if (statusEl) statusEl.textContent = "";
         } else if (statusEl) {
-            statusEl.textContent = res.data.error || 'Move failed';
+            statusEl.textContent = res.data.error || "Move failed";
         }
         selectEl.disabled = false;
     })
     .catch(function() {
-        if (statusEl) statusEl.textContent = 'Request failed';
+        if (statusEl) statusEl.textContent = "Request failed";
         selectEl.disabled = false;
     });
 }
 
-function refreshCount(col) {
-    if (!col) return;
-    var count = col.querySelectorAll('.kanban-card').length;
-    var badge = col.querySelector('.kanban-count');
-    if (badge) badge.textContent = String(count);
-    var list = col.querySelector('.kanban-cards');
-    if (list && count === 0 && !list.querySelector('.kanban-empty')) {
-        var p = document.createElement('p');
-        p.className = 'kanban-empty';
-        p.textContent = 'No cards';
-        list.appendChild(p);
-    }
-}
+document.querySelectorAll(".project-lane-select").forEach(function(selectEl) {
+    selectEl.addEventListener("change", function() {
+        moveProjectLane(selectEl.getAttribute("data-id"), selectEl.value, selectEl);
+    });
+});
 
-document.querySelectorAll('.kanban-lane-select').forEach(function(selectEl) {
-    selectEl.addEventListener('change', function() {
-        moveProjectLane(selectEl.getAttribute('data-id'), selectEl.value, selectEl);
+document.querySelectorAll(".project-chip").forEach(function(chip) {
+    chip.addEventListener("click", function() {
+        var kind = chip.getAttribute("data-filter");
+        var value = chip.getAttribute("data-value");
+        if (kind === "lane") laneFilter = value;
+        if (kind === "owner") ownerFilter = value;
+        document.querySelectorAll('.project-chip[data-filter="' + kind + '"]').forEach(function(other) {
+            other.classList.toggle("is-active", other === chip);
+        });
+        applyProjectFilters();
     });
 });
 </script>

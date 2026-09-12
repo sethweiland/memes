@@ -16,10 +16,10 @@ modules:
   x: false
   grok_bot: false
   memes: false
-  calendar: false
+  calendar: true
 
 calendar:
-  enabled: false
+  enabled: true           # Home widgets. Empty snapshot is fine. Never put ICS URLs here.
 
 secrets:
   backend: env

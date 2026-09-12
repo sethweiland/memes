@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,13 +11,16 @@ from flask import Blueprint, Flask
 
 import tests.bootstrap  # noqa: F401
 
+from src.core.calendar import CalendarStore, reset_calendar
 from src.core.project_board import (
     ProjectBoard,
+    clip_one_line,
     merge_missing_from_tenant,
     normalize_board,
     normalize_project_card,
     reset_project_board,
     seed_projects_from_tenant,
+    sort_projects,
 )
 from src.core.s3_store import BucketLayout
 from src.core.tenant import load_tenant_from_path, reset_tenant
@@ -122,6 +126,7 @@ class SeedAndMoveTests(unittest.TestCase):
 
     def tearDown(self):
         reset_project_board()
+        reset_calendar()
         reset_tenant()
         self.tmp.cleanup()
 
@@ -224,6 +229,29 @@ class SeedAndMoveTests(unittest.TestCase):
         self.assertEqual(card["last_done"], "Wrote the tenant seed")
         self.assertEqual(card["next_steps"], "Human: pick a repo URL")
 
+    def test_sort_projects_attention_then_name(self):
+        ordered = sort_projects(
+            [
+                {"id": "zebra", "name": "Zebra", "lane": "parked"},
+                {"id": "alpha", "name": "Alpha", "lane": "active"},
+                {"id": "beta", "name": "Beta", "lane": "waiting_on_you"},
+                {"id": "gamma", "name": "Gamma", "lane": "blocked"},
+                {"id": "delta", "name": "Delta", "lane": "idea"},
+                {"id": "aaa", "name": "Aaa", "lane": "active"},
+            ]
+        )
+        self.assertEqual(
+            [card["id"] for card in ordered],
+            ["beta", "gamma", "aaa", "alpha", "delta", "zebra"],
+        )
+
+    def test_clip_one_line_collapses_and_truncates(self):
+        wall = "Last done\n" + ("shipped a paragraph of notes " * 12)
+        clipped = clip_one_line(wall, 80)
+        self.assertNotIn("\n", clipped)
+        self.assertLessEqual(len(clipped), 80)
+        self.assertTrue(clipped.endswith("…"))
+
 
 class ProjectsPageTests(unittest.TestCase):
     def setUp(self):
@@ -235,11 +263,19 @@ class ProjectsPageTests(unittest.TestCase):
             tenant=self.seth,
         )
         reset_project_board(self.board)
+        reset_calendar(
+            CalendarStore(
+                store=MemoryS3Store(configured=False),
+                local_path=Path(self.tmp.name) / "calendar.json",
+                ics_url=None,
+            )
+        )
         reset_tenant(self.seth)
         self.client = _nav_app().test_client()
 
     def tearDown(self):
         reset_project_board()
+        reset_calendar()
         reset_tenant()
         self.tmp.cleanup()
 
@@ -263,6 +299,33 @@ class ProjectsPageTests(unittest.TestCase):
         ):
             self.assertIn(name, html)
         self.assertNotIn("Equinox", html)
+        self.assertNotIn("kanban-col", html)
+        self.assertNotIn("No cards", html)
+        self.assertIn("project-row", html)
+        self.assertIn("project-chip", html)
+
+    def test_projects_list_sorts_waiting_blocked_active_idea_parked(self):
+        self.board.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "projects": [
+                    {"id": "zebra", "name": "Zebra", "lane": "parked"},
+                    {"id": "alpha", "name": "Alpha", "lane": "active", "owner_agent": "jeffy"},
+                    {"id": "beta", "name": "Beta", "lane": "waiting_on_you"},
+                    {"id": "gamma", "name": "Gamma", "lane": "blocked"},
+                    {"id": "delta", "name": "Delta", "lane": "idea"},
+                    {"id": "aaa", "name": "Aaa", "lane": "active", "owner_agent": "stevie"},
+                ],
+            }
+        )
+        html = self.client.get("/projects/").get_data(as_text=True)
+        ids = re.findall(r'<article class="project-row"\s+data-id="([^"]+)"', html)
+        expected = ["beta", "gamma", "aaa", "alpha", "delta", "zebra"]
+        self.assertEqual([pid for pid in ids if pid in expected], expected)
+        self.assertIn("Jeffy", html)
+        self.assertIn("Stevie", html)
+        self.assertNotIn("kanban-col", html)
+        self.assertNotIn("No cards", html)
 
     def test_lane_move_api(self):
         self.board.ensure_seeded()

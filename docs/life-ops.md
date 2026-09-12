@@ -18,7 +18,9 @@ Agents write work. The human decides. Spend and routines attribute to
 projects.
 
 Home is an inbox of decisions, not a chatbot log and not a project-management
-suite. The app never posts, buys, or cancels.
+suite. When the calendar module is on, Home also shows This week and On the
+horizon from a snapshot or optional ICS feed — never invented events. The app
+never posts, buys, or cancels.
 
 ## What it is not
 
@@ -41,7 +43,7 @@ generic “Workspace” object.
 
 ### 1. Project
 
-A named bet. Kanban card. Not a spend bucket with a different label.
+A named bet. One row on `/projects/`. Not a spend bucket with a different label.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -70,7 +72,7 @@ Product copy and templates use `waiting_on_you`. Never hardcode
 `waiting_on_seth`. On read, the alias `waiting_on_seth` normalizes to
 `waiting_on_you` so old files do not break.
 
-`shared` and `unallocated` are **Spend-only**. They are never kanban cards.
+`shared` and `unallocated` are **Spend-only**. They are never project rows.
 
 ### 2. Queue item
 
@@ -114,9 +116,14 @@ Leftovers stay visible as `shared` (overhead that is not one product) and
 `unallocated` (missing tag). Spend never hides unlabeled dollars to clean
 up a chart.
 
-Project ids for Spend come from tenant config (kanban projects) plus the
+Project ids for Spend come from tenant config (project rows) plus the
 two Spend-only ids. Do not keep a second hardcoded product list in Python
 when the tenant file already has the ids.
+
+`/spend/` shows a **Tokens** widget at the top (this month’s calls, tokens,
+and heuristic $ — not the xAI invoice), then the ledger. Unallocated means
+“Missing project tag — shown on purpose.” Shared is overhead that is not one
+product.
 
 ### 5. Routine
 
@@ -140,7 +147,7 @@ Projects belong in config, not code.
 
 | Path | Who |
 |---|---|
-| `config/tenant.example.yaml` | Friend template. Placeholder name. 2–3 example projects. Modules off except `projects` + `spend`. Calendar off. `secrets.backend: env`. |
+| `config/tenant.example.yaml` | Friend template. Placeholder name. 2–3 example projects. Modules off except `projects` + `spend` + `calendar` (empty snapshot is fine). `secrets.backend: env`. |
 | `config/tenant.yaml` | The operator’s tenant. Seth’s reference file is committed here (no secrets). |
 
 **Load path:** `TENANT_CONFIG` if set, else `config/tenant.yaml`.
@@ -164,10 +171,10 @@ modules:
   x: false
   grok_bot: false
   memes: false
-  calendar: false
+  calendar: true
 
 calendar:
-  enabled: false           # reserved; no calendar UI in this release
+  enabled: true            # Home This week / Horizon. No Google OAuth.
 
 secrets:
   backend: env             # env | aws | bitwarden
@@ -183,7 +190,7 @@ agents:                    # the humans-you-already-have, as ids
 defaults:
   usage_project: home-ops  # stamped on token events when USAGE_PROJECT is unset
 
-projects:                  # kanban cards. Not shared / unallocated.
+projects:                  # named bets (list rows). Not shared / unallocated.
   - id: home-ops
     name: Home Ops
     lane: active
@@ -218,7 +225,8 @@ s3://$MEME_ASSETS_BUCKET/
 │   ├── templates/{id}.{ext}
 │   └── generated/{hash}_{stem}.jpg
 └── ops/                                  # PRIVATE
-    ├── projects/board.json               # kanban (this release)
+    ├── projects/board.json               # project list
+    ├── calendar/snapshot.json            # read-only Home calendar
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
     ├── grok-bot/routines.json
@@ -228,6 +236,7 @@ s3://$MEME_ASSETS_BUCKET/
 | Key | Local fallback when `MEME_ASSETS_BUCKET` is unset |
 |---|---|
 | `ops/projects/board.json` | `data/projects/board.json` |
+| `ops/calendar/snapshot.json` | `data/calendar/snapshot.json` |
 | `ops/queue/x-activity/{date}.json` | `data/x_activity/{date}.json` |
 | `ops/queue/daily-candidates/{date}.json` | `data/daily_candidates/` |
 | `ops/grok-bot/routines.json` | `data/grok_bot_routines.json` |
@@ -246,19 +255,19 @@ Never write ops JSON under `public/`.
 
 | Flag | Routes | This release |
 |---|---|---|
-| `projects` | `/projects/` | Kanban. Required for the friend path. |
-| `spend` | `/spend/` | Existing ledger. Project ids from tenant. |
+| `projects` | `/projects/` | Compact list (status pill = lane). Required for the friend path. |
+| `spend` | `/spend/` | Ledger plus a Tokens widget at the top. Project ids from tenant. |
 | `x` | `/x/` | Existing Stevie draft review. Unchanged. |
 | `grok_bot` | `/grok-bot/` | Existing routine catalog. Unchanged. |
 | `memes` | `/memes/` and children | Existing pipeline. Unchanged. |
-| `calendar` | — | Flag only. No UI. |
+| `calendar` | Home widgets only | This week + On the horizon. Snapshot or optional `CALENDAR_ICS_URL`. No in-app Google OAuth. Not a sixth primitive. |
 
 Disabled modules are hidden from Home and the top nav. Their URLs 404.
 Home itself is always on.
 
 A friend who only wants a board and a spend page leaves `x`, `grok_bot`,
-`memes`, and `calendar` false. They do not need Imgflip, Instagram, or
-X credentials.
+and `memes` false. They can leave `calendar` on with an empty snapshot.
+They do not need Imgflip, Instagram, X, or Google credentials.
 
 ---
 
@@ -285,6 +294,7 @@ put keys in the environment:
 ```
 XAI_API_KEY=...
 MEME_ASSETS_BUCKET=...          # optional; board falls back to data/projects/
+CALENDAR_ICS_URL=...            # optional secret ICS; never put this in YAML
 AWS_DEFAULT_REGION=us-east-1
 ```
 
@@ -314,8 +324,8 @@ JSON. The Flask app does not spawn them.
      "updated_at": "2026-09-11T22:00:00+00:00",
      "links": { "repo": "https://github.com/you/memes", "prod": null },
      "summary": "Bluegrass meme pipeline",
-     "last_done": "Shipped the kanban seed",
-     "next_steps": "Human: confirm lane"
+     "last_done": "Shipped the project list",
+     "next_steps": "Human: confirm status"
    }
    ```
 
@@ -331,6 +341,42 @@ JSON. The Flask app does not spawn them.
 
 Python helper (same process): `ProjectBoard.update_card(...)` /
 `ProjectBoard.move_lane(...)`.
+
+### Refresh the calendar snapshot
+
+This is a read-only module, not a sixth primitive. Jeffy / another agent
+writes the snapshot. Flask does not talk to Google.
+
+1. Read `ops/calendar/snapshot.json` (or `data/calendar/snapshot.json`).
+2. Canonical shape:
+
+   ```json
+   {
+     "updated_at": "2026-09-12T12:00:00+00:00",
+     "timezone": "America/New_York",
+     "events": [
+       {
+         "id": "dentist",
+         "title": "Dentist",
+         "start": "2026-09-12T14:00:00-04:00",
+         "end": "2026-09-12T14:45:00-04:00",
+         "all_day": false,
+         "location": null,
+         "url": null
+       }
+     ]
+   }
+   ```
+
+3. Do not invent events. Leave `events` empty if you do not know them.
+4. Never write calendar credentials into `tenant.yaml`. Friends who share a
+   secret ICS set `CALENDAR_ICS_URL` in the environment; the app fetches,
+   parses, and caches that feed into the same snapshot shape.
+5. Home shows two lists only: **This week** (now through Sunday ET) and
+   **On the horizon** (14 days from now through ~3 months). Other events stay
+   in the snapshot and are not shown.
+
+Python helper: `CalendarStore.save(...)` / `CalendarStore.home_lists()`.
 
 ### Enqueue a queue item
 
@@ -402,8 +448,10 @@ app without becoming Seth.
    # http://localhost:5050  → Home, then Projects
    ```
 
-   You should see your cards in the five lanes. Spend is empty-ish until
-   you add a ledger; that is fine.
+   You should see your projects in a list (not five empty swim lanes).
+   Spend is empty-ish until you add a ledger; that is fine. Home calendar
+   widgets say “No calendar snapshot yet.” until an agent writes the
+   snapshot or you set `CALENDAR_ICS_URL`.
 
 5. **Fly (optional)** — same container as today (`fly.toml`, `Dockerfile`).
    Set Fly secrets for whatever modules you enabled. Point a hostname
@@ -427,12 +475,12 @@ app without becoming Seth.
 - A sixth primitive
 - Extracting a separate `life-ops` git repo
 - Rewriting the X, memes, Spend ledger, or Grok Bot catalog UIs
-- Calendar UI (flag only)
+- In-app Google OAuth or a live Google Calendar API (snapshot / ICS only)
 - Implementing the AWS or Bitwarden secrets backends
 - Starting / stopping Grok Bot routines from `/projects/` or Home
 - Posting to X, buying, or canceling subscriptions
 - Invented `last_done` / `next_steps`, spend figures, X drafts, or
   routine rows
 - Hardcoded `waiting_on_seth` product copy
-- Kanban cards for `shared` / `unallocated`
+- Project rows for `shared` / `unallocated`
 - Equinox (or any other) project that is not in the tenant file

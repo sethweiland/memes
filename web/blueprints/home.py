@@ -4,6 +4,9 @@ Home blueprint — life/ops hub.
 `/` is a section index (Projects, Spend, X, Grok Bot, Memes), not the meme
 stats dashboard. Waiting on you lists `waiting_on_you` project cards and,
 when the X module is on, a pending-draft count — never invented X rows.
+
+Calendar is a read-only module (snapshot or optional ICS). Not a sixth
+primitive. Home shows This week and On the horizon from that snapshot only.
 """
 
 from datetime import datetime
@@ -40,6 +43,26 @@ def _pending_x_count():
         return None
 
 
+def _calendar_home():
+    if not module_enabled("calendar"):
+        return None
+    try:
+        from src.core.calendar import get_calendar
+
+        return get_calendar().home_lists()
+    except Exception:
+        return {
+            "has_snapshot": False,
+            "this_week": [],
+            "horizon": [],
+            "empty_message": "No calendar snapshot yet.",
+            "this_week_label": "",
+            "horizon_label": "",
+            "updated_at": None,
+            "timezone": "America/New_York",
+        }
+
+
 @bp.route("/")
 def index():
     pending_x = _pending_x_count()
@@ -49,6 +72,7 @@ def index():
         section="home",
         waiting_projects=_waiting_projects(),
         pending_x_count=pending_x if isinstance(pending_x, int) and pending_x > 0 else None,
+        calendar=_calendar_home(),
     )
 
 

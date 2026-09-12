@@ -17,10 +17,10 @@ modules:
   x: true
   grok_bot: true
   memes: true
-  calendar: false
+  calendar: true
 
 calendar:
-  enabled: false
+  enabled: true           # Home This week / Horizon. Snapshot or env ICS — no OAuth.
 
 secrets:
   backend: env

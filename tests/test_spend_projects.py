@@ -230,6 +230,8 @@ class SpendProjectPageTests(unittest.TestCase):
             self.assertIn("Unallocated", html)
             self.assertIn("no usage yet", html)
             self.assertIn("xAI / Grok API", html)
+            self.assertIn('id="tokens"', html)
+            self.assertIn("No token usage recorded this month.", html)
         finally:
             reset_s3_store()
             tmp.cleanup()
@@ -261,6 +263,9 @@ class SpendProjectPageTests(unittest.TestCase):
         self.assertIn("X / Twitter $0.10", html)
         self.assertIn("Waiver Wire $0.06", html)
         self.assertIn("· S3", html)
+        self.assertIn('id="tokens"', html)
+        self.assertIn('data-token-project="memes"', html)
+        self.assertIn("Missing project tag — shown on purpose.", html)
 
 
 if __name__ == "__main__":

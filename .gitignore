@@ -49,6 +49,7 @@ data/token_usage.jsonl
 data/daily_candidates/
 data/x_activity/
 data/projects/
+data/calendar/
 
 # Output files (generated memes)
 output/
