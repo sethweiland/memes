@@ -351,20 +351,20 @@ class DashboardXBadgeTests(unittest.TestCase):
         self.assertNotIn("X Activity</h3>", html)
 
     def test_x_is_life_nav_not_meme_tool(self):
-        """X stays a peer tab; Grok Bot / Memes nest under More; meme tools stay in subnav."""
+        """X stays a peer tab; Grok Bot / Memes nest under Folders; meme tools stay in subnav."""
         nav = (_WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
         spend_at = nav.find("url_for('spend.index')")
         x_at = nav.find("url_for('x_activity.index')")
-        more_at = nav.find("data-nav-more")
+        folders_at = nav.find("data-nav-folders")
         subnav_at = nav.find('class="subnav"')
         generate_at = nav.find("url_for('generate.start')")
-        peer = nav.split("data-nav-more")[0]
+        peer = nav.split("data-nav-folders")[0]
         self.assertGreater(spend_at, 0)
         self.assertGreater(x_at, spend_at)
-        self.assertGreater(more_at, x_at)
+        self.assertGreater(folders_at, x_at)
         self.assertNotIn("url_for('grok_bot.index')", peer)
         self.assertNotIn("url_for('dashboard.index')", peer)
-        self.assertGreater(subnav_at, more_at)
+        self.assertGreater(subnav_at, folders_at)
         self.assertGreater(generate_at, subnav_at)
 
 

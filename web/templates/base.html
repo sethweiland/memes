@@ -11,7 +11,7 @@
     {% set _page = active_page|default('') %}
     {% set _meme_pages = ['dashboard', 'generate', 'gallery', 'daily_candidates', 'templates', 'video', 'discovery'] %}
     {% set _section = section|default('memes' if _page in _meme_pages else ('x' if _page == 'x_activity' else _page)) %}
-    {% set _more_active = _section in ['memes', 'grok_bot'] %}
+    {% set _folders_active = _section in ['memes', 'grok_bot'] %}
     {% set _path = request.path %}
     <nav class="topnav">
         <a href="{{ url_for('home.index') }}" class="brand">{{ tenant.site_title if tenant is defined and tenant else 'Ops' }}</a>
@@ -26,40 +26,32 @@
         <a href="{{ url_for('x_activity.index') }}" class="{{ 'active' if _section == 'x' }}">X</a>
         {% endif %}
         {% if nav_folders %}
-        <div class="nav-more" data-nav-more>
-            <button type="button"
-                    class="nav-more-toggle {{ 'active' if _more_active }}"
-                    data-nav-more-toggle
-                    id="nav-more-toggle"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                    aria-controls="nav-more-menu">
-                More <span class="nav-more-caret" aria-hidden="true">▾</span>
-            </button>
-            <div class="nav-more-menu" id="nav-more-menu" data-nav-more-menu hidden role="navigation" aria-label="More">
+        <details class="nav-folders" data-nav-folders>
+            <summary class="nav-folders-toggle {{ 'active' if _folders_active }}"
+                     data-nav-folders-toggle
+                     id="nav-folders-toggle"
+                     aria-label="Folders">
+                Folders <span class="nav-folders-caret" aria-hidden="true">▾</span>
+            </summary>
+            <div class="nav-folders-menu" id="nav-folders-menu" data-nav-folders-menu role="navigation" aria-label="Folders">
                 {% for folder in nav_folders %}
-                {% set ns = namespace(open=false) %}
-                {% for item in folder.items %}
-                    {% if item.href.rstrip('/') == _path.rstrip('/') %}{% set ns.open = true %}{% endif %}
-                    {% for child in item.children %}
-                        {% if child.href.rstrip('/') == _path.rstrip('/') %}{% set ns.open = true %}{% endif %}
-                    {% endfor %}
-                {% endfor %}
-                <details class="nav-more-folder" data-nav-folder="{{ folder.id }}" {% if ns.open %}open{% endif %}>
+                <details class="nav-folders-folder" data-nav-folder="{{ folder.id }}" open>
                     <summary>{{ folder.name }}</summary>
-                    <ul class="nav-more-folder-list">
+                    <ul class="nav-folders-folder-list">
                         {% for item in folder.items %}
+                        {% set item_path = item.href.split('?')[0].split('#')[0].rstrip('/') %}
                         <li>
                             <a href="{{ item.href }}"
                                data-nav-item="{{ item.id }}"
-                               class="{{ 'active' if item.href.rstrip('/') == _path.rstrip('/') }}">{{ item.label }}</a>
+                               class="{{ 'active' if item_path == _path.rstrip('/') and (item_path != '/projects' or item.id == request.args.get('project', '')) }}">{{ item.label }}</a>
                             {% if item.children %}
-                            <ul class="nav-more-children">
+                            <ul class="nav-folders-children">
                                 {% for child in item.children %}
+                                {% set child_path = child.href.split('?')[0].split('#')[0].rstrip('/') %}
                                 <li>
                                     <a href="{{ child.href }}"
                                        data-nav-link
-                                       class="{{ 'active' if child.href.rstrip('/') == _path.rstrip('/') }}">{{ child.label }}</a>
+                                       class="{{ 'active' if child_path == _path.rstrip('/') }}">{{ child.label }}</a>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -70,7 +62,7 @@
                 </details>
                 {% endfor %}
             </div>
-        </div>
+        </details>
         {% endif %}
     </nav>
     {% if _section == 'memes' %}

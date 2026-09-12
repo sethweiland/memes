@@ -308,16 +308,16 @@ class GrokBotFlaskTests(unittest.TestCase):
         self.assertIn("X tweet drafts", enabled)
         self.assertNotIn("Parked ops job", enabled)
 
-    def test_grok_bot_nests_under_more_not_peer_tab(self):
+    def test_grok_bot_nests_under_folders_not_peer_tab(self):
         nav = (_WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
         x_at = nav.find("url_for('x_activity.index')")
-        more_at = nav.find("data-nav-more")
+        folders_at = nav.find("data-nav-folders")
         subnav_at = nav.find('class="subnav"')
-        peer = nav.split("data-nav-more")[0]
+        peer = nav.split("data-nav-folders")[0]
         self.assertGreater(x_at, 0)
-        self.assertGreater(more_at, x_at)
+        self.assertGreater(folders_at, x_at)
         self.assertNotIn("url_for('grok_bot.index')", peer)
-        self.assertGreater(subnav_at, more_at)
+        self.assertGreater(subnav_at, folders_at)
 
 
 if __name__ == "__main__":

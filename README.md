@@ -115,7 +115,7 @@ python web/run.py
 | **Projects** | `/projects/` | Compact list of named bets. Status pill is the existing lane (`idea`, `active`, `blocked`, `waiting_on_you`, `parked`). Seeded from tenant config. Board JSON: `ops/projects/board.json`. |
 | **Spend** | `/spend/` | Tech spending tracker. Tokens widget at the top (this month’s calls / tokens / heuristic $). |
 | **X** | `/x/` | Human-gate inbox — review Stevie drafts (follow / post / reply). Approve or skip only; this app never posts to X. Stays a top-level tab. Queue is `ops/queue/x-activity/` |
-| **More ▾** | — | Bookmarks-style folders from tenant `folders:` (nav config, not a sixth primitive). Grok Bot and Memes tools nest here, not as peer tabs. |
+| **Folders ▾** | — | Bookmarks-style folders from tenant `folders:` (nav config, not a sixth primitive). Grok Bot and Memes tools nest here, not as peer tabs. |
 
 **Spend:**
 - Tracks subscriptions (Imgflip, Vercel, etc.)
@@ -127,9 +127,11 @@ python web/run.py
 - Monthly total with active/cancelled breakdown
 - Subscription ledger: S3 `ops/spend/tech_spend.json` when `MEME_ASSETS_BUCKET` is set, else `data/tech_spend.json` (gitignored). Empty `{subscriptions: []}` if both are missing. Tests use `tests/fixtures/tech_spend.json`. Do not invent rows.
 
-**More menu** (tenant `folders:`):
+**Folders** (tenant `folders:`):
 - Folders and extra links come from YAML, not hardcoded Python
+- Native `<details>` control — opens without JavaScript. Inner folders start open.
 - A project with a module homepage (`memes` → `/memes/`, `x` → `/x/`) links there when that module is on
+- Other folder projects deep-link to `/projects/#<id>` (and `?project=<id>`). The list scrolls to that row, highlights it, and selects it if a filter would hide it.
 - Memes tools nest under Software → Memes; Grok Bot routines nest under Agents
 - Disabled-module links are omitted so the menu never 404s
 - Grok Bot catalog: `/grok-bot/` — private JSON at `ops/grok-bot/routines.json` (git seed / local fallback `data/grok_bot_routines.json`). This page does not start or stop routines.

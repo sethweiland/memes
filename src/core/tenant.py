@@ -48,7 +48,7 @@ LANE_LABELS = {
 MODULE_NAMES = ("projects", "spend", "x", "grok_bot", "memes", "calendar")
 SECRET_BACKENDS = ("env", "aws", "bitwarden")
 SPEND_ONLY_PROJECT_IDS = ("shared", "unallocated")
-MORE_ACTIVE_SECTIONS = frozenset({"memes", "grok_bot"})
+FOLDERS_ACTIVE_SECTIONS = frozenset({"memes", "grok_bot"})
 ROUTE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
 
 # Project ids that have a dedicated module homepage. Folders themselves
@@ -117,7 +117,7 @@ class TenantProject:
 
 @dataclass(frozen=True)
 class TenantFolderLink:
-    """Optional extra bookmark inside a More folder. Not a stored object."""
+    """Optional extra bookmark inside a Folders folder. Not a stored object."""
 
     label: str
     href: Optional[str] = None
@@ -375,7 +375,7 @@ def _parse_folders(raw: Any) -> tuple[TenantFolder, ...]:
 def infer_href_module(href: Optional[str]) -> Optional[str]:
     if not href:
         return None
-    path = href.split("?", 1)[0]
+    path = href.split("?", 1)[0].split("#", 1)[0]
     if path == "/x" or path.startswith("/x/"):
         return "x"
     if path == "/memes" or path.startswith("/memes/"):
@@ -394,12 +394,12 @@ def project_nav_href(project_id: str, modules: dict[str, bool]) -> Optional[str]
     if spec and modules.get(spec[0]):
         return spec[1]
     if modules.get("projects"):
-        return "/projects/"
+        return f"/projects/?project={project_id}#{project_id}"
     return None
 
 
-def more_nav_active(section: Optional[str]) -> bool:
-    return (section or "") in MORE_ACTIVE_SECTIONS
+def folders_nav_active(section: Optional[str]) -> bool:
+    return (section or "") in FOLDERS_ACTIVE_SECTIONS
 
 
 def _resolve_folder_href(
@@ -429,7 +429,7 @@ def present_nav_folders(
     url_for: Optional[Callable[..., str]] = None,
 ) -> tuple[NavFolder, ...]:
     """
-    Folders for the More menu.
+    Folders for the Folders menu.
 
     Disabled-module links are omitted so the menu never points at a 404.
     Unknown project ids are skipped. Empty folders are hidden.

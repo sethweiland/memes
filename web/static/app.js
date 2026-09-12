@@ -1309,30 +1309,21 @@ function initVideoResultsPage(jobId) {
 
 
 // ---------------------------------------------------------------------------
-// More nav — tap to open, click-away / Escape to close
+// Folders nav — native <details>; JS adds click-away / Escape
 // ---------------------------------------------------------------------------
 
-function initNavMore() {
-    var root = document.querySelector("[data-nav-more]");
+function initNavFolders() {
+    var root = document.querySelector("[data-nav-folders]");
     if (!root) return;
-    var toggle = root.querySelector("[data-nav-more-toggle]");
-    var menu = root.querySelector("[data-nav-more-menu]");
-    if (!toggle || !menu) return;
+    var toggle = root.querySelector("[data-nav-folders-toggle]");
 
     function isOpen() {
-        return toggle.getAttribute("aria-expanded") === "true";
+        return !!root.open;
     }
 
     function setOpen(open) {
-        toggle.setAttribute("aria-expanded", open ? "true" : "false");
-        menu.hidden = !open;
-        root.classList.toggle("is-open", open);
+        root.open = !!open;
     }
-
-    toggle.addEventListener("click", function(event) {
-        event.stopPropagation();
-        setOpen(!isOpen());
-    });
 
     document.addEventListener("click", function(event) {
         if (!root.contains(event.target)) {
@@ -1343,13 +1334,13 @@ function initNavMore() {
     document.addEventListener("keydown", function(event) {
         if (event.key === "Escape" && isOpen()) {
             setOpen(false);
-            toggle.focus();
+            if (toggle) toggle.focus();
         }
     });
 }
 
 if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initNavMore);
+    document.addEventListener("DOMContentLoaded", initNavFolders);
 } else {
-    initNavMore();
+    initNavFolders();
 }

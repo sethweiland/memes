@@ -30,7 +30,8 @@
 
 <div class="project-list" data-board="projects">
     {% for project in projects %}
-    <article class="project-row"
+    <article class="project-row{% if request.args.get('project') == project.id %} is-target{% endif %}"
+             id="project-{{ project.id }}"
              data-id="{{ project.id }}"
              data-lane="{{ project.lane }}"
              data-name="{{ project.name }}"
@@ -122,11 +123,13 @@ function sortProjectList() {
 function applyProjectFilters() {
     var rows = document.querySelectorAll(".project-row");
     var visible = 0;
+    var selectedId = projectIdFromLocation();
     rows.forEach(function(row) {
         var laneOk = laneFilter === "all" || row.getAttribute("data-lane") === laneFilter;
         var owner = row.getAttribute("data-owner") || "";
         var ownerOk = ownerFilter === "all" || owner === ownerFilter;
-        var show = laneOk && ownerOk;
+        var selected = selectedId && row.getAttribute("data-id") === selectedId;
+        var show = (laneOk && ownerOk) || selected;
         row.hidden = !show;
         if (show) visible += 1;
     });
@@ -183,6 +186,32 @@ document.querySelectorAll(".project-lane-select").forEach(function(selectEl) {
     });
 });
 
+function projectIdFromLocation() {
+    var params = new URLSearchParams(window.location.search);
+    var fromQuery = params.get("project");
+    if (fromQuery) return fromQuery;
+    var hash = (window.location.hash || "").replace(/^#/, "");
+    if (!hash) return "";
+    if (hash.indexOf("project-") === 0) return hash.slice("project-".length);
+    return hash;
+}
+
+function selectDeepLinkedProject() {
+    var projectId = projectIdFromLocation();
+    document.querySelectorAll(".project-row.is-target").forEach(function(row) {
+        row.classList.remove("is-target");
+    });
+    if (!projectId) return;
+    var row = document.getElementById("project-" + projectId) ||
+              document.querySelector('.project-row[data-id="' + projectId + '"]');
+    if (!row) return;
+    applyProjectFilters();
+    row.classList.add("is-target");
+    if (typeof row.scrollIntoView === "function") {
+        row.scrollIntoView({ block: "center" });
+    }
+}
+
 document.querySelectorAll(".project-chip").forEach(function(chip) {
     chip.addEventListener("click", function() {
         var kind = chip.getAttribute("data-filter");
@@ -195,5 +224,8 @@ document.querySelectorAll(".project-chip").forEach(function(chip) {
         applyProjectFilters();
     });
 });
+
+window.addEventListener("hashchange", selectDeepLinkedProject);
+selectDeepLinkedProject();
 </script>
 {% endblock %}

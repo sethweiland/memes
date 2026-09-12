@@ -130,18 +130,20 @@ class OpsIaTests(unittest.TestCase):
         self.assertIn("No calendar snapshot yet.", html)
         self.assertNotIn("Team standup", html)
         self.assertNotIn("Invented", html)
-        peer = html.split('class="nav-more"')[0]
+        peer = html.split("data-nav-folders")[0]
         self.assertIn(">Projects<", peer)
         self.assertIn(">Spend<", peer)
         self.assertIn(">X<", peer)
         self.assertNotIn(">Grok Bot<", peer)
         self.assertNotIn(">Memes<", peer)
-        more = html.split("data-nav-more-menu")[1]
-        self.assertIn("More", more)
-        self.assertIn("Software", more)
-        self.assertIn("Grok Bot", more)
-        self.assertIn("/grok-bot/", more)
-        self.assertIn("/memes/generate/", more)
+        folders = html.split("data-nav-folders-menu")[1]
+        self.assertIn("Folders", folders)
+        self.assertNotIn(">More<", folders)
+        self.assertIn("Software", folders)
+        self.assertIn("Grok Bot", folders)
+        self.assertIn("/grok-bot/", folders)
+        self.assertIn("/memes/generate/", folders)
+        self.assertIn("/projects/?project=sethweiland-com#sethweiland-com", folders)
 
     def test_healthz_still_at_root(self):
         response = self.client.get("/healthz")

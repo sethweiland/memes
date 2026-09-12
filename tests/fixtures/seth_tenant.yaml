@@ -1,4 +1,4 @@
-# Test fixture: operator-shaped tenant with modules on (More menu, X, memes).
+# Test fixture: operator-shaped tenant with modules on (Folders menu, X, memes).
 # Not the product default. Friends copy config/tenant.example.yaml.
 # last_done / next_steps stay empty when unknown.
 
@@ -38,7 +38,7 @@ agents:
 defaults:
   usage_project: memes
 
-# Bookmarks-style More menu. Not a sixth primitive — nav only.
+# Bookmarks-style Folders menu. Not a sixth primitive — nav only.
 # Projects omitted here still appear on /projects/.
 folders:
   - id: music
