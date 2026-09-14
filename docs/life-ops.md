@@ -267,6 +267,7 @@ s3://$MEME_ASSETS_BUCKET/
     ├── tenant.yaml                       # operator tenant (Jeffy uploads this)
     ├── projects/board.json               # project list
     ├── calendar/snapshot.json            # read-only Home calendar
+    ├── calendar/team-logos.json          # optional Home crests (title match)
     ├── spend/tech_spend.json             # operator spend ledger (not in git)
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
@@ -280,6 +281,7 @@ s3://$MEME_ASSETS_BUCKET/
 | `ops/spend/tech_spend.json` | `data/tech_spend.json` (gitignored). Empty `{subscriptions: []}` if both missing. |
 | `ops/projects/board.json` | `data/projects/board.json` |
 | `ops/calendar/snapshot.json` | `data/calendar/snapshot.json` |
+| `ops/calendar/team-logos.json` | `data/calendar/team-logos.json`. Empty `{match: []}` if both missing. Optional chrome only. |
 | `ops/queue/x-activity/{date}.json` | `data/x_activity/{date}.json` |
 | `ops/queue/daily-candidates/{date}.json` | `data/daily_candidates/` |
 | `ops/grok-bot/routines.json` | `data/grok_bot_routines.json` |
@@ -303,7 +305,7 @@ Never write ops JSON under `public/`.
 | `x` | `/x/` | Existing Stevie draft review. Stays a top-level tab (human-gate inbox). |
 | `grok_bot` | `/grok-bot/` | Existing routine catalog. Nested under Folders → Agents, not a peer tab. |
 | `memes` | `/memes/` and children | Existing pipeline. Nested under Folders → Software → Memes. Subnav remains on `/memes/`. |
-| `calendar` | Home widgets only | This week + On the horizon (Monday after this Sunday through ~3 months). Snapshot or optional `CALENDAR_ICS_URL`. No in-app Google OAuth. Not a sixth primitive. |
+| `calendar` | Home widgets only | This week + On the horizon (Monday after this Sunday through ~3 months). Snapshot or optional `CALENDAR_ICS_URL`. Optional crests from `ops/calendar/team-logos.json` when a title contains a map needle. No in-app Google OAuth. Not a sixth primitive. |
 
 Disabled modules are hidden from the top nav and from Folders (module links
 only). Their URLs still 404. The Folders menu itself never 404s. Home is
@@ -420,6 +422,13 @@ writes the snapshot. Flask does not talk to Google.
 5. Home shows two lists only: **This week** (now through Sunday ET) and
    **On the horizon** (Monday after this Sunday through ~3 months). Other
    events stay in the snapshot and are not shown.
+6. Optional crests: if `ops/calendar/team-logos.json` (or the local
+   fallback) has a `match` row whose `match_title_contains` needle appears
+   in an event title, Home shows that `logo_url` next to the title.
+   Matching is substring, not exact (`UCLA` / `Liverpool` still hit titles
+   prefixed with 🏈 or ⚽). Do not scrape ESPN or invent fixtures. A
+   missing map or unmatched title leaves the row unchanged. IANA zone ids
+   are still not printed.
 
 Python helper: `CalendarStore.save(...)` / `CalendarStore.home_lists()`.
 

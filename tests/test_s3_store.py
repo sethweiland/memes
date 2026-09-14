@@ -43,6 +43,13 @@ class BucketLayoutTests(unittest.TestCase):
         self.assertTrue(key.startswith(BucketLayout.CALENDAR_PREFIX))
         self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
 
+    def test_calendar_team_logos_key_is_private_ops(self):
+        key = BucketLayout.calendar_team_logos_key()
+        self.assertEqual(key, "ops/calendar/team-logos.json")
+        BucketLayout.require_ops_key(key)
+        self.assertTrue(key.startswith(BucketLayout.CALENDAR_PREFIX))
+        self.assertFalse(key.startswith(BucketLayout.PUBLIC_PREFIX))
+
     def test_tenant_key_is_private_ops(self):
         key = BucketLayout.tenant_key()
         self.assertEqual(key, "ops/tenant.yaml")

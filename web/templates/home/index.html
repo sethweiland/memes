@@ -46,6 +46,9 @@
                         {% for event in day.events %}
                         <li data-event-id="{{ event.id }}">
                             <span class="ops-cal-when">{{ event.when_label }}</span>
+                            {% if event.crest and event.crest.logo_url %}
+                            <img class="ops-cal-crest" src="{{ event.crest.logo_url }}" alt="" width="16" height="16" loading="lazy" decoding="async" data-cal-crest="{{ event.crest.id }}" onerror="this.remove()">
+                            {% endif %}
                             {% if event.url %}
                             <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
                             {% else %}
@@ -78,6 +81,9 @@
                         {% for event in day.events %}
                         <li data-event-id="{{ event.id }}">
                             <span class="ops-cal-when">{{ event.when_label }}</span>
+                            {% if event.crest and event.crest.logo_url %}
+                            <img class="ops-cal-crest" src="{{ event.crest.logo_url }}" alt="" width="16" height="16" loading="lazy" decoding="async" data-cal-crest="{{ event.crest.id }}" onerror="this.remove()">
+                            {% endif %}
                             {% if event.url %}
                             <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
                             {% else %}

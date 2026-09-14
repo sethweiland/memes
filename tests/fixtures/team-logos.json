@@ -1,0 +1,18 @@
+{
+  "match": [
+    {
+      "id": "ucla",
+      "match_title_contains": ["UCLA"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/ncaa/500/26.png",
+      "emoji": "🏈",
+      "color": "#2D68C4"
+    },
+    {
+      "id": "liverpool",
+      "match_title_contains": ["Liverpool"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png",
+      "emoji": "⚽",
+      "color": "#C8102E"
+    }
+  ]
+}
