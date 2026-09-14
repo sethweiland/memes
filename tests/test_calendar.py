@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from datetime import datetime
@@ -15,9 +16,12 @@ import tests.bootstrap  # noqa: F401
 from src.core.calendar import (
     EMPTY_SNAPSHOT_MESSAGE,
     CalendarStore,
+    empty_team_logos,
     horizon_bounds,
+    match_team_crest,
     normalize_event,
     normalize_snapshot,
+    normalize_team_logos,
     parse_ics,
     present_location,
     reset_calendar,
@@ -33,6 +37,7 @@ from web.blueprints.home import bp as home_bp
 _ROOT = Path(__file__).resolve().parents[1]
 _WEB_ROOT = _ROOT / "web"
 _SETH = Path(__file__).resolve().parent / "fixtures" / "seth_tenant.yaml"
+_TEAM_LOGOS = Path(__file__).resolve().parent / "fixtures" / "team-logos.json"
 ET = ZoneInfo("America/New_York")
 NOW = datetime(2026, 9, 12, 12, 0, tzinfo=ET)
 
@@ -82,6 +87,10 @@ SNAPSHOT_EVENTS = [
         "all_day": False,
     },
 ]
+
+
+def _team_logos_map() -> dict:
+    return normalize_team_logos(json.loads(_TEAM_LOGOS.read_text(encoding="utf-8")))
 
 
 def _nav_app() -> Flask:
@@ -227,6 +236,137 @@ class NormalizeAndSplitTests(unittest.TestCase):
         )
         self.assertIsNone(present_location("Stay in", "123 Main Street, Apt 4B"))
 
+    def test_title_match_attaches_crest_without_inventing_events(self):
+        logos = _team_logos_map()
+        self.assertEqual(logos["match"][0]["id"], "ucla")
+        self.assertEqual(match_team_crest("UCLA vs Oregon", logos)["id"], "ucla")
+        self.assertEqual(
+            match_team_crest("UCLA vs Oregon", logos)["logo_url"],
+            "https://a.espncdn.com/i/teamlogos/ncaa/500/26.png",
+        )
+        self.assertEqual(match_team_crest("Liverpool vs Chelsea", logos)["id"], "liverpool")
+        self.assertEqual(match_team_crest("ucla bruins", logos)["id"], "ucla")
+        self.assertEqual(match_team_crest("🏈 UCLA vs Oregon", logos)["id"], "ucla")
+        self.assertEqual(match_team_crest("⚽ Liverpool vs Chelsea", logos)["id"], "liverpool")
+        self.assertEqual(match_team_crest("🏈\u00a0UCLA Bruins", logos)["id"], "ucla")
+        self.assertEqual(match_team_crest("Premier League: Liverpool (A)", logos)["id"], "liverpool")
+        self.assertIsNone(match_team_crest("Saturday dinner", logos))
+        self.assertIsNone(match_team_crest("Dentist", logos))
+        self.assertIsNone(match_team_crest("🏈", logos))
+        self.assertIsNone(match_team_crest("⚽", logos))
+        self.assertIsNone(match_team_crest("Oregon vs USC", logos))
+        self.assertIsNone(match_team_crest("UCLA vs Oregon", None))
+        self.assertIsNone(match_team_crest("UCLA vs Oregon", empty_team_logos()))
+
+        snapshot = normalize_snapshot(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-game",
+                        "title": "UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-game",
+                        "title": "Liverpool vs Chelsea",
+                        "start": "2026-09-20T11:00:00-04:00",
+                        "end": "2026-09-20T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        lists = split_home_events(
+            snapshot, now=NOW, timezone_name="America/New_York", team_logos=logos
+        )
+        week_by_title = {event["title"]: event for event in lists["this_week"]}
+        horizon_by_title = {event["title"]: event for event in lists["horizon"]}
+        self.assertEqual(week_by_title["UCLA vs Oregon"]["crest"]["id"], "ucla")
+        self.assertIsNone(week_by_title["Saturday dinner"]["crest"])
+        self.assertEqual(horizon_by_title["Liverpool vs Chelsea"]["crest"]["id"], "liverpool")
+        self.assertIsNone(horizon_by_title["October trip"]["crest"])
+        self.assertNotIn("Invented Birthday", week_by_title)
+        self.assertNotIn("Invented Birthday", horizon_by_title)
+
+        prefixed = normalize_snapshot(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-game",
+                        "title": "🏈 UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-game",
+                        "title": "⚽ Liverpool vs Chelsea",
+                        "start": "2026-09-20T11:00:00-04:00",
+                        "end": "2026-09-20T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        prefixed_lists = split_home_events(
+            prefixed, now=NOW, timezone_name="America/New_York", team_logos=logos
+        )
+        self.assertEqual(
+            [event["title"] for event in prefixed_lists["this_week"]],
+            ["Saturday dinner", "🏈 UCLA vs Oregon", "Sunday hike"],
+        )
+        self.assertEqual(
+            [event["title"] for event in prefixed_lists["horizon"]],
+            ["Next Friday gap", "⚽ Liverpool vs Chelsea", "October trip"],
+        )
+        week_prefixed = {event["title"]: event for event in prefixed_lists["this_week"]}
+        horizon_prefixed = {event["title"]: event for event in prefixed_lists["horizon"]}
+        self.assertEqual(week_prefixed["🏈 UCLA vs Oregon"]["crest"]["id"], "ucla")
+        self.assertEqual(horizon_prefixed["⚽ Liverpool vs Chelsea"]["crest"]["id"], "liverpool")
+        self.assertIsNone(week_prefixed["Saturday dinner"]["crest"])
+        self.assertIsNone(horizon_prefixed["October trip"]["crest"])
+        shown = [event["title"] for event in prefixed_lists["this_week"] + prefixed_lists["horizon"]]
+        self.assertNotIn("Invented Birthday", shown)
+        self.assertEqual(len(prefixed["events"]), len(SNAPSHOT_EVENTS) + 2)
+
+    def test_missing_or_junk_team_logo_map_leaves_events_unchanged(self):
+        snapshot = normalize_snapshot(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-game",
+                        "title": "UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    }
+                ],
+            }
+        )
+        for logos in (None, empty_team_logos(), ["not", "a", "map"], {"match": "nope"}):
+            lists = split_home_events(
+                snapshot, now=NOW, timezone_name="America/New_York", team_logos=logos
+            )
+            titles = [event["title"] for event in lists["this_week"]]
+            self.assertIn("UCLA vs Oregon", titles)
+            self.assertIn("Saturday dinner", titles)
+            self.assertTrue(all(event["crest"] is None for event in lists["this_week"]))
+            self.assertTrue(all(event["crest"] is None for event in lists["horizon"]))
+        self.assertIsNone(normalize_team_logos(["not", "an", "object"]))
+        self.assertIsNone(normalize_team_logos({"match": "nope"}))
+        self.assertEqual(normalize_team_logos({"match": []})["match"], [])
+
 
 class IcsParseTests(unittest.TestCase):
     def test_parse_ics_keeps_only_vevents(self):
@@ -271,6 +411,7 @@ class CalendarStoreAndHomeTests(unittest.TestCase):
         self.calendar = CalendarStore(
             store=self.store,
             local_path=Path(self.tmp.name) / "snapshot.json",
+            team_logos_path=Path(self.tmp.name) / "team-logos.json",
             timezone_name="America/New_York",
             ics_url=None,
             now=NOW,
@@ -295,6 +436,10 @@ class CalendarStoreAndHomeTests(unittest.TestCase):
         self.assertEqual(key, "ops/calendar/snapshot.json")
         BucketLayout.require_ops_key(key)
         self.assertFalse(key.startswith("public/"))
+        logos_key = self.calendar.team_logos_s3_key()
+        self.assertEqual(logos_key, "ops/calendar/team-logos.json")
+        BucketLayout.require_ops_key(logos_key)
+        self.assertFalse(logos_key.startswith("public/"))
 
     def test_home_empty_state_without_snapshot(self):
         html = self.client.get("/").get_data(as_text=True)
@@ -386,6 +531,143 @@ class CalendarStoreAndHomeTests(unittest.TestCase):
         self.assertNotIn("ops/calendar/snapshot", html)
         self.assertNotIn("last-synced", html)
         self.assertNotIn("last synced", html)
+
+    def test_home_shows_crests_for_matched_titles_only(self):
+        self.store.put_json(
+            BucketLayout.calendar_team_logos_key(),
+            json.loads(_TEAM_LOGOS.read_text(encoding="utf-8")),
+        )
+        self.calendar.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-game",
+                        "title": "UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-game",
+                        "title": "Liverpool vs Chelsea",
+                        "start": "2026-09-20T11:00:00-04:00",
+                        "end": "2026-09-20T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        html = self.client.get("/").get_data(as_text=True)
+        week = html.split('data-calendar="this-week"')[1].split('data-calendar="horizon"')[0]
+        horizon = html.split('data-calendar="horizon"')[1]
+        self.assertIn("UCLA vs Oregon", week)
+        self.assertIn('data-cal-crest="ucla"', week)
+        self.assertIn("https://a.espncdn.com/i/teamlogos/ncaa/500/26.png", week)
+        self.assertNotIn('data-cal-crest="liverpool"', week)
+        self.assertIn("Liverpool vs Chelsea", horizon)
+        self.assertIn('data-cal-crest="liverpool"', horizon)
+        self.assertIn("https://a.espncdn.com/i/teamlogos/soccer/500/364.png", horizon)
+        self.assertNotIn("UCLA vs Oregon", horizon)
+        self.assertNotIn("Invented Birthday", html)
+        self.assertEqual(week.count("data-cal-crest="), 1)
+        self.assertEqual(horizon.count("data-cal-crest="), 1)
+        dinner = week[week.find("Saturday dinner") - 400 : week.find("Saturday dinner") + 40]
+        self.assertNotIn("data-cal-crest", dinner)
+        self._assert_home_calendar_has_no_operator_chrome(html)
+
+    def test_home_matches_emoji_prefixed_ucla_and_liverpool_titles(self):
+        self.store.put_json(
+            BucketLayout.calendar_team_logos_key(),
+            json.loads(_TEAM_LOGOS.read_text(encoding="utf-8")),
+        )
+        self.calendar.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-game",
+                        "title": "🏈 UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-game",
+                        "title": "⚽ Liverpool vs Chelsea",
+                        "start": "2026-09-20T11:00:00-04:00",
+                        "end": "2026-09-20T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        html = self.client.get("/").get_data(as_text=True)
+        week = html.split('data-calendar="this-week"')[1].split('data-calendar="horizon"')[0]
+        horizon = html.split('data-calendar="horizon"')[1]
+        self.assertIn("🏈 UCLA vs Oregon", week)
+        self.assertIn('data-cal-crest="ucla"', week)
+        self.assertIn("⚽ Liverpool vs Chelsea", horizon)
+        self.assertIn('data-cal-crest="liverpool"', horizon)
+        self.assertIn("Saturday dinner", week)
+        self.assertIn("October trip", horizon)
+        self.assertNotIn("Invented Birthday", html)
+        self.assertEqual(week.count("data-cal-crest="), 1)
+        self.assertEqual(horizon.count("data-cal-crest="), 1)
+        self._assert_home_calendar_has_no_operator_chrome(html)
+
+    def test_home_survives_missing_team_logo_map(self):
+        self.calendar.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-game",
+                        "title": "UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    }
+                ],
+            }
+        )
+        self.assertEqual(self.calendar.load_team_logos(), {"match": []})
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertIn("UCLA vs Oregon", html)
+        self.assertIn("Saturday dinner", html)
+        self.assertNotIn("data-cal-crest", html)
+        self.assertNotIn("espncdn.com", html)
+        self.assertNotIn("Invented Birthday", html)
+        self._assert_home_calendar_has_no_operator_chrome(html)
+
+    def test_home_uses_local_team_logo_map_when_s3_missing(self):
+        self.calendar.team_logos_path.write_text(
+            _TEAM_LOGOS.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        self.calendar.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": [
+                    {
+                        "id": "ucla-game",
+                        "title": "UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    }
+                ],
+            }
+        )
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertIn('data-cal-crest="ucla"', html)
+        self._assert_home_calendar_has_no_operator_chrome(html)
 
     def test_ics_refresh_caches_snapshot(self):
         ics = """BEGIN:VCALENDAR

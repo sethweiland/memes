@@ -9,6 +9,7 @@ Bucket (default): bluegrass-meme-pipeline-dev-meme-assets (us-east-1)
     ops/tenant.yaml                                # private operator tenant (not in git)
     ops/projects/board.json                        # private project board
     ops/calendar/snapshot.json                     # private calendar snapshot (no OAuth)
+    ops/calendar/team-logos.json                   # optional Home crest map (title match)
     ops/spend/tech_spend.json                      # private operator spend ledger (not in git)
     ops/queue/daily-candidates/{YYYY-MM-DD}.json   # private daily queue
     ops/queue/x-activity/{YYYY-MM-DD}.json         # private X drafts (Stevie)
@@ -53,6 +54,7 @@ class BucketLayout:
     PROJECTS_BOARD_KEY = "ops/projects/board.json"
     CALENDAR_PREFIX = "ops/calendar/"
     CALENDAR_SNAPSHOT_KEY = "ops/calendar/snapshot.json"
+    CALENDAR_TEAM_LOGOS_KEY = "ops/calendar/team-logos.json"
     GROK_BOT_PREFIX = "ops/grok-bot/"
     GROK_BOT_ROUTINES_KEY = "ops/grok-bot/routines.json"
     TENANT_KEY = "ops/tenant.yaml"
@@ -99,6 +101,10 @@ class BucketLayout:
     @classmethod
     def calendar_snapshot_key(cls) -> str:
         return cls.CALENDAR_SNAPSHOT_KEY
+
+    @classmethod
+    def calendar_team_logos_key(cls) -> str:
+        return cls.CALENDAR_TEAM_LOGOS_KEY
 
     @classmethod
     def tenant_key(cls) -> str:

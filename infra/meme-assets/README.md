@@ -15,6 +15,7 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
     ├── tenant.yaml
     ├── projects/board.json
     ├── calendar/snapshot.json
+    ├── calendar/team-logos.json
     ├── spend/tech_spend.json
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
@@ -29,7 +30,7 @@ s3://bluegrass-meme-pipeline-dev-meme-assets/
 | `ops/tenant.yaml` | private | Jeffy / operator upload | Life-ops tenant. Not in git. |
 | `ops/spend/` | private | operator upload | Spend ledger (`tech_spend.json`). Not in git. |
 | `ops/projects/` | private | `ProjectBoard` | Project list (`board.json`). Seeded from tenant config when missing. |
-| `ops/calendar/` | private | `CalendarStore` | Home snapshot (`snapshot.json`). Optional ICS cache. No OAuth. |
+| `ops/calendar/` | private | `CalendarStore` | Home snapshot (`snapshot.json`). Optional crest map (`team-logos.json`). Optional ICS cache. No OAuth. |
 | `ops/queue/` | private | `QueueStorage` / `XActivityQueue` | Daily candidates + X drafts |
 | `ops/grok-bot/` | private | `GrokBotRoutines` | Recurring routine catalog (`routines.json`) |
 | `ops/usage/` | private | `token_tracker` | Monthly JSON, ETag concurrency. Each event has `project`; rollup is on Spend, not a per-project prefix. |

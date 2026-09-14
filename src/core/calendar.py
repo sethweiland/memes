@@ -8,6 +8,10 @@ Not a sixth primitive. The contract is a snapshot:
 S3: ``ops/calendar/snapshot.json``
 Local fallback: ``data/calendar/snapshot.json``
 
+Optional crests: ``ops/calendar/team-logos.json`` (local
+``data/calendar/team-logos.json``). Title substring match only. Missing map
+or unmatched titles must not break Home. Do not invent fixtures.
+
 If ``CALENDAR_ICS_URL`` is set, fetch that feed, parse VEVENTs into the same
 shape, and cache the result as the snapshot. Credentials never go in tenant
 YAML. There is no Google OAuth in this app.
@@ -44,6 +48,7 @@ from src.core.tenant import load_tenant
 logger = logging.getLogger(__name__)
 
 LOCAL_PATH = Path("data/calendar/snapshot.json")
+LOCAL_TEAM_LOGOS_PATH = Path("data/calendar/team-logos.json")
 DEFAULT_TZ = "America/New_York"
 ICS_CACHE_SECONDS = 15 * 60
 ICS_MAX_BYTES = 1_000_000
@@ -159,6 +164,84 @@ def empty_snapshot(*, timezone_name: Optional[str] = None) -> dict[str, Any]:
         "timezone": timezone_name or DEFAULT_TZ,
         "events": [],
     }
+
+
+def empty_team_logos() -> dict[str, Any]:
+    return {"match": []}
+
+
+def normalize_team_logos(data: Any) -> Optional[dict[str, Any]]:
+    """Keep usable crest rows only. Reject junk. Do not invent teams."""
+    if not isinstance(data, dict):
+        return None
+    raw = data.get("match")
+    if raw is None:
+        raw = []
+    if not isinstance(raw, list):
+        return None
+    teams: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        team_id = _blank(item.get("id"))
+        logo_url = _blank(item.get("logo_url"))
+        needles_raw = item.get("match_title_contains")
+        if not team_id or not logo_url or not isinstance(needles_raw, list):
+            continue
+        parsed = urlparse(logo_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            continue
+        needles = []
+        for needle in needles_raw:
+            text = _blank(needle)
+            if text:
+                needles.append(text)
+        if not needles or team_id in seen:
+            continue
+        seen.add(team_id)
+        teams.append(
+            {
+                "id": team_id,
+                "match_title_contains": needles,
+                "logo_url": logo_url,
+                "emoji": _blank(item.get("emoji")),
+                "color": _blank(item.get("color")),
+            }
+        )
+    return {"match": teams}
+
+
+def match_team_crest(title: str, logos: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """First map row whose match_title_contains needle is a title substring.
+
+    Not an exact-title match. Sport emoji prefixes such as ``🏈`` / ``⚽``
+    still match because only the needle has to appear in the title.
+    """
+    haystack = (title or "").casefold()
+    if not haystack:
+        return None
+    raw = logos.get("match") if isinstance(logos, dict) else None
+    if not isinstance(raw, list):
+        return None
+    for team in raw:
+        if not isinstance(team, dict):
+            continue
+        logo_url = _blank(team.get("logo_url"))
+        team_id = _blank(team.get("id"))
+        needles = team.get("match_title_contains")
+        if not logo_url or not team_id or not isinstance(needles, list):
+            continue
+        for needle in needles:
+            text = _blank(needle)
+            if text and text.casefold() in haystack:
+                return {
+                    "id": team_id,
+                    "logo_url": logo_url,
+                    "emoji": _blank(team.get("emoji")),
+                    "color": _blank(team.get("color")),
+                }
+    return None
 
 
 def _hydrate(event: dict[str, Any], tz: ZoneInfo) -> Optional[dict[str, Any]]:
@@ -306,7 +389,11 @@ def present_location(title: str, location: Optional[str]) -> Optional[str]:
     return None
 
 
-def _present_event(event: dict[str, Any], tz: ZoneInfo) -> dict[str, Any]:
+def _present_event(
+    event: dict[str, Any],
+    tz: ZoneInfo,
+    team_logos: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     title = event["title"]
     return {
         "id": event["id"],
@@ -317,6 +404,7 @@ def _present_event(event: dict[str, Any], tz: ZoneInfo) -> dict[str, Any]:
         "location": present_location(title, event.get("location")),
         "url": event.get("url"),
         "when_label": _format_event_when(event, tz),
+        "crest": match_team_crest(title, team_logos),
     }
 
 
@@ -332,6 +420,7 @@ def _group_week_days(
     clock: datetime,
     week_end: datetime,
     tz: ZoneInfo,
+    team_logos: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     today = clock.astimezone(tz).date()
     last = week_end.astimezone(tz).date()
@@ -341,7 +430,7 @@ def _group_week_days(
         day = _placement_date(event, tz, today)
         if day not in buckets:
             day = today if day < today else last
-        buckets[day].append(_present_event(event, tz))
+        buckets[day].append(_present_event(event, tz, team_logos))
     return [
         {
             "date": day.isoformat(),
@@ -353,11 +442,15 @@ def _group_week_days(
     ]
 
 
-def _group_horizon_days(hydrated: list[dict[str, Any]], tz: ZoneInfo) -> list[dict[str, Any]]:
+def _group_horizon_days(
+    hydrated: list[dict[str, Any]],
+    tz: ZoneInfo,
+    team_logos: Optional[dict[str, Any]] = None,
+) -> list[dict[str, Any]]:
     buckets: dict[date, list[dict[str, Any]]] = {}
     for event in hydrated:
         day = _placement_date(event, tz)
-        buckets.setdefault(day, []).append(_present_event(event, tz))
+        buckets.setdefault(day, []).append(_present_event(event, tz, team_logos))
     return [
         {
             "date": day.isoformat(),
@@ -373,11 +466,13 @@ def split_home_events(
     *,
     now: Optional[datetime] = None,
     timezone_name: Optional[str] = None,
+    team_logos: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
     Split a snapshot into This week vs On the horizon.
 
     Does not invent events. Items outside the two windows are omitted.
+    Optional team_logos attach a crest when a title contains a map needle.
     """
     tz = resolve_timezone(
         timezone_name
@@ -389,6 +484,9 @@ def split_home_events(
     horizon_start, horizon_end = horizon_bounds(clock, tz)
     has_snapshot = snapshot is not None
     events = list((snapshot or {}).get("events") or []) if has_snapshot else []
+    logos = normalize_team_logos(team_logos) if team_logos is not None else empty_team_logos()
+    if logos is None:
+        logos = empty_team_logos()
 
     this_week_hydrated: list[dict[str, Any]] = []
     horizon_hydrated: list[dict[str, Any]] = []
@@ -401,18 +499,22 @@ def split_home_events(
         elif _in_horizon(hydrated, horizon_start, horizon_end):
             horizon_hydrated.append(hydrated)
 
-    this_week = [_present_event(event, tz) for event in this_week_hydrated]
-    horizon = [_present_event(event, tz) for event in horizon_hydrated]
+    this_week = [_present_event(event, tz, logos) for event in this_week_hydrated]
+    horizon = [_present_event(event, tz, logos) for event in horizon_hydrated]
     return {
         "has_snapshot": has_snapshot,
         "updated_at": (snapshot or {}).get("updated_at") if has_snapshot else None,
         "timezone": tz.key,
         "this_week": this_week,
         "horizon": horizon,
-        "this_week_days": _group_week_days(this_week_hydrated, clock, week_end, tz)
+        "this_week_days": _group_week_days(
+            this_week_hydrated, clock, week_end, tz, logos
+        )
         if has_snapshot
         else [],
-        "horizon_days": _group_horizon_days(horizon_hydrated, tz) if has_snapshot else [],
+        "horizon_days": _group_horizon_days(horizon_hydrated, tz, logos)
+        if has_snapshot
+        else [],
         "this_week_label": "",
         "horizon_label": "",
         "empty_message": None if has_snapshot else EMPTY_SNAPSHOT_MESSAGE,
@@ -640,12 +742,14 @@ class CalendarStore:
         self,
         store: Optional[S3Store] = None,
         local_path: Optional[Path] = None,
+        team_logos_path: Optional[Path] = None,
         timezone_name: Optional[str] = None,
         ics_url: Any = _UNSET,
         now: Optional[datetime] = None,
     ):
         self.store = store or S3Store()
         self.local_path = local_path or LOCAL_PATH
+        self.team_logos_path = team_logos_path or LOCAL_TEAM_LOGOS_PATH
         self._timezone_name = timezone_name
         self._ics_url = calendar_ics_url() if ics_url is _UNSET else _blank(ics_url)
         self._now = now
@@ -663,6 +767,13 @@ class CalendarStore:
         BucketLayout.require_ops_key(key)
         if key.startswith(BucketLayout.PUBLIC_PREFIX):
             raise ValueError("Calendar snapshot must never be written under public/")
+        return key
+
+    def team_logos_s3_key(self) -> str:
+        key = BucketLayout.calendar_team_logos_key()
+        BucketLayout.require_ops_key(key)
+        if key.startswith(BucketLayout.PUBLIC_PREFIX):
+            raise ValueError("Team logo map must never be written under public/")
         return key
 
     def save(self, data: dict[str, Any]) -> bool:
@@ -697,6 +808,33 @@ class CalendarStore:
         except Exception as exc:
             logger.error("Failed to load local calendar snapshot: %s", exc)
             return None
+
+    def _load_local_team_logos(self) -> Optional[dict[str, Any]]:
+        if not self.team_logos_path.exists():
+            return None
+        try:
+            data = json.loads(self.team_logos_path.read_text(encoding="utf-8"))
+            return normalize_team_logos(data)
+        except Exception as exc:
+            logger.warning("Failed to load local team logo map: %s", exc)
+            return None
+
+    def load_team_logos(self) -> dict[str, Any]:
+        """S3 ops/calendar/team-logos.json, else local, else empty. Never raises."""
+        if self.store.configured:
+            try:
+                result = self.store.get_json(self.team_logos_s3_key())
+                if result:
+                    data, _etag = result
+                    normalized = normalize_team_logos(data)
+                    if normalized is not None:
+                        return normalized
+            except Exception as exc:
+                logger.warning("Failed to load team logo map from S3: %s", exc)
+        local = self._load_local_team_logos()
+        if local is not None:
+            return local
+        return empty_team_logos()
 
     def load_snapshot(self) -> Optional[dict[str, Any]]:
         if self.store.configured:
@@ -745,10 +883,16 @@ class CalendarStore:
     def home_lists(self, *, now: Optional[datetime] = None) -> dict[str, Any]:
         clock = now or self._now
         snapshot = self.load(now=clock)
+        try:
+            logos = self.load_team_logos()
+        except Exception as exc:
+            logger.warning("Team logo map unavailable; Home continues without crests: %s", exc)
+            logos = empty_team_logos()
         return split_home_events(
             snapshot,
             now=clock,
             timezone_name=self.timezone_name(),
+            team_logos=logos,
         )
 
 
