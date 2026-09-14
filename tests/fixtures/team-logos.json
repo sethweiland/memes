@@ -14,5 +14,53 @@
       "emoji": "⚽",
       "color": "#C8102E"
     }
+  ],
+  "teams": [
+    {
+      "id": "ucla",
+      "name": "UCLA",
+      "aliases": ["UCLA", "UCLA Bruins"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/ncaa/500/26.png"
+    },
+    {
+      "id": "liverpool",
+      "name": "Liverpool",
+      "aliases": ["Liverpool", "Liverpool FC"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png"
+    },
+    {
+      "id": "purdue",
+      "name": "Purdue",
+      "aliases": ["Purdue", "Purdue Boilermakers"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/ncaa/500/2509.png"
+    },
+    {
+      "id": "maryland",
+      "name": "Maryland",
+      "aliases": ["Maryland", "Maryland Terrapins"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/ncaa/500/120.png"
+    },
+    {
+      "id": "tottenham",
+      "name": "Tottenham",
+      "aliases": ["Tottenham", "Tottenham Hotspur", "Spurs"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/86.png"
+    },
+    {
+      "id": "bournemouth",
+      "name": "AFC Bournemouth",
+      "aliases": ["AFC Bournemouth", "Bournemouth"],
+      "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/349.png"
+    }
+  ],
+  "title_parse": {
+    "separators": ["vs", "@", "against", "v", "—"]
+  },
+  "categories": [
+    {"id": "sports", "color": "#2563eb", "google_color_id": "9"},
+    {"id": "music", "color": "#be185d", "google_color_id": "4"},
+    {"id": "family_friends", "color": "#059669", "google_color_id": "10"},
+    {"id": "travel", "color": "#d97706", "google_color_id": "6"},
+    {"id": "other", "color": "#6b7280", "google_color_id": "8"}
   ]
 }

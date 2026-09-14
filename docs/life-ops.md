@@ -267,7 +267,7 @@ s3://$MEME_ASSETS_BUCKET/
     ├── tenant.yaml                       # operator tenant (Jeffy uploads this)
     ├── projects/board.json               # project list
     ├── calendar/snapshot.json            # read-only Home calendar
-    ├── calendar/team-logos.json          # optional Home crests (title match)
+    ├── calendar/team-logos.json          # optional Home crests + category colors
     ├── spend/tech_spend.json             # operator spend ledger (not in git)
     ├── queue/daily-candidates/{YYYY-MM-DD}.json
     ├── queue/x-activity/{YYYY-MM-DD}.json
@@ -281,7 +281,7 @@ s3://$MEME_ASSETS_BUCKET/
 | `ops/spend/tech_spend.json` | `data/tech_spend.json` (gitignored). Empty `{subscriptions: []}` if both missing. |
 | `ops/projects/board.json` | `data/projects/board.json` |
 | `ops/calendar/snapshot.json` | `data/calendar/snapshot.json` |
-| `ops/calendar/team-logos.json` | `data/calendar/team-logos.json`. Empty `{match: []}` if both missing. Optional chrome only. |
+| `ops/calendar/team-logos.json` | `data/calendar/team-logos.json`. Empty `{match: [], teams: []}` if both missing. Optional chrome only. `match[]` stays backward-compatible for followed-team needles (UCLA/Liverpool). `teams[]` holds any team id with `aliases` + `logo_url` (longest alias wins). `title_parse.separators` and `categories[]` (hex + `google_color_id`) live on the same object. |
 | `ops/queue/x-activity/{date}.json` | `data/x_activity/{date}.json` |
 | `ops/queue/daily-candidates/{date}.json` | `data/daily_candidates/` |
 | `ops/grok-bot/routines.json` | `data/grok_bot_routines.json` |
@@ -305,7 +305,7 @@ Never write ops JSON under `public/`.
 | `x` | `/x/` | Existing Stevie draft review. Stays a top-level tab (human-gate inbox). |
 | `grok_bot` | `/grok-bot/` | Existing routine catalog. Nested under Folders → Agents, not a peer tab. |
 | `memes` | `/memes/` and children | Existing pipeline. Nested under Folders → Software → Memes. Subnav remains on `/memes/`. |
-| `calendar` | Home widgets only | This week + On the horizon (Monday after this Sunday through ~3 months). Snapshot or optional `CALENDAR_ICS_URL`. Optional crests from `ops/calendar/team-logos.json` when a title contains a map needle. No in-app Google OAuth. Not a sixth primitive. |
+| `calendar` | Home widgets only | This week + On the horizon (Monday after this Sunday through ~3 months). Snapshot or optional `CALENDAR_ICS_URL`. Optional crests from `ops/calendar/team-logos.json`: parse both sides of vs/@/against/v/— and show a logo when that team is in `match[]` or `teams[]`. Missing opponent logo = one crest. Soft category color (left border) from `categories[]` / heuristics / Google color id. No in-app Google OAuth. Not a sixth primitive. |
 
 Disabled modules are hidden from the top nav and from Folders (module links
 only). Their URLs still 404. The Folders menu itself never 404s. Home is
@@ -422,13 +422,55 @@ writes the snapshot. Flask does not talk to Google.
 5. Home shows two lists only: **This week** (now through Sunday ET) and
    **On the horizon** (Monday after this Sunday through ~3 months). Other
    events stay in the snapshot and are not shown.
-6. Optional crests: if `ops/calendar/team-logos.json` (or the local
-   fallback) has a `match` row whose `match_title_contains` needle appears
-   in an event title, Home shows that `logo_url` next to the title.
-   Matching is substring, not exact (`UCLA` / `Liverpool` still hit titles
-   prefixed with 🏈 or ⚽). Do not scrape ESPN or invent fixtures. A
-   missing map or unmatched title leaves the row unchanged. IANA zone ids
-   are still not printed.
+6. Optional crests + category colors: `ops/calendar/team-logos.json` (or the
+   local fallback) is the map Stevie maintains in S3. Do not scrape ESPN or
+   invent fixtures / logo URLs. A missing map or unmatched title leaves the
+   row without a crest. IANA zone ids are still not printed.
+
+   Shape (keep this; do not invent a different schema):
+
+   ```json
+   {
+     "match": [
+       {"id": "ucla", "match_title_contains": ["UCLA"], "logo_url": "https://…"}
+     ],
+     "teams": [
+       {"id": "purdue", "aliases": ["Purdue", "Purdue Boilermakers"], "logo_url": "https://…"}
+     ],
+     "title_parse": {"separators": ["vs", "@", "against", "v", "—"]},
+     "categories": [
+       {"id": "sports", "color": "#2563eb", "google_color_id": "9"}
+     ]
+   }
+   ```
+
+   - `match[]` stays backward-compatible for followed-team needles
+     (UCLA / Liverpool). Substring match still hits titles prefixed with
+     🏈 or ⚽.
+   - `teams[]` is any team id (opponents included) with `aliases` +
+     `logo_url`. Prefer the **longest** alias that appears in that side
+     of the title (`AFC Bournemouth` beats `Bournemouth`).
+   - Home parses **both** sides of `vs` / `@` / `against` / `v` / `—`.
+     Two crests when both teams are in the map; one crest when only one
+     is known. Missing opponent logo = no second crest.
+   - Category color is a left border on This week + On the horizon (not a
+     new tab). `categories[]` hex + `google_color_id` win when present on
+     the event; otherwise infer from crests / title heuristics.
+
+   Default category hex (override via `categories[]`):
+
+   | id | Default hex | Google color id |
+   |---|---|---|
+   | `sports` | `#2563eb` | 9 |
+   | `music` | `#be185d` | 4 |
+   | `family_friends` | `#059669` | 10 |
+   | `travel` | `#d97706` | 6 |
+   | `other` | `#6b7280` | 8 |
+
+   Heuristics when no Google color id: sports if a crest matched, 🏈/⚽,
+   or sports keywords; music if gig/rehearsal/concert/band; travel if
+   flight/airport/IATA hop; family/friends for people-ish titles; else
+   other.
 
 Python helper: `CalendarStore.save(...)` / `CalendarStore.home_lists()`.
 

@@ -88,6 +88,16 @@ nav.subnav a.active { border-bottom-color: #81d4fa; }
 .ops-cal-agenda-day { min-width: 0; }
 .ops-cal-list { margin: 0; padding: 0; list-style: none; }
 .ops-cal-list li { padding: 6px 0 0; }
+.ops-cal-list li[data-cal-category] {
+    border-left: 3px solid var(--ops-cal-cat, #6b7280);
+    padding-left: 8px;
+    margin-left: 1px;
+}
+.ops-cal-list li[data-cal-category="sports"] { --ops-cal-cat: #2563eb; }
+.ops-cal-list li[data-cal-category="music"] { --ops-cal-cat: #be185d; }
+.ops-cal-list li[data-cal-category="family_friends"] { --ops-cal-cat: #059669; }
+.ops-cal-list li[data-cal-category="travel"] { --ops-cal-cat: #d97706; }
+.ops-cal-list li[data-cal-category="other"] { --ops-cal-cat: #6b7280; }
 .ops-cal-when { display: block; font-size: 12px; color: #555; font-weight: 600; }
 .ops-cal-agenda-day .ops-cal-when { display: inline; margin-right: 8px; }
 .ops-cal-title, .ops-cal-list a { font-size: 14px; color: #1a1a2e; }
@@ -102,6 +112,7 @@ nav.subnav a.active { border-bottom-color: #81d4fa; }
     object-fit: contain;
     border-radius: 2px;
 }
+.ops-cal-crest + .ops-cal-crest { margin-left: -2px; }
 .ops-cal-location { display: block; font-size: 12px; color: #666; }
 @media (min-width: 720px) {
     .ops-cal-week {

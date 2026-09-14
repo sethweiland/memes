@@ -3,6 +3,24 @@
 {% block title %}Home · Ops{% endblock %}
 
 {% block content %}
+{% macro cal_event_row(event) -%}
+                        <li data-event-id="{{ event.id }}"{% if event.category %} data-cal-category="{{ event.category.id }}" style="--ops-cal-cat: {{ event.category.color }}"{% endif %}>
+                            <span class="ops-cal-when">{{ event.when_label }}</span>
+                            {% for crest in event.crests or [] %}
+                            {% if crest.logo_url %}
+                            <img class="ops-cal-crest" src="{{ crest.logo_url }}" alt="" width="16" height="16" loading="lazy" decoding="async" data-cal-crest="{{ crest.id }}" onerror="this.remove()">
+                            {% endif %}
+                            {% endfor %}
+                            {% if event.url %}
+                            <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
+                            {% else %}
+                            <span class="ops-cal-title">{{ event.title }}</span>
+                            {% endif %}
+                            {% if event.location %}
+                            <span class="ops-cal-location">{{ event.location }}</span>
+                            {% endif %}
+                        </li>
+{%- endmacro %}
 <div class="ops-home">
     <h1>Home</h1>
     <p class="ops-lede">Life overview. Agents write work; you decide. Not a meme dashboard.</p>
@@ -44,20 +62,7 @@
                     {% if day.events %}
                     <ul class="ops-cal-list">
                         {% for event in day.events %}
-                        <li data-event-id="{{ event.id }}">
-                            <span class="ops-cal-when">{{ event.when_label }}</span>
-                            {% if event.crest and event.crest.logo_url %}
-                            <img class="ops-cal-crest" src="{{ event.crest.logo_url }}" alt="" width="16" height="16" loading="lazy" decoding="async" data-cal-crest="{{ event.crest.id }}" onerror="this.remove()">
-                            {% endif %}
-                            {% if event.url %}
-                            <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
-                            {% else %}
-                            <span class="ops-cal-title">{{ event.title }}</span>
-                            {% endif %}
-                            {% if event.location %}
-                            <span class="ops-cal-location">{{ event.location }}</span>
-                            {% endif %}
-                        </li>
+                        {{ cal_event_row(event) }}
                         {% endfor %}
                     </ul>
                     {% endif %}
@@ -79,20 +84,7 @@
                     <h3 class="ops-cal-day-h">{{ day.label }}</h3>
                     <ul class="ops-cal-list">
                         {% for event in day.events %}
-                        <li data-event-id="{{ event.id }}">
-                            <span class="ops-cal-when">{{ event.when_label }}</span>
-                            {% if event.crest and event.crest.logo_url %}
-                            <img class="ops-cal-crest" src="{{ event.crest.logo_url }}" alt="" width="16" height="16" loading="lazy" decoding="async" data-cal-crest="{{ event.crest.id }}" onerror="this.remove()">
-                            {% endif %}
-                            {% if event.url %}
-                            <a href="{{ event.url }}" target="_blank" rel="noopener">{{ event.title }}</a>
-                            {% else %}
-                            <span class="ops-cal-title">{{ event.title }}</span>
-                            {% endif %}
-                            {% if event.location %}
-                            <span class="ops-cal-location">{{ event.location }}</span>
-                            {% endif %}
-                        </li>
+                        {{ cal_event_row(event) }}
                         {% endfor %}
                     </ul>
                 </section>

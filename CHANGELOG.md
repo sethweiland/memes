@@ -1,5 +1,14 @@
 # Changelog
 
+## Home calendar opponent crests + category colors (2026-09-14)
+
+- Port of [life-ops PR #4](https://github.com/sethweiland/life-ops/pull/4) so live Fly `meme-ops` / ops.sethweiland.com can show opponent crests and category left-borders.
+- `ops/calendar/team-logos.json` uses Stevie’s shape: `match[]`, `teams[]`+aliases, `title_parse.separators` (`vs` / `@` / `against` / `v` / `—`), `categories[]` (hex + `google_color_id`).
+- Two crests when both sides of a matchup are in the map; one crest if the opponent is missing; never invent logos or events. Longest alias wins.
+- Category left-border on This week + On the horizon. Defaults: sports `#2563eb`/9, music `#be185d`/4, family_friends `#059669`/10, travel `#d97706`/6, other `#6b7280`/8.
+
+---
+
 ## Folders nav, project deep-links (2026-09-12)
 
 - Top nav control is **Folders ▾** (was More). Native `<details>` so it opens without JS. Inner folders default open.

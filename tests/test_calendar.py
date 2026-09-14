@@ -18,11 +18,14 @@ from src.core.calendar import (
     CalendarStore,
     empty_team_logos,
     horizon_bounds,
+    infer_event_category,
+    match_event_crests,
     match_team_crest,
     normalize_event,
     normalize_snapshot,
     normalize_team_logos,
     parse_ics,
+    parse_matchup_sides,
     present_location,
     reset_calendar,
     split_home_events,
@@ -364,8 +367,255 @@ class NormalizeAndSplitTests(unittest.TestCase):
             self.assertTrue(all(event["crest"] is None for event in lists["this_week"]))
             self.assertTrue(all(event["crest"] is None for event in lists["horizon"]))
         self.assertIsNone(normalize_team_logos(["not", "an", "object"]))
-        self.assertIsNone(normalize_team_logos({"match": "nope"}))
+        junk = normalize_team_logos({"match": "nope"})
+        self.assertEqual(junk["match"], [])
+        self.assertEqual(junk["teams"], [])
         self.assertEqual(normalize_team_logos({"match": []})["match"], [])
+        self.assertEqual(normalize_team_logos({"match": []})["teams"], [])
+
+    def test_parse_matchup_sides_vs_at_against_v_dash(self):
+        logos = _team_logos_map()
+        self.assertEqual(parse_matchup_sides("UCLA vs Purdue", logos), ("UCLA", "Purdue"))
+        self.assertEqual(parse_matchup_sides("UCLA @ Maryland", logos), ("UCLA", "Maryland"))
+        self.assertEqual(
+            parse_matchup_sides("Liverpool vs Tottenham…", logos),
+            ("Liverpool", "Tottenham"),
+        )
+        self.assertEqual(
+            parse_matchup_sides("Liverpool @ AFC Bournemouth…", logos),
+            ("Liverpool", "AFC Bournemouth"),
+        )
+        self.assertEqual(
+            parse_matchup_sides("🏈 UCLA vs Purdue", logos),
+            ("UCLA", "Purdue"),
+        )
+        self.assertEqual(
+            parse_matchup_sides("⚽ Liverpool vs Tottenham…", logos),
+            ("Liverpool", "Tottenham"),
+        )
+        self.assertEqual(
+            parse_matchup_sides("Liverpool against Tottenham", logos),
+            ("Liverpool", "Tottenham"),
+        )
+        self.assertEqual(
+            parse_matchup_sides("Liverpool v Tottenham", logos),
+            ("Liverpool", "Tottenham"),
+        )
+        self.assertEqual(
+            parse_matchup_sides("UCLA — Maryland", logos),
+            ("UCLA", "Maryland"),
+        )
+        self.assertIsNone(parse_matchup_sides("Premier League: Liverpool (A)", logos))
+        self.assertIsNone(parse_matchup_sides("Saturday dinner", logos))
+
+    def test_two_crests_when_both_teams_known(self):
+        logos = _team_logos_map()
+        self.assertEqual(logos["teams"][2]["id"], "purdue")
+        ucla_purdue = match_event_crests("UCLA vs Purdue", logos)
+        self.assertEqual([row["id"] for row in ucla_purdue], ["ucla", "purdue"])
+        self.assertEqual(
+            ucla_purdue[1]["logo_url"],
+            "https://a.espncdn.com/i/teamlogos/ncaa/500/2509.png",
+        )
+        self.assertEqual(
+            [row["id"] for row in match_event_crests("UCLA @ Maryland", logos)],
+            ["ucla", "maryland"],
+        )
+        self.assertEqual(
+            [row["id"] for row in match_event_crests("Liverpool vs Tottenham…", logos)],
+            ["liverpool", "tottenham"],
+        )
+        self.assertEqual(
+            [row["id"] for row in match_event_crests("Liverpool @ AFC Bournemouth…", logos)],
+            ["liverpool", "bournemouth"],
+        )
+        self.assertEqual(
+            [row["id"] for row in match_event_crests("🏈 UCLA vs Purdue", logos)],
+            ["ucla", "purdue"],
+        )
+        self.assertEqual(match_team_crest("UCLA vs Purdue", logos)["id"], "ucla")
+
+        snapshot = normalize_snapshot(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-purdue",
+                        "title": "UCLA vs Purdue",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-spurs",
+                        "title": "Liverpool vs Tottenham…",
+                        "start": "2026-09-20T11:00:00-04:00",
+                        "end": "2026-09-20T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        lists = split_home_events(
+            snapshot, now=NOW, timezone_name="America/New_York", team_logos=logos
+        )
+        week = {event["title"]: event for event in lists["this_week"]}
+        horizon = {event["title"]: event for event in lists["horizon"]}
+        self.assertEqual(
+            [row["id"] for row in week["UCLA vs Purdue"]["crests"]],
+            ["ucla", "purdue"],
+        )
+        self.assertEqual(week["UCLA vs Purdue"]["crest"]["id"], "ucla")
+        self.assertEqual(week["UCLA vs Purdue"]["category"]["id"], "sports")
+        self.assertEqual(
+            [row["id"] for row in horizon["Liverpool vs Tottenham…"]["crests"]],
+            ["liverpool", "tottenham"],
+        )
+        self.assertIsNone(week["Saturday dinner"]["crest"])
+        self.assertEqual(week["Saturday dinner"]["crests"], [])
+        self.assertNotIn("Invented Birthday", week)
+        self.assertNotIn("Invented Birthday", horizon)
+
+    def test_one_crest_when_opponent_logo_missing(self):
+        logos = _team_logos_map()
+        oregon = match_event_crests("UCLA vs Oregon", logos)
+        self.assertEqual([row["id"] for row in oregon], ["ucla"])
+        self.assertEqual(len(oregon), 1)
+        chelsea = match_event_crests("Liverpool vs Chelsea", logos)
+        self.assertEqual([row["id"] for row in chelsea], ["liverpool"])
+        self.assertNotIn("invented-oregon.png", str(oregon))
+        snapshot = normalize_snapshot(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": [
+                    {
+                        "id": "ucla-oregon",
+                        "title": "UCLA vs Oregon",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    }
+                ],
+            }
+        )
+        lists = split_home_events(
+            snapshot, now=NOW, timezone_name="America/New_York", team_logos=logos
+        )
+        event = lists["this_week"][0]
+        self.assertEqual([row["id"] for row in event["crests"]], ["ucla"])
+        self.assertEqual(event["title"], "UCLA vs Oregon")
+        self.assertEqual(len(lists["this_week"]), 1)
+
+    def test_longest_alias_wins_over_shorter_overlap(self):
+        logos = normalize_team_logos(
+            {
+                "match": [],
+                "teams": [
+                    {
+                        "id": "afc",
+                        "aliases": ["AFC"],
+                        "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/1.png",
+                    },
+                    {
+                        "id": "bournemouth",
+                        "aliases": ["AFC Bournemouth", "Bournemouth"],
+                        "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/349.png",
+                    },
+                    {
+                        "id": "liverpool",
+                        "aliases": ["Liverpool"],
+                        "logo_url": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png",
+                    },
+                ],
+                "title_parse": {"separators": ["vs", "@", "against", "v", "—"]},
+            }
+        )
+        crests = match_event_crests("Liverpool @ AFC Bournemouth…", logos)
+        self.assertEqual([row["id"] for row in crests], ["liverpool", "bournemouth"])
+        self.assertNotEqual(crests[1]["id"], "afc")
+
+    def test_old_match_only_map_still_attaches_followed_crest(self):
+        old = normalize_team_logos(
+            {
+                "match": [
+                    {
+                        "id": "ucla",
+                        "match_title_contains": ["UCLA"],
+                        "logo_url": "https://a.espncdn.com/i/teamlogos/ncaa/500/26.png",
+                    }
+                ]
+            }
+        )
+        self.assertEqual(old["teams"], [])
+        self.assertEqual(match_team_crest("🏈 UCLA vs Purdue", old)["id"], "ucla")
+        self.assertEqual(
+            [row["id"] for row in match_event_crests("UCLA vs Purdue", old)],
+            ["ucla"],
+        )
+
+    def test_category_inference_and_google_color_id(self):
+        logos = _team_logos_map()
+        self.assertEqual(infer_event_category("UCLA vs Purdue", logos, crests=[{"id": "ucla"}])["id"], "sports")
+        self.assertEqual(infer_event_category("UCLA vs Purdue", logos, crests=[{"id": "ucla"}])["color"], "#2563eb")
+        self.assertEqual(infer_event_category("Band rehearsal", logos)["id"], "music")
+        self.assertEqual(infer_event_category("Band rehearsal", logos)["color"], "#be185d")
+        self.assertEqual(infer_event_category("Dinner with Sarah", logos)["id"], "family_friends")
+        self.assertEqual(infer_event_category("Mom birthday", logos)["id"], "family_friends")
+        self.assertEqual(infer_event_category("EWR → BTV", logos)["id"], "travel")
+        self.assertEqual(infer_event_category("October trip", logos)["id"], "travel")
+        self.assertEqual(infer_event_category("Saturday dinner", logos)["id"], "other")
+        self.assertEqual(infer_event_category("Dentist", logos)["id"], "other")
+        self.assertEqual(
+            infer_event_category(
+                "UCLA vs Purdue",
+                logos,
+                crests=[{"id": "ucla"}],
+                google_color_id="4",
+            )["id"],
+            "music",
+        )
+        snapshot = normalize_snapshot(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": [
+                    {
+                        "id": "gig",
+                        "title": "Band rehearsal",
+                        "start": "2026-09-12T18:00:00-04:00",
+                        "end": "2026-09-12T20:00:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "flight",
+                        "title": "EWR → BTV",
+                        "start": "2026-09-12T15:00:00-04:00",
+                        "end": "2026-09-12T16:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "colored",
+                        "title": "Saturday dinner",
+                        "start": "2026-09-13T18:00:00-04:00",
+                        "end": "2026-09-13T20:00:00-04:00",
+                        "all_day": False,
+                        "google_color_id": "10",
+                    },
+                ],
+            }
+        )
+        lists = split_home_events(
+            snapshot, now=NOW, timezone_name="America/New_York", team_logos=logos
+        )
+        by_title = {event["title"]: event for event in lists["this_week"]}
+        self.assertEqual(by_title["Band rehearsal"]["category"]["id"], "music")
+        self.assertEqual(by_title["EWR → BTV"]["category"]["id"], "travel")
+        self.assertEqual(by_title["Saturday dinner"]["category"]["id"], "family_friends")
+        self.assertEqual(by_title["Saturday dinner"]["category"]["color"], "#059669")
+        self.assertNotIn("Invented Birthday", by_title)
 
 
 class IcsParseTests(unittest.TestCase):
@@ -400,6 +650,21 @@ END:VCALENDAR
         self.assertIn("October trip", titles)
         self.assertNotIn("Cancelled thing", titles)
         self.assertNotIn("Invented Birthday", titles)
+
+    def test_parse_ics_keeps_google_color_id(self):
+        ics = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:gig
+DTSTART;TZID=America/New_York:20260912T180000
+DTEND;TZID=America/New_York:20260912T200000
+SUMMARY:Band rehearsal
+COLOR:4
+END:VEVENT
+END:VCALENDAR
+"""
+        snapshot = parse_ics(ics, timezone_name="America/New_York", now=NOW)
+        self.assertEqual(snapshot["events"][0]["title"], "Band rehearsal")
+        self.assertEqual(snapshot["events"][0]["google_color_id"], "4")
 
 
 class CalendarStoreAndHomeTests(unittest.TestCase):
@@ -620,6 +885,132 @@ class CalendarStoreAndHomeTests(unittest.TestCase):
         self.assertEqual(horizon.count("data-cal-crest="), 1)
         self._assert_home_calendar_has_no_operator_chrome(html)
 
+    def test_home_shows_two_crests_for_known_opponents(self):
+        self.store.put_json(
+            BucketLayout.calendar_team_logos_key(),
+            json.loads(_TEAM_LOGOS.read_text(encoding="utf-8")),
+        )
+        self.calendar.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": SNAPSHOT_EVENTS
+                + [
+                    {
+                        "id": "ucla-purdue",
+                        "title": "UCLA vs Purdue",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "ucla-maryland",
+                        "title": "UCLA @ Maryland",
+                        "start": "2026-09-12T16:00:00-04:00",
+                        "end": "2026-09-12T19:00:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-spurs",
+                        "title": "Liverpool vs Tottenham…",
+                        "start": "2026-09-20T11:00:00-04:00",
+                        "end": "2026-09-20T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "liverpool-afc",
+                        "title": "Liverpool @ AFC Bournemouth…",
+                        "start": "2026-09-21T11:00:00-04:00",
+                        "end": "2026-09-21T13:00:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        html = self.client.get("/").get_data(as_text=True)
+        week = html.split('data-calendar="this-week"')[1].split('data-calendar="horizon"')[0]
+        horizon = html.split('data-calendar="horizon"')[1]
+        self.assertIn("UCLA vs Purdue", week)
+        self.assertIn('data-cal-crest="ucla"', week)
+        self.assertIn('data-cal-crest="purdue"', week)
+        self.assertIn("https://a.espncdn.com/i/teamlogos/ncaa/500/2509.png", week)
+        self.assertIn('data-cal-crest="maryland"', week)
+        self.assertIn("Liverpool vs Tottenham…", horizon)
+        self.assertIn('data-cal-crest="liverpool"', horizon)
+        self.assertIn('data-cal-crest="tottenham"', horizon)
+        self.assertIn('data-cal-crest="bournemouth"', horizon)
+        purdue_at = week.find("UCLA vs Purdue")
+        purdue_block = week[max(0, purdue_at - 700) : purdue_at + 80]
+        self.assertIn('data-cal-crest="ucla"', purdue_block)
+        self.assertIn('data-cal-crest="purdue"', purdue_block)
+        self.assertEqual(purdue_block.count("data-cal-crest="), 2)
+        self.assertNotIn("Invented Birthday", html)
+        self._assert_home_calendar_has_no_operator_chrome(html)
+
+    def test_home_category_colors_on_week_and_horizon(self):
+        self.store.put_json(
+            BucketLayout.calendar_team_logos_key(),
+            json.loads(_TEAM_LOGOS.read_text(encoding="utf-8")),
+        )
+        self.calendar.save(
+            {
+                "updated_at": "2026-09-12T00:00:00+00:00",
+                "timezone": "America/New_York",
+                "events": [
+                    {
+                        "id": "ucla-purdue",
+                        "title": "UCLA vs Purdue",
+                        "start": "2026-09-12T19:30:00-04:00",
+                        "end": "2026-09-12T22:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "rehearsal",
+                        "title": "Band rehearsal",
+                        "start": "2026-09-12T18:00:00-04:00",
+                        "end": "2026-09-12T20:00:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "flight",
+                        "title": "EWR → BTV",
+                        "start": "2026-09-13T15:00:00-04:00",
+                        "end": "2026-09-13T16:30:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "dinner",
+                        "title": "Dinner with Sarah",
+                        "start": "2026-09-18T18:00:00-04:00",
+                        "end": "2026-09-18T20:00:00-04:00",
+                        "all_day": False,
+                    },
+                    {
+                        "id": "dentist",
+                        "title": "Dentist",
+                        "start": "2026-09-19T14:00:00-04:00",
+                        "end": "2026-09-19T14:45:00-04:00",
+                        "all_day": False,
+                    },
+                ],
+            }
+        )
+        html = self.client.get("/").get_data(as_text=True)
+        week = html.split('data-calendar="this-week"')[1].split('data-calendar="horizon"')[0]
+        horizon = html.split('data-calendar="horizon"')[1]
+        self.assertIn('data-cal-category="sports"', week)
+        self.assertIn("#2563eb", week)
+        self.assertIn('data-cal-category="music"', week)
+        self.assertIn("#be185d", week)
+        self.assertIn('data-cal-category="travel"', week)
+        self.assertIn("#d97706", week)
+        self.assertIn('data-cal-category="family_friends"', horizon)
+        self.assertIn("#059669", horizon)
+        self.assertIn('data-cal-category="other"', horizon)
+        self.assertIn("#6b7280", horizon)
+        self.assertNotIn("Invented Birthday", html)
+        self._assert_home_calendar_has_no_operator_chrome(html)
+
     def test_home_survives_missing_team_logo_map(self):
         self.calendar.save(
             {
@@ -637,7 +1028,8 @@ class CalendarStoreAndHomeTests(unittest.TestCase):
                 ],
             }
         )
-        self.assertEqual(self.calendar.load_team_logos(), {"match": []})
+        self.assertEqual(self.calendar.load_team_logos()["match"], [])
+        self.assertEqual(self.calendar.load_team_logos()["teams"], [])
         html = self.client.get("/").get_data(as_text=True)
         self.assertIn("UCLA vs Oregon", html)
         self.assertIn("Saturday dinner", html)
