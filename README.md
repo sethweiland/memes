@@ -167,7 +167,7 @@ The daily candidate workflow uses S3-backed storage for both queue metadata and 
 - Candidate queue JSON stored in S3 under `ops/queue/daily-candidates/{date}.json` (private)
 - X activity drafts at `ops/queue/x-activity/{date}.json` (private; local fallback `data/x_activity/`)
 - Project board at `ops/projects/board.json` (private; local fallback `data/projects/board.json`; seeded from tenant config when missing)
-- Calendar snapshot at `ops/calendar/snapshot.json` (private; local fallback `data/calendar/snapshot.json`). Optional `CALENDAR_ICS_URL` caches into that file. Optional Home crests from `ops/calendar/team-logos.json` (local fallback `data/calendar/team-logos.json`). No Google OAuth in Flask.
+- Calendar snapshot at `ops/calendar/snapshot.json` (private; local fallback `data/calendar/snapshot.json`). Optional `CALENDAR_ICS_URL` caches into that file. Optional Home crests + category colors from `ops/calendar/team-logos.json` (local fallback `data/calendar/team-logos.json`; Stevie shape: `match[]`, `teams[]`+aliases, `title_parse.separators`, `categories[]`). Two crests when both sides of a matchup are known. No Google OAuth in Flask.
 - Grok Bot routines at `ops/grok-bot/routines.json` (private; git seed / local fallback `data/grok_bot_routines.json`)
 - Local cache in `data/daily_candidates/` when S3 is unset or unreachable
 - Web UI loads from S3 with local fallback

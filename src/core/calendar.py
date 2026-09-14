@@ -8,9 +8,19 @@ Not a sixth primitive. The contract is a snapshot:
 S3: ``ops/calendar/snapshot.json``
 Local fallback: ``data/calendar/snapshot.json``
 
-Optional crests: ``ops/calendar/team-logos.json`` (local
-``data/calendar/team-logos.json``). Title substring match only. Missing map
-or unmatched titles must not break Home. Do not invent fixtures.
+Optional crests + category colors: ``ops/calendar/team-logos.json``
+(local ``data/calendar/team-logos.json``). Shape:
+
+- ``match[]`` — backward-compatible UCLA/Liverpool (etc.) title needles
+- ``teams[]`` — opponents and any team id with ``aliases`` + ``logo_url``
+  (longest alias wins)
+- ``title_parse.separators`` — ``vs`` / ``@`` / ``against`` / ``v`` / ``—``
+- ``categories[]`` — ``sports`` / ``music`` / ``family_friends`` /
+  ``travel`` / ``other`` with hex + ``google_color_id``
+
+Parse both sides of a separator for crests when logos are known. Missing
+opponent logo = one crest. Do not invent fixtures or logo URLs. Missing
+map or unmatched titles must not break Home.
 
 If ``CALENDAR_ICS_URL`` is set, fetch that feed, parse VEVENTs into the same
 shape, and cache the result as the snapshot. Credentials never go in tenant
@@ -54,6 +64,72 @@ ICS_CACHE_SECONDS = 15 * 60
 ICS_MAX_BYTES = 1_000_000
 ICS_TIMEOUT_SECONDS = 10
 EMPTY_SNAPSHOT_MESSAGE = "No calendar snapshot yet."
+DEFAULT_TITLE_SEPARATORS = ("vs", "@", "against", "v", "—")
+CATEGORY_IDS = ("sports", "music", "family_friends", "travel", "other")
+DEFAULT_CATEGORIES = (
+    {"id": "sports", "color": "#2563eb", "google_color_id": "9"},
+    {"id": "music", "color": "#be185d", "google_color_id": "4"},
+    {"id": "family_friends", "color": "#059669", "google_color_id": "10"},
+    {"id": "travel", "color": "#d97706", "google_color_id": "6"},
+    {"id": "other", "color": "#6b7280", "google_color_id": "8"},
+)
+SPORTS_TITLE_NEEDLES = (
+    "kickoff",
+    "kick-off",
+    "football",
+    "soccer",
+    "basketball",
+    "baseball",
+    "hockey",
+    "ncaa",
+    "premier league",
+    "bruins",
+)
+MUSIC_TITLE_NEEDLES = (
+    "gig",
+    "rehearsal",
+    "concert",
+    "band",
+    "soundcheck",
+    "choir",
+    "orchestra",
+    "jam",
+)
+TRAVEL_TITLE_NEEDLES = (
+    "flight",
+    "airport",
+    "layover",
+    "boarding",
+    "depart",
+    "travel",
+    "trip",
+)
+FAMILY_TITLE_NEEDLES = (
+    "mom",
+    "dad",
+    "mama",
+    "papa",
+    "mother",
+    "father",
+    "sister",
+    "brother",
+    "aunt",
+    "uncle",
+    "grandma",
+    "grandpa",
+    "family",
+    "birthday",
+    "wedding",
+    "anniversary",
+    "friends",
+    "hangout",
+)
+_IATA_HOP = re.compile(
+    r"\b[A-Z]{3}\s*(?:→|->|⟶|—|–|-)\s*[A-Z]{3}\b"
+)
+_PERSON_WITH = re.compile(
+    r"\b(?:with|w/)\s+[A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)?\b"
+)
 _UNSET = object()
 _STREET_WORD = re.compile(
     r"\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|"
@@ -122,7 +198,7 @@ def normalize_event(raw: Any, *, default_tz: Optional[str] = None) -> Optional[d
     if end < start:
         end = start
     event_id = _blank(raw.get("id")) or f"{title}:{start.isoformat()}"
-    return {
+    event = {
         "id": event_id,
         "title": title,
         "start": start.isoformat(),
@@ -131,6 +207,10 @@ def normalize_event(raw: Any, *, default_tz: Optional[str] = None) -> Optional[d
         "location": _blank(raw.get("location")),
         "url": _blank(raw.get("url")),
     }
+    color_id = _google_color_id(raw.get("google_color_id") or raw.get("color_id") or raw.get("color"))
+    if color_id:
+        event["google_color_id"] = color_id
+    return event
 
 
 def normalize_snapshot(data: Any, *, default_tz: Optional[str] = None) -> Optional[dict[str, Any]]:
@@ -167,81 +247,441 @@ def empty_snapshot(*, timezone_name: Optional[str] = None) -> dict[str, Any]:
 
 
 def empty_team_logos() -> dict[str, Any]:
-    return {"match": []}
+    return {
+        "match": [],
+        "teams": [],
+        "title_parse": {"separators": list(DEFAULT_TITLE_SEPARATORS)},
+        "categories": [dict(item) for item in DEFAULT_CATEGORIES],
+    }
+
+
+def _http_url(value: Any) -> Optional[str]:
+    logo_url = _blank(value)
+    if not logo_url:
+        return None
+    parsed = urlparse(logo_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return logo_url
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        text = _blank(item)
+        if not text:
+            continue
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(text)
+    return out
+
+
+def _hex_color(value: Any) -> Optional[str]:
+    text = _blank(value)
+    if not text:
+        return None
+    if re.fullmatch(r"#?[0-9A-Fa-f]{6}", text):
+        return text if text.startswith("#") else f"#{text}"
+    return None
+
+
+def _google_color_id(value: Any) -> Optional[str]:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        text = str(value)
+    else:
+        text = str(value).strip()
+    if re.fullmatch(r"\d{1,2}", text) and 1 <= int(text) <= 11:
+        return text
+    return None
+
+
+def _normalize_match_row(item: Any, seen: set[str]) -> Optional[dict[str, Any]]:
+    if not isinstance(item, dict):
+        return None
+    team_id = _blank(item.get("id"))
+    logo_url = _http_url(item.get("logo_url"))
+    needles = _string_list(item.get("match_title_contains"))
+    if not team_id or not logo_url or not needles or team_id in seen:
+        return None
+    seen.add(team_id)
+    return {
+        "id": team_id,
+        "match_title_contains": needles,
+        "logo_url": logo_url,
+        "emoji": _blank(item.get("emoji")),
+        "color": _blank(item.get("color")),
+    }
+
+
+def _normalize_team_row(item: Any, seen: set[str]) -> Optional[dict[str, Any]]:
+    if not isinstance(item, dict):
+        return None
+    team_id = _blank(item.get("id"))
+    logo_url = _http_url(item.get("logo_url"))
+    aliases = _string_list(item.get("aliases"))
+    if not aliases:
+        aliases = _string_list(item.get("match_title_contains"))
+    if not team_id or not logo_url or not aliases or team_id in seen:
+        return None
+    seen.add(team_id)
+    row = {
+        "id": team_id,
+        "aliases": aliases,
+        "logo_url": logo_url,
+    }
+    name = _blank(item.get("name"))
+    if name:
+        row["name"] = name
+    emoji = _blank(item.get("emoji"))
+    if emoji:
+        row["emoji"] = emoji
+    color = _blank(item.get("color"))
+    if color:
+        row["color"] = color
+    return row
+
+
+def _normalize_separators(raw: Any) -> list[str]:
+    separators = _string_list((raw or {}).get("separators") if isinstance(raw, dict) else None)
+    if not separators:
+        return list(DEFAULT_TITLE_SEPARATORS)
+    known = {item.casefold(): item for item in DEFAULT_TITLE_SEPARATORS}
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in separators:
+        token = known.get(item.casefold(), item)
+        key = token.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(token)
+    return out or list(DEFAULT_TITLE_SEPARATORS)
+
+
+def _normalize_categories(raw: Any) -> list[dict[str, Any]]:
+    by_id = {item["id"]: dict(item) for item in DEFAULT_CATEGORIES}
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            cat_id = _blank(item.get("id"))
+            if cat_id not in by_id:
+                continue
+            row = dict(by_id[cat_id])
+            color = _hex_color(item.get("color") or item.get("hex"))
+            if color:
+                row["color"] = color
+            gid = _google_color_id(item.get("google_color_id"))
+            if gid:
+                row["google_color_id"] = gid
+            needles = _string_list(item.get("match_title_contains"))
+            if needles:
+                row["match_title_contains"] = needles
+            by_id[cat_id] = row
+    return [by_id[cat_id] for cat_id in CATEGORY_IDS]
 
 
 def normalize_team_logos(data: Any) -> Optional[dict[str, Any]]:
-    """Keep usable crest rows only. Reject junk. Do not invent teams."""
+    """Keep usable crest/category rows only. Reject junk. Do not invent teams."""
     if not isinstance(data, dict):
         return None
-    raw = data.get("match")
-    if raw is None:
-        raw = []
-    if not isinstance(raw, list):
-        return None
-    teams: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for item in raw:
+    match_raw = data.get("match")
+    if match_raw is None:
+        match_raw = []
+    teams_raw = data.get("teams")
+    if teams_raw is None:
+        teams_raw = []
+    if not isinstance(match_raw, list):
+        match_raw = []
+    if not isinstance(teams_raw, list):
+        teams_raw = []
+    match_rows: list[dict[str, Any]] = []
+    match_seen: set[str] = set()
+    for item in match_raw:
+        row = _normalize_match_row(item, match_seen)
+        if row:
+            match_rows.append(row)
+    team_rows: list[dict[str, Any]] = []
+    team_seen: set[str] = set()
+    for item in teams_raw:
+        row = _normalize_team_row(item, team_seen)
+        if row:
+            team_rows.append(row)
+    return {
+        "match": match_rows,
+        "teams": team_rows,
+        "title_parse": {"separators": _normalize_separators(data.get("title_parse"))},
+        "categories": _normalize_categories(data.get("categories")),
+    }
+
+
+def _crest_payload(team: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": team["id"],
+        "logo_url": team["logo_url"],
+        "emoji": _blank(team.get("emoji")),
+        "color": _blank(team.get("color")),
+    }
+
+
+def _alias_in_text(haystack: str, alias: str) -> bool:
+    if not alias or not haystack:
+        return False
+    pattern = r"(?<!\w)" + re.escape(alias) + r"(?!\w)"
+    return re.search(pattern, haystack) is not None
+
+
+def _crest_teams(logos: Optional[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not isinstance(logos, dict):
+        return []
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in logos.get("teams") or []:
         if not isinstance(item, dict):
             continue
         team_id = _blank(item.get("id"))
-        logo_url = _blank(item.get("logo_url"))
-        needles_raw = item.get("match_title_contains")
-        if not team_id or not logo_url or not isinstance(needles_raw, list):
+        logo_url = _http_url(item.get("logo_url"))
+        aliases = _string_list(item.get("aliases"))
+        if not team_id or not logo_url or not aliases:
             continue
-        parsed = urlparse(logo_url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        by_id[team_id] = {
+            "id": team_id,
+            "aliases": aliases,
+            "logo_url": logo_url,
+            "emoji": _blank(item.get("emoji")),
+            "color": _blank(item.get("color")),
+        }
+    for item in logos.get("match") or []:
+        if not isinstance(item, dict):
             continue
-        needles = []
-        for needle in needles_raw:
-            text = _blank(needle)
-            if text:
-                needles.append(text)
-        if not needles or team_id in seen:
+        team_id = _blank(item.get("id"))
+        logo_url = _http_url(item.get("logo_url"))
+        aliases = _string_list(item.get("match_title_contains"))
+        if not team_id or not logo_url or not aliases:
             continue
-        seen.add(team_id)
-        teams.append(
-            {
+        existing = by_id.get(team_id)
+        if existing is None:
+            by_id[team_id] = {
                 "id": team_id,
-                "match_title_contains": needles,
+                "aliases": aliases,
                 "logo_url": logo_url,
                 "emoji": _blank(item.get("emoji")),
                 "color": _blank(item.get("color")),
             }
-        )
-    return {"match": teams}
+            continue
+        merged = list(existing["aliases"])
+        seen = {alias.casefold() for alias in merged}
+        for alias in aliases:
+            if alias.casefold() not in seen:
+                merged.append(alias)
+                seen.add(alias.casefold())
+        existing["aliases"] = merged
+        if not existing.get("emoji"):
+            existing["emoji"] = _blank(item.get("emoji"))
+        if not existing.get("color"):
+            existing["color"] = _blank(item.get("color"))
+    return list(by_id.values())
+
+
+def _best_team_in_text(text: str, teams: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    haystack = (text or "").casefold()
+    if not haystack:
+        return None
+    best: Optional[dict[str, Any]] = None
+    best_len = -1
+    for team in teams:
+        for alias in team.get("aliases") or []:
+            folded = str(alias).casefold()
+            if len(folded) <= best_len:
+                continue
+            if _alias_in_text(haystack, folded):
+                best = team
+                best_len = len(folded)
+    return best
+
+
+def _separator_regex(separators: list[str]) -> re.Pattern[str]:
+    tokens = sorted({item for item in separators if item}, key=len, reverse=True)
+    parts: list[str] = []
+    for token in tokens:
+        escaped = re.escape(token)
+        if token.isalpha():
+            parts.append(rf"\b{escaped}\.?\b")
+        else:
+            parts.append(escaped)
+    if not parts:
+        parts = [r"\bvs\.?\b"]
+    return re.compile(rf"\s*(?:{'|'.join(parts)})\s*", re.I)
+
+
+def parse_matchup_sides(
+    title: str,
+    logos: Optional[dict[str, Any]] = None,
+) -> Optional[tuple[str, str]]:
+    """Split a fixture title on vs / @ / against / v / —. None if no separator."""
+    cleaned = (title or "").replace("\u00a0", " ").strip()
+    cleaned = re.sub(r"^[🏈⚽]\s*", "", cleaned)
+    if not cleaned:
+        return None
+    separators = list(DEFAULT_TITLE_SEPARATORS)
+    if isinstance(logos, dict):
+        parsed = (logos.get("title_parse") or {}).get("separators")
+        if isinstance(parsed, list) and parsed:
+            separators = [str(item) for item in parsed if _blank(item)]
+    match = _separator_regex(separators).search(cleaned)
+    if not match:
+        return None
+    left = cleaned[: match.start()].strip(" .…")
+    right = cleaned[match.end() :].strip(" .…")
+    if not left or not right:
+        return None
+    return left, right
+
+
+def match_event_crests(
+    title: str,
+    logos: Optional[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Crests for both sides of a matchup when logos are known. Never invent URLs."""
+    teams = _crest_teams(logos)
+    if not teams or not (title or "").strip():
+        return []
+    sides = parse_matchup_sides(title, logos)
+    found: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if sides:
+        for side in sides:
+            team = _best_team_in_text(side, teams)
+            if team and team["id"] not in seen:
+                found.append(_crest_payload(team))
+                seen.add(team["id"])
+        return found
+    team = _best_team_in_text(title, teams)
+    if team:
+        return [_crest_payload(team)]
+    return []
 
 
 def match_team_crest(title: str, logos: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
-    """First map row whose match_title_contains needle is a title substring.
+    """First crest for a title (home/followed side, or whole-title match).
 
-    Not an exact-title match. Sport emoji prefixes such as ``🏈`` / ``⚽``
-    still match because only the needle has to appear in the title.
+    Sport emoji prefixes such as ``🏈`` / ``⚽`` still match. Opponent crests
+    are available via ``match_event_crests``.
     """
+    crests = match_event_crests(title, logos)
+    return crests[0] if crests else None
+
+
+def _category_by_id(logos: Optional[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    rows = (logos or {}).get("categories") if isinstance(logos, dict) else None
+    by_id = {item["id"]: dict(item) for item in DEFAULT_CATEGORIES}
+    if isinstance(rows, list):
+        for item in rows:
+            if not isinstance(item, dict):
+                continue
+            cat_id = _blank(item.get("id"))
+            color = _hex_color(item.get("color"))
+            if cat_id not in by_id or not color:
+                continue
+            by_id[cat_id] = {
+                "id": cat_id,
+                "color": color,
+                "google_color_id": _google_color_id(item.get("google_color_id"))
+                or by_id[cat_id]["google_color_id"],
+                "match_title_contains": _string_list(item.get("match_title_contains")),
+            }
+    return by_id
+
+
+def _needle_in_title(haystack: str, needle: str) -> bool:
+    folded = needle.casefold()
+    if not folded:
+        return False
+    if any(ord(ch) > 127 for ch in needle) or not re.search(r"[A-Za-z0-9]", needle):
+        return folded in haystack
+    return re.search(r"(?<!\w)" + re.escape(folded) + r"(?!\w)", haystack) is not None
+
+
+def _title_hits_needles(title: str, needles: tuple[str, ...] | list[str]) -> bool:
     haystack = (title or "").casefold()
-    if not haystack:
-        return None
-    raw = logos.get("match") if isinstance(logos, dict) else None
-    if not isinstance(raw, list):
-        return None
-    for team in raw:
-        if not isinstance(team, dict):
-            continue
-        logo_url = _blank(team.get("logo_url"))
-        team_id = _blank(team.get("id"))
-        needles = team.get("match_title_contains")
-        if not logo_url or not team_id or not isinstance(needles, list):
-            continue
-        for needle in needles:
-            text = _blank(needle)
-            if text and text.casefold() in haystack:
-                return {
-                    "id": team_id,
-                    "logo_url": logo_url,
-                    "emoji": _blank(team.get("emoji")),
-                    "color": _blank(team.get("color")),
-                }
-    return None
+    return any(_needle_in_title(haystack, needle) for needle in needles)
+
+
+def infer_event_category(
+    title: str,
+    logos: Optional[dict[str, Any]] = None,
+    *,
+    crests: Optional[list[dict[str, Any]]] = None,
+    google_color_id: Any = None,
+) -> dict[str, Any]:
+    """Soft Home category. Google color id wins when it maps; else heuristics."""
+    by_id = _category_by_id(logos)
+    gid = _google_color_id(google_color_id)
+    if gid:
+        for row in by_id.values():
+            if row.get("google_color_id") == gid:
+                return {"id": row["id"], "color": row["color"], "google_color_id": gid}
+    if crests:
+        sports = by_id["sports"]
+        return {
+            "id": "sports",
+            "color": sports["color"],
+            "google_color_id": sports["google_color_id"],
+        }
+    extra = {
+        cat_id: _string_list(row.get("match_title_contains"))
+        for cat_id, row in by_id.items()
+    }
+    raw_title = title or ""
+    if "🏈" in raw_title or "⚽" in raw_title:
+        sports = by_id["sports"]
+        return {
+            "id": "sports",
+            "color": sports["color"],
+            "google_color_id": sports["google_color_id"],
+        }
+    if _IATA_HOP.search(raw_title):
+        travel = by_id["travel"]
+        return {
+            "id": "travel",
+            "color": travel["color"],
+            "google_color_id": travel["google_color_id"],
+        }
+    checks = (
+        ("sports", SPORTS_TITLE_NEEDLES),
+        ("music", MUSIC_TITLE_NEEDLES),
+        ("travel", TRAVEL_TITLE_NEEDLES),
+        ("family_friends", FAMILY_TITLE_NEEDLES),
+    )
+    for cat_id, builtin in checks:
+        needles = list(builtin) + extra.get(cat_id, [])
+        if _title_hits_needles(raw_title, needles):
+            row = by_id[cat_id]
+            return {
+                "id": cat_id,
+                "color": row["color"],
+                "google_color_id": row["google_color_id"],
+            }
+    if _PERSON_WITH.search(raw_title):
+        row = by_id["family_friends"]
+        return {
+            "id": "family_friends",
+            "color": row["color"],
+            "google_color_id": row["google_color_id"],
+        }
+    other = by_id["other"]
+    return {
+        "id": "other",
+        "color": other["color"],
+        "google_color_id": other["google_color_id"],
+    }
 
 
 def _hydrate(event: dict[str, Any], tz: ZoneInfo) -> Optional[dict[str, Any]]:
@@ -395,6 +835,13 @@ def _present_event(
     team_logos: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     title = event["title"]
+    crests = match_event_crests(title, team_logos)
+    category = infer_event_category(
+        title,
+        team_logos,
+        crests=crests,
+        google_color_id=event.get("google_color_id"),
+    )
     return {
         "id": event["id"],
         "title": title,
@@ -404,7 +851,9 @@ def _present_event(
         "location": present_location(title, event.get("location")),
         "url": event.get("url"),
         "when_label": _format_event_when(event, tz),
-        "crest": match_team_crest(title, team_logos),
+        "crests": crests,
+        "crest": crests[0] if crests else None,
+        "category": category,
     }
 
 
@@ -472,7 +921,9 @@ def split_home_events(
     Split a snapshot into This week vs On the horizon.
 
     Does not invent events. Items outside the two windows are omitted.
-    Optional team_logos attach a crest when a title contains a map needle.
+    Optional team_logos attach crests when both sides of vs/@ parse to known
+    logos, and a soft category color (sports / music / family_friends / travel /
+    other). Google color id on the event wins when it maps.
     """
     tz = resolve_timezone(
         timezone_name
@@ -661,17 +1112,21 @@ def parse_ics(
                 continue
             occ_end = occ + length
             event_id = uid if not rrule else f"{uid}:{occ.isoformat()}"
-            events.append(
-                {
-                    "id": event_id,
-                    "title": title,
-                    "start": occ.isoformat(),
-                    "end": occ_end.isoformat(),
-                    "all_day": all_day,
-                    "location": location,
-                    "url": url,
-                }
+            payload = {
+                "id": event_id,
+                "title": title,
+                "start": occ.isoformat(),
+                "end": occ_end.isoformat(),
+                "all_day": all_day,
+                "location": location,
+                "url": url,
+            }
+            color_id = _google_color_id(
+                block.get("X-GOOGLE-CALENDAR-COLOR-ID") or block.get("COLOR")
             )
+            if color_id:
+                payload["google_color_id"] = color_id
+            events.append(payload)
 
     for line in _unfold_ics(text):
         name, params, value = _split_ics_prop(line)
