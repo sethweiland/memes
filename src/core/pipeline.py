@@ -330,6 +330,8 @@ FORMAT: next template name...
 
             idea = img.idea
             caption_context = self._get_caption_context(idea)
+            grounding = img.grounding or {}
+            rationale = (idea.rationale or idea.explanation or "").strip()
 
             # Use prompt template if available
             if self.prompts.has_template("caption"):
@@ -338,19 +340,33 @@ FORMAT: next template name...
                     top_text=idea.top_text,
                     bottom_text=idea.bottom_text,
                     explanation=idea.explanation,
+                    rationale=rationale,
                     source_quote=idea.source_quote,
                     artist_reference=idea.artist_reference,
                     context_text=caption_context,
+                    grounding_claim=grounding.get("claim", ""),
+                    grounding_support=grounding.get("support", ""),
+                    grounding_confidence=grounding.get("confidence", ""),
                 )
             else:
                 # Fallback
+                grounding_block = ""
+                if grounding.get("claim"):
+                    grounding_block = f"""
+GROUNDING (do not invent beyond this):
+Claim: {grounding.get("claim")}
+Support: {grounding.get("support", "")}
+Confidence: {grounding.get("confidence", "")}
+"""
                 context = f"""
 Meme: {idea.top_text} / {idea.bottom_text}
 Why it's funny: {idea.explanation}
+Reviewer rationale: {rationale or 'N/A'}
 Source material: {idea.source_quote if idea.source_quote else 'N/A'}
 Artist referenced: {idea.artist_reference if idea.artist_reference else 'N/A'}
 Retrieved context:
 {caption_context if caption_context else 'N/A'}
+{grounding_block}
 """
                 prompt = f"""Write a short social media caption (2-3 sentences) that explains the historical context behind this {self.domain.display_name.lower()} meme.
 
@@ -360,8 +376,8 @@ The caption should:
 - Explain the real history that makes this funny
 - Be educational but not dry
 - Sound natural for Instagram/Twitter
-- Only use facts supported by the retrieved context or the meme itself
-- If the retrieved context does not support a specific claim, keep the caption observational instead of factual
+- Only use facts supported by the retrieved context, grounding note, or the meme itself
+- If grounding confidence is low or context does not support a specific claim, keep the caption observational instead of factual — do not invent festival lore, tours, or gear history
 - NOT include hashtags
 
 Just write the caption, nothing else."""
@@ -441,9 +457,11 @@ Just write the caption, nothing else."""
 
         # 2. Evaluate and rank (if enabled)
         concepts_evaluated = 0
+        scored_by_idea: dict[int, object] = {}
         if self.config.evaluate and concepts:
             scored = self.evaluate_concepts(concepts)
             concepts_evaluated = len(scored)
+            scored_by_idea = {id(s.idea): s for s in scored}
             # Filter by min_score
             if self.config.min_score > 0:
                 scored = [s for s in scored if s.overall_score >= self.config.min_score]
@@ -452,6 +470,18 @@ Just write the caption, nothing else."""
 
         # 3. Generate images
         images = self.generate_images_from_concepts(concepts, num_images)
+
+        for img in images:
+            scored_item = scored_by_idea.get(id(img.idea))
+            if scored_item is not None:
+                img.score = scored_item.overall_score
+                img.overall_score = scored_item.overall_score
+                img.evaluation_notes = getattr(scored_item, "reasoning", "") or ""
+                img.scores = {
+                    "humor": getattr(scored_item, "humor_score", 0),
+                    "authenticity": getattr(scored_item, "authenticity_score", 0),
+                    "template_fit": getattr(scored_item, "template_fit_score", 0),
+                }
 
         # 3. Generate captions
         images = self.generate_captions(images)
@@ -476,6 +506,11 @@ Just write the caption, nothing else."""
                     "image_url": img.image_url,
                     "local_path": img.local_path,
                     "caption": img.caption,
+                    "rationale": (img.idea.rationale or img.idea.explanation or "").strip(),
+                    "evaluation_notes": img.evaluation_notes,
+                    "scores": img.scores or {},
+                    "overall_score": round(img.overall_score, 1) if img.overall_score is not None else None,
+                    "grounding": img.grounding,
                 }
                 for i, img in enumerate(images)
             ],

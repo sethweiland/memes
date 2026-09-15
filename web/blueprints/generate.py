@@ -313,6 +313,16 @@ def _run_stage1(
         except Exception as e:
             ai_critique_error = str(e)
 
+    try:
+        from src.core.grounding import ground_evaluated
+
+        grok_client = getattr(getattr(two_stage, "rag", None), "grok", None) or getattr(two_stage, "grok", None)
+        if grok_client and evaluated:
+            job.progress = "Grounding specific claims..."
+            evaluated = ground_evaluated(grok_client, topic, evaluated)
+    except Exception:
+        pass
+
     # Store pipeline + evaluated memes for Stage 2
     job.result = {
         "evaluated": evaluated,
@@ -559,6 +569,8 @@ def api_status(job_id):
                     "overall_score": round(e.overall_score, 1),
                     "scores": e.scores,
                     "evaluation_notes": e.evaluation_notes,
+                    "rationale": (getattr(e.idea, "rationale", "") or e.idea.explanation or "").strip(),
+                    "grounding": getattr(e, "grounding", None),
                     "is_absurdist": e.is_absurdist,
                     "template_category": getattr(e, "template_category", ""),
                     "generation_source": getattr(e, "generation_source", ""),

@@ -36,6 +36,7 @@ This:
 Navigate to: **http://localhost:5050/memes/gallery/daily-candidates/** (old `/gallery/daily-candidates/` 302s here)
 
 - View all pending candidates
+- Expand **Why** on a card to see topic rationale, joke rationale, scores, evaluator notes, and grounding
 - Edit captions
 - Click **✅ Approve & Post** to upload to S3 and publish to Instagram
 - Click **⏭️ Skip** to mark a candidate as skipped
@@ -101,6 +102,7 @@ Candidates are stored in S3 (`ops/queue/daily-candidates/{date}.json`) with loca
 {
   "date": "2026-09-11",
   "topic": "mandolin vs guitar debates",
+  "topic_rationale": "Evergreen scene fight; mandolin chop vs guitar volume at jams.",
   "domain": "bluegrass",
   "generated_at": "2026-09-11T09:00:00",
   "output_dir": "output/memes/2026-09-11_090000_bluegrass",
@@ -124,11 +126,36 @@ Candidates are stored in S3 (`ops/queue/daily-candidates/{date}.json`) with loca
         "brand_fit": 9,
         "relatability": 7
       },
-      "overall_score": 8.5
+      "overall_score": 8.5,
+      "rationale": "Scene-native mandolin-vs-guitar roast; Drake template is reject/approve.",
+      "evaluation_notes": "Clear punchline, authentic jam-session pain.",
+      "grounding": {
+        "claim": "Mandolin is treated as the superior jam instrument",
+        "support": "Well-known bluegrass scene stereotype, not a specific tour fact",
+        "confidence": "medium"
+      }
     }
   ]
 }
 ```
+
+### Rationale and grounding
+
+Each new batch stores **why the joke exists** so you can check it before Approve:
+
+- **`topic_rationale`** (batch): one short line on why this topic today
+- **`rationale`** (per card): why the joke works / what cultural beat it hits
+- **`evaluation_notes`**: Stage 2 evaluator notes when present
+- **`scores`** / **`overall_score`**: filled when the pipeline produces them
+- **`grounding`**: `{ claim, support, confidence }` when the meme leans on a named person, instrument, or fact
+
+Generation asks for a short reviewer `RATIONALE` in Stage 1 (the meme text still should not explain the joke). A bounded grounding pass (one extra call, cap 12, like the critic loop) flags thin claims such as invented gear lore. If the model cannot cite a known beat (tour, viral clip, or scene stereotype), the candidate is scored down or skipped rather than getting a confident invented caption. Nothing auto-posts.
+
+Older queue JSON without these fields still loads. Empty fields stay hidden on the review page.
+
+### Review UI
+
+On `/memes/gallery/daily-candidates/`, each card has a compact expandable **Why** block (same More/Less pattern as Projects): topic rationale, meme rationale, scores, evaluator notes, grounding. Open it before you approve.
 
 ### Candidate Status Values
 

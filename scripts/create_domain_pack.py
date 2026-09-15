@@ -219,6 +219,7 @@ FORMAT: exact template name from list above
 TOP_TEXT: the top text
 BOTTOM_TEXT: the bottom text
 EXPLANATION: why this is funny to {{ domain.display_name | lower }} insiders
+RATIONALE: one short line for the reviewer — why the joke works / what cultural beat it hits
 SOURCE_QUOTE: quote/fact/context that inspired this, if any
 ARTIST_REFERENCE: person/group/event referenced, if any
 
@@ -270,13 +271,24 @@ CAPTION_PROMPT = """Write a short social media caption for this {{ domain.displa
 
 Meme: {{ top_text }} / {{ bottom_text }}
 Why it is funny: {{ explanation }}
+{% if rationale %}
+Reviewer rationale: {{ rationale }}
+{% endif %}
 Source material: {{ source_quote if source_quote else 'N/A' }}
 Reference: {{ artist_reference if artist_reference else 'N/A' }}
 
 Relevant context:
 {{ context_text if context_text else 'N/A' }}
+{% if grounding_claim %}
+
+GROUNDING (do not invent beyond this):
+Claim: {{ grounding_claim }}
+Support: {{ grounding_support }}
+Confidence: {{ grounding_confidence }}
+{% endif %}
 
 Keep it natural, concise, and do not include hashtags.
+If grounding confidence is low, do not invent festival lore, tours, or gear history.
 """
 
 
