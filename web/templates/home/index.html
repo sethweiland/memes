@@ -48,6 +48,41 @@
         {% endif %}
     </section>
 
+    {% if weather and weather.has_data %}
+    <section class="ops-weather" aria-labelledby="weather-heading">
+        <h2 id="weather-heading">Weather · {{ weather.location }}</h2>
+        <div class="ops-weather-grid">
+            {% for day in weather.days %}
+            <div class="ops-weather-day{% if day.is_inclement %} is-inclement{% endif %}"
+                 data-weather-date="{{ day.date }}"
+                 title="{{ day.weekday_full }}, {{ day.date }}: {{ day.condition }}{% if day.rain > 0 %}, {{ day.rain }}″ rain{% endif %}{% if day.snow > 0 %}, {{ day.snow }}″ snow{% endif %}{% if day.wind > 25 %}, {{ day.wind }} mph wind{% endif %}">
+                <div class="ops-weather-day-name">{{ day.weekday }}</div>
+                <div class="ops-weather-condition">{{ day.condition }}</div>
+                <div class="ops-weather-temps">
+                    <span class="ops-weather-high">{{ day.temp_high }}°</span>
+                    <span class="ops-weather-low">{{ day.temp_low }}°</span>
+                </div>
+                {% if day.is_inclement %}
+                <div class="ops-weather-alert">
+                    {% if day.rain > 0.5 %}
+                    <span class="ops-weather-badge">{{ day.rain }}″ Rain</span>
+                    {% elif day.rain > 0 %}
+                    <span class="ops-weather-badge">Rain</span>
+                    {% endif %}
+                    {% if day.snow > 0 %}
+                    <span class="ops-weather-badge">{{ day.snow }}″ Snow</span>
+                    {% endif %}
+                    {% if day.wind > 25 %}
+                    <span class="ops-weather-badge">{{ day.wind }} mph</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
     {% if calendar %}
     <div class="ops-cal-grid">
         <section class="ops-cal" aria-labelledby="cal-week-heading" data-calendar="this-week">
