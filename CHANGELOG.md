@@ -1,5 +1,17 @@
 # Changelog
 
+## Bigger crests + US TV/streaming providers for sports (2026-09-15)
+
+- **Bigger team crests**: increased from 16×16 to 30×30 pixels for better readability in the week grid view.
+- **Broadcast providers**: Home calendar now shows US TV and streaming networks (e.g., ABC, FOX, ESPN+, Peacock) for sports events when data is available.
+- Data source: `ops/calendar/broadcasts.json` (S3) / `data/calendar/broadcasts.json` (local fallback). Shape: `{ updated_at, timezone, entries: [{ event_id?, date, teams[], title_contains[], providers[], source }] }`.
+- Matching order: calendar `event_id` if present, else date + team IDs, else date + title needles. Longest/most-specific match wins. Never invents entries.
+- Weekly refresh script: `scripts/refresh_broadcasts.py` queries ESPN public scoreboard API (no API key needed) for NCAA football, Premier League, Champions League, and Carabao Cup. Usage: `python scripts/refresh_broadcasts.py [--date YYYY-MM-DD] [--days N]`.
+- Missing/incomplete ESPN data = no provider line on the event (graceful degradation).
+- Documented next to `team-logos.json` in `docs/life-ops.md` + `BucketLayout.calendar_broadcasts_key()`.
+
+---
+
 ## Home calendar opponent crests + category colors (2026-09-14)
 
 - Port of [life-ops PR #4](https://github.com/sethweiland/life-ops/pull/4) so live Fly `meme-ops` / ops.sethweiland.com can show opponent crests and category left-borders.
