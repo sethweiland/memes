@@ -58,7 +58,13 @@ def _fixture(date=DATE):
                 "kind": "reply",
                 "status": "pending",
                 "body": "this riff slaps",
-                "target": {"handle": "@foo", "tweet_id": "12345"},
+                "target": {
+                    "handle": "@foo",
+                    "tweet_id": "12345",
+                    "text": "Check out this amazing banjo solo 🎵",
+                    "url": "https://x.com/foo/status/12345",
+                    "conversation_id": "12300"
+                },
                 "media_urls": [],
                 "created_at": "2026-09-11T12:02:00",
                 "source": "stevie",
@@ -275,6 +281,48 @@ class XActivityFlaskTests(unittest.TestCase):
         follow_only = self.client.get("/x/?date=2026-09-11&kind=follow").get_data(as_text=True)
         self.assertIn("@highlonesome", follow_only)
         self.assertNotIn("New meme drop", follow_only)
+
+    def test_index_shows_original_tweet_context_for_replies(self):
+        """Replies with target.text should show the original tweet being replied to."""
+        self.queue.save(DATE, _fixture())
+        response = self.client.get("/x/?date=2026-09-11")
+        html = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        # Original tweet text should be shown
+        self.assertIn("Check out this amazing banjo solo 🎵", html)
+        # "Replying to:" label should be present
+        self.assertIn("Replying to:", html)
+        # Link to original tweet should be present
+        self.assertIn("https://x.com/foo/status/12345", html)
+        self.assertIn("View original", html)
+        # Draft reply body should still be present
+        self.assertIn("this riff slaps", html)
+
+    def test_index_gracefully_handles_replies_without_target_text(self):
+        """Old replies without target.text should still render without errors."""
+        data = _fixture()
+        # Simulate old reply format without text field
+        old_reply_id = "44444444-4444-4444-4444-444444444444"
+        data["candidates"].append({
+            "id": old_reply_id,
+            "kind": "reply",
+            "status": "pending",
+            "body": "older reply without context",
+            "target": {"handle": "@bar", "tweet_id": "99999"},
+            "media_urls": [],
+            "created_at": "2026-09-11T12:03:00",
+            "source": "stevie",
+            "project": "x",
+        })
+        self.queue.save(DATE, data)
+        response = self.client.get("/x/?date=2026-09-11")
+        html = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        # Old reply should still show
+        self.assertIn("older reply without context", html)
+        self.assertIn("@bar", html)
+        # Should not crash or show "Replying to:" for old format
+        self.assertEqual(html.count("Replying to:"), 1)  # Only for the new-format reply
 
     def test_approve_updates_s3_json_status(self):
         self.queue.save(DATE, _fixture())
