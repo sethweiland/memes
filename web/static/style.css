@@ -136,6 +136,105 @@ nav.subnav a.active { border-bottom-color: #81d4fa; }
     .ops-cal-list li { padding: 8px 0 0; }
 }
 
+/* Weather widget — 7-day compact forecast with inclement emphasis */
+.ops-weather { 
+    background: #fff; 
+    border-radius: 10px; 
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12); 
+    margin-bottom: 20px; 
+}
+.ops-weather h2 { 
+    margin: 0 0 12px; 
+    font-size: 16px; 
+}
+.ops-weather-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); 
+    gap: 8px; 
+}
+.ops-weather-day {
+    background: #fafafa;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+.ops-weather-day:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 6px rgba(0,0,0,.1);
+}
+.ops-weather-day-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.ops-weather-condition {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 6px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.3;
+}
+.ops-weather-temps {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: baseline;
+}
+.ops-weather-high {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+.ops-weather-low {
+    font-size: 14px;
+    color: #666;
+}
+.ops-weather-alert {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ops-weather-badge {
+    background: #f87171;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    display: inline-block;
+}
+/* Inclement weather emphasis */
+.ops-weather-day.is-inclement {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    border-width: 3px;
+    box-shadow: 0 2px 8px rgba(248, 113, 113, 0.2);
+}
+.ops-weather-day.is-inclement .ops-weather-day-name {
+    color: #dc2626;
+}
+.ops-weather-day.is-inclement .ops-weather-condition {
+    color: #991b1b;
+    font-weight: 600;
+}
+@media (min-width: 720px) {
+    .ops-weather-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+}
+
 /* Projects list — mobile-first, one row per bet. Empty lanes do not get columns. */
 .project-filters { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
 .project-filter-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

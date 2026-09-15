@@ -16,6 +16,7 @@ from flask import Blueprint, render_template
 
 from src.core.project_board import get_project_board, waiting_on_you
 from src.core.tenant import module_enabled
+from src.core.weather import get_weather_for_home
 
 
 bp = Blueprint("home", __name__)
@@ -65,6 +66,14 @@ def _calendar_home():
         }
 
 
+def _weather_home():
+    """Return weather forecast for home page, or None on failure."""
+    try:
+        return get_weather_for_home()
+    except Exception:
+        return None
+
+
 @bp.route("/")
 def index():
     pending_x = _pending_x_count()
@@ -75,6 +84,7 @@ def index():
         waiting_projects=_waiting_projects(),
         pending_x_count=pending_x if isinstance(pending_x, int) and pending_x > 0 else None,
         calendar=_calendar_home(),
+        weather=_weather_home(),
     )
 
 
