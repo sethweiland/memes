@@ -87,6 +87,15 @@ cp .env.example .env
 | `REDDIT_CLIENT_ID` | [Reddit Apps](https://www.reddit.com/prefs/apps) - create a "script" app |
 | `REDDIT_CLIENT_SECRET` | Same Reddit app |
 
+**Optional weather location (Home page):**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `WEATHER_LAT` | `40.7282` | Latitude for weather forecast (NYC default) |
+| `WEATHER_LON` | `-73.9942` | Longitude for weather forecast (NYC default) |
+
+The Home page displays a 7-day weather forecast using the free [Open-Meteo API](https://open-meteo.com/) (no API key required). Set `WEATHER_LAT` and `WEATHER_LON` to customize the location. Days with inclement weather (rain, snow, storms, high wind) are visually emphasized.
+
 ### 3. Index the articles (first time only)
 
 ```python
