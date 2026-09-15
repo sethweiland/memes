@@ -8,7 +8,7 @@
                             <span class="ops-cal-when">{{ event.when_label }}</span>
                             {% for crest in event.crests or [] %}
                             {% if crest.logo_url %}
-                            <img class="ops-cal-crest" src="{{ crest.logo_url }}" alt="" width="16" height="16" loading="lazy" decoding="async" data-cal-crest="{{ crest.id }}" onerror="this.remove()">
+                            <img class="ops-cal-crest" src="{{ crest.logo_url }}" alt="" width="30" height="30" loading="lazy" decoding="async" data-cal-crest="{{ crest.id }}" onerror="this.remove()">
                             {% endif %}
                             {% endfor %}
                             {% if event.url %}
@@ -18,6 +18,9 @@
                             {% endif %}
                             {% if event.location %}
                             <span class="ops-cal-location">{{ event.location }}</span>
+                            {% endif %}
+                            {% if event.broadcasts %}
+                            <span class="ops-cal-broadcast">{{ event.broadcasts | join(' · ') }}</span>
                             {% endif %}
                         </li>
 {%- endmacro %}

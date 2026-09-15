@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 
 LOCAL_PATH = Path("data/calendar/snapshot.json")
 LOCAL_TEAM_LOGOS_PATH = Path("data/calendar/team-logos.json")
+LOCAL_BROADCASTS_PATH = Path("data/calendar/broadcasts.json")
 DEFAULT_TZ = "America/New_York"
 ICS_CACHE_SECONDS = 15 * 60
 ICS_MAX_BYTES = 1_000_000
@@ -255,6 +256,15 @@ def empty_team_logos() -> dict[str, Any]:
     }
 
 
+def empty_broadcasts() -> dict[str, Any]:
+    """Empty broadcast map when no data is available."""
+    return {
+        "updated_at": None,
+        "timezone": DEFAULT_TZ,
+        "entries": [],
+    }
+
+
 def _http_url(value: Any) -> Optional[str]:
     logo_url = _blank(value)
     if not logo_url:
@@ -423,6 +433,40 @@ def normalize_team_logos(data: Any) -> Optional[dict[str, Any]]:
     }
 
 
+def normalize_broadcasts(data: Any) -> Optional[dict[str, Any]]:
+    """Normalize broadcast provider map. Never invent entries."""
+    if not isinstance(data, dict):
+        return None
+    entries_raw = data.get("entries")
+    if entries_raw is None or not isinstance(entries_raw, list):
+        return {
+            "updated_at": _blank(data.get("updated_at")),
+            "timezone": _blank(data.get("timezone")) or DEFAULT_TZ,
+            "entries": [],
+        }
+    entries: list[dict[str, Any]] = []
+    for item in entries_raw:
+        if not isinstance(item, dict):
+            continue
+        providers = _string_list(item.get("providers"))
+        if not providers:
+            continue
+        entry = {
+            "event_id": _blank(item.get("event_id")),
+            "date": _blank(item.get("date")),
+            "teams": _string_list(item.get("teams")),
+            "title_contains": _string_list(item.get("title_contains")),
+            "providers": providers,
+            "source": _blank(item.get("source")),
+        }
+        entries.append(entry)
+    return {
+        "updated_at": _blank(data.get("updated_at")),
+        "timezone": _blank(data.get("timezone")) or DEFAULT_TZ,
+        "entries": entries,
+    }
+
+
 def _crest_payload(team: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": team["id"],
@@ -577,6 +621,51 @@ def match_team_crest(title: str, logos: Optional[dict[str, Any]]) -> Optional[di
     """
     crests = match_event_crests(title, logos)
     return crests[0] if crests else None
+
+
+def match_event_broadcast(
+    event_id: str,
+    title: str,
+    date: Optional[date],
+    crests: Optional[list[dict[str, Any]]],
+    broadcasts: Optional[dict[str, Any]],
+) -> Optional[list[str]]:
+    """Match US TV/streaming providers from broadcasts.json. Never invent."""
+    if not isinstance(broadcasts, dict):
+        return None
+    entries = broadcasts.get("entries") or []
+    if not isinstance(entries, list):
+        return None
+    
+    title_lower = (title or "").casefold()
+    date_str = date.isoformat() if date else None
+    crest_ids = {c["id"] for c in crests} if crests else set()
+    
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        providers = entry.get("providers")
+        if not providers or not isinstance(providers, list):
+            continue
+        
+        entry_event_id = _blank(entry.get("event_id"))
+        if entry_event_id and entry_event_id == event_id:
+            return [str(p) for p in providers if _blank(p)]
+        
+        entry_date = _blank(entry.get("date"))
+        if date_str and entry_date == date_str:
+            entry_teams = entry.get("teams") or []
+            if isinstance(entry_teams, list) and crest_ids:
+                entry_team_set = {str(t).casefold() for t in entry_teams if _blank(t)}
+                if entry_team_set and entry_team_set.issubset({c.casefold() for c in crest_ids}):
+                    return [str(p) for p in providers if _blank(p)]
+            
+            title_needles = entry.get("title_contains") or []
+            if isinstance(title_needles, list) and title_needles:
+                if all(_needle_in_title(title_lower, str(needle)) for needle in title_needles if _blank(needle)):
+                    return [str(p) for p in providers if _blank(p)]
+    
+    return None
 
 
 def _category_by_id(logos: Optional[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -833,6 +922,7 @@ def _present_event(
     event: dict[str, Any],
     tz: ZoneInfo,
     team_logos: Optional[dict[str, Any]] = None,
+    broadcasts: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     title = event["title"]
     crests = match_event_crests(title, team_logos)
@@ -842,7 +932,18 @@ def _present_event(
         crests=crests,
         google_color_id=event.get("google_color_id"),
     )
-    return {
+    
+    start_dt = event.get("_start")
+    event_date = start_dt.astimezone(tz).date() if start_dt else None
+    broadcast_providers = match_event_broadcast(
+        event["id"],
+        title,
+        event_date,
+        crests,
+        broadcasts,
+    )
+    
+    result = {
         "id": event["id"],
         "title": title,
         "start": event["start"],
@@ -855,6 +956,11 @@ def _present_event(
         "crest": crests[0] if crests else None,
         "category": category,
     }
+    
+    if broadcast_providers:
+        result["broadcasts"] = broadcast_providers
+    
+    return result
 
 
 def _placement_date(event: dict[str, Any], tz: ZoneInfo, floor: Optional[date] = None) -> date:
@@ -870,6 +976,7 @@ def _group_week_days(
     week_end: datetime,
     tz: ZoneInfo,
     team_logos: Optional[dict[str, Any]] = None,
+    broadcasts: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     today = clock.astimezone(tz).date()
     last = week_end.astimezone(tz).date()
@@ -879,7 +986,7 @@ def _group_week_days(
         day = _placement_date(event, tz, today)
         if day not in buckets:
             day = today if day < today else last
-        buckets[day].append(_present_event(event, tz, team_logos))
+        buckets[day].append(_present_event(event, tz, team_logos, broadcasts))
     return [
         {
             "date": day.isoformat(),
@@ -895,11 +1002,12 @@ def _group_horizon_days(
     hydrated: list[dict[str, Any]],
     tz: ZoneInfo,
     team_logos: Optional[dict[str, Any]] = None,
+    broadcasts: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     buckets: dict[date, list[dict[str, Any]]] = {}
     for event in hydrated:
         day = _placement_date(event, tz)
-        buckets.setdefault(day, []).append(_present_event(event, tz, team_logos))
+        buckets.setdefault(day, []).append(_present_event(event, tz, team_logos, broadcasts))
     return [
         {
             "date": day.isoformat(),
@@ -916,6 +1024,7 @@ def split_home_events(
     now: Optional[datetime] = None,
     timezone_name: Optional[str] = None,
     team_logos: Optional[dict[str, Any]] = None,
+    broadcasts: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
     Split a snapshot into This week vs On the horizon.
@@ -924,6 +1033,7 @@ def split_home_events(
     Optional team_logos attach crests when both sides of vs/@ parse to known
     logos, and a soft category color (sports / music / family_friends / travel /
     other). Google color id on the event wins when it maps.
+    Optional broadcasts attach US TV/streaming providers when matched.
     """
     tz = resolve_timezone(
         timezone_name
@@ -938,6 +1048,9 @@ def split_home_events(
     logos = normalize_team_logos(team_logos) if team_logos is not None else empty_team_logos()
     if logos is None:
         logos = empty_team_logos()
+    bcast = normalize_broadcasts(broadcasts) if broadcasts is not None else empty_broadcasts()
+    if bcast is None:
+        bcast = empty_broadcasts()
 
     this_week_hydrated: list[dict[str, Any]] = []
     horizon_hydrated: list[dict[str, Any]] = []
@@ -950,8 +1063,8 @@ def split_home_events(
         elif _in_horizon(hydrated, horizon_start, horizon_end):
             horizon_hydrated.append(hydrated)
 
-    this_week = [_present_event(event, tz, logos) for event in this_week_hydrated]
-    horizon = [_present_event(event, tz, logos) for event in horizon_hydrated]
+    this_week = [_present_event(event, tz, logos, bcast) for event in this_week_hydrated]
+    horizon = [_present_event(event, tz, logos, bcast) for event in horizon_hydrated]
     return {
         "has_snapshot": has_snapshot,
         "updated_at": (snapshot or {}).get("updated_at") if has_snapshot else None,
@@ -959,11 +1072,11 @@ def split_home_events(
         "this_week": this_week,
         "horizon": horizon,
         "this_week_days": _group_week_days(
-            this_week_hydrated, clock, week_end, tz, logos
+            this_week_hydrated, clock, week_end, tz, logos, bcast
         )
         if has_snapshot
         else [],
-        "horizon_days": _group_horizon_days(horizon_hydrated, tz, logos)
+        "horizon_days": _group_horizon_days(horizon_hydrated, tz, logos, bcast)
         if has_snapshot
         else [],
         "this_week_label": "",
@@ -1198,6 +1311,7 @@ class CalendarStore:
         store: Optional[S3Store] = None,
         local_path: Optional[Path] = None,
         team_logos_path: Optional[Path] = None,
+        broadcasts_path: Optional[Path] = None,
         timezone_name: Optional[str] = None,
         ics_url: Any = _UNSET,
         now: Optional[datetime] = None,
@@ -1205,6 +1319,7 @@ class CalendarStore:
         self.store = store or S3Store()
         self.local_path = local_path or LOCAL_PATH
         self.team_logos_path = team_logos_path or LOCAL_TEAM_LOGOS_PATH
+        self.broadcasts_path = broadcasts_path or LOCAL_BROADCASTS_PATH
         self._timezone_name = timezone_name
         self._ics_url = calendar_ics_url() if ics_url is _UNSET else _blank(ics_url)
         self._now = now
@@ -1229,6 +1344,13 @@ class CalendarStore:
         BucketLayout.require_ops_key(key)
         if key.startswith(BucketLayout.PUBLIC_PREFIX):
             raise ValueError("Team logo map must never be written under public/")
+        return key
+
+    def broadcasts_s3_key(self) -> str:
+        key = BucketLayout.calendar_broadcasts_key()
+        BucketLayout.require_ops_key(key)
+        if key.startswith(BucketLayout.PUBLIC_PREFIX):
+            raise ValueError("Broadcasts map must never be written under public/")
         return key
 
     def save(self, data: dict[str, Any]) -> bool:
@@ -1274,6 +1396,16 @@ class CalendarStore:
             logger.warning("Failed to load local team logo map: %s", exc)
             return None
 
+    def _load_local_broadcasts(self) -> Optional[dict[str, Any]]:
+        if not self.broadcasts_path.exists():
+            return None
+        try:
+            data = json.loads(self.broadcasts_path.read_text(encoding="utf-8"))
+            return normalize_broadcasts(data)
+        except Exception as exc:
+            logger.warning("Failed to load local broadcasts map: %s", exc)
+            return None
+
     def load_team_logos(self) -> dict[str, Any]:
         """S3 ops/calendar/team-logos.json, else local, else empty. Never raises."""
         if self.store.configured:
@@ -1290,6 +1422,23 @@ class CalendarStore:
         if local is not None:
             return local
         return empty_team_logos()
+
+    def load_broadcasts(self) -> dict[str, Any]:
+        """S3 ops/calendar/broadcasts.json, else local, else empty. Never raises."""
+        if self.store.configured:
+            try:
+                result = self.store.get_json(self.broadcasts_s3_key())
+                if result:
+                    data, _etag = result
+                    normalized = normalize_broadcasts(data)
+                    if normalized is not None:
+                        return normalized
+            except Exception as exc:
+                logger.warning("Failed to load broadcasts map from S3: %s", exc)
+        local = self._load_local_broadcasts()
+        if local is not None:
+            return local
+        return empty_broadcasts()
 
     def load_snapshot(self) -> Optional[dict[str, Any]]:
         if self.store.configured:
@@ -1343,11 +1492,17 @@ class CalendarStore:
         except Exception as exc:
             logger.warning("Team logo map unavailable; Home continues without crests: %s", exc)
             logos = empty_team_logos()
+        try:
+            bcast = self.load_broadcasts()
+        except Exception as exc:
+            logger.warning("Broadcasts map unavailable; Home continues without providers: %s", exc)
+            bcast = empty_broadcasts()
         return split_home_events(
             snapshot,
             now=clock,
             timezone_name=self.timezone_name(),
             team_logos=logos,
+            broadcasts=bcast,
         )
 
 

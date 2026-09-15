@@ -16,11 +16,14 @@ import tests.bootstrap  # noqa: F401
 from src.core.calendar import (
     EMPTY_SNAPSHOT_MESSAGE,
     CalendarStore,
+    empty_broadcasts,
     empty_team_logos,
     horizon_bounds,
     infer_event_category,
+    match_event_broadcast,
     match_event_crests,
     match_team_crest,
+    normalize_broadcasts,
     normalize_event,
     normalize_snapshot,
     normalize_team_logos,
@@ -1077,6 +1080,184 @@ END:VCALENDAR
         self.assertIn(BucketLayout.calendar_snapshot_key(), self.store.objects)
         reloaded = self.calendar.load_snapshot()
         self.assertEqual(reloaded["events"][0]["title"], "Saturday dinner")
+
+    def test_normalize_broadcasts_keeps_only_confident_entries(self):
+        data = {
+            "updated_at": "2026-09-12T00:00:00+00:00",
+            "timezone": "America/New_York",
+            "entries": [
+                {
+                    "date": "2026-09-21",
+                    "teams": ["ucla", "purdue"],
+                    "title_contains": ["UCLA", "Purdue"],
+                    "providers": ["FOX", "ESPN+"],
+                    "source": "espn-ncaa-football",
+                },
+                {
+                    "date": "2026-09-21",
+                    "teams": [],
+                    "title_contains": ["Liverpool"],
+                    "providers": [],
+                    "source": "espn-premier-league",
+                },
+            ],
+        }
+        normalized = normalize_broadcasts(data)
+        self.assertIsNotNone(normalized)
+        self.assertEqual(len(normalized["entries"]), 1)
+        self.assertEqual(normalized["entries"][0]["providers"], ["FOX", "ESPN+"])
+        self.assertEqual(normalized["timezone"], "America/New_York")
+        
+        self.assertIsNone(normalize_broadcasts("not a dict"))
+        self.assertEqual(normalize_broadcasts({})["entries"], [])
+        
+        empty = empty_broadcasts()
+        self.assertEqual(empty["entries"], [])
+        self.assertIsNone(empty["updated_at"])
+
+    def test_match_event_broadcast_by_event_id(self):
+        broadcasts = normalize_broadcasts({
+            "updated_at": "2026-09-12T00:00:00+00:00",
+            "timezone": "America/New_York",
+            "entries": [
+                {
+                    "event_id": "ucla-game",
+                    "date": "2026-09-21",
+                    "teams": ["ucla", "purdue"],
+                    "title_contains": ["UCLA", "Purdue"],
+                    "providers": ["FOX", "ESPN+"],
+                    "source": "espn-ncaa-football",
+                },
+            ],
+        })
+        
+        from datetime import date
+        providers = match_event_broadcast(
+            "ucla-game",
+            "UCLA vs Purdue",
+            date(2026, 9, 21),
+            [{"id": "ucla"}],
+            broadcasts,
+        )
+        self.assertEqual(providers, ["FOX", "ESPN+"])
+        
+        no_match = match_event_broadcast(
+            "different-id",
+            "UCLA vs Purdue",
+            date(2026, 9, 21),
+            [{"id": "ucla"}],
+            broadcasts,
+        )
+        self.assertIsNone(no_match)
+
+    def test_match_event_broadcast_by_date_and_teams(self):
+        broadcasts = normalize_broadcasts({
+            "entries": [
+                {
+                    "date": "2026-09-21",
+                    "teams": ["ucla", "purdue"],
+                    "title_contains": [],
+                    "providers": ["ABC"],
+                },
+            ],
+        })
+        
+        from datetime import date
+        providers = match_event_broadcast(
+            "some-id",
+            "UCLA vs Purdue",
+            date(2026, 9, 21),
+            [{"id": "ucla"}, {"id": "purdue"}],
+            broadcasts,
+        )
+        self.assertEqual(providers, ["ABC"])
+        
+        wrong_date = match_event_broadcast(
+            "some-id",
+            "UCLA vs Purdue",
+            date(2026, 9, 22),
+            [{"id": "ucla"}, {"id": "purdue"}],
+            broadcasts,
+        )
+        self.assertIsNone(wrong_date)
+
+    def test_match_event_broadcast_by_title_needles(self):
+        broadcasts = normalize_broadcasts({
+            "entries": [
+                {
+                    "date": "2026-09-21",
+                    "teams": [],
+                    "title_contains": ["Liverpool", "Tottenham"],
+                    "providers": ["Peacock", "USA Network"],
+                },
+            ],
+        })
+        
+        from datetime import date
+        providers = match_event_broadcast(
+            "game-id",
+            "Liverpool vs Tottenham Hotspur — Carabao Cup",
+            date(2026, 9, 21),
+            [{"id": "liverpool"}, {"id": "tottenham"}],
+            broadcasts,
+        )
+        self.assertEqual(providers, ["Peacock", "USA Network"])
+        
+        partial_match = match_event_broadcast(
+            "game-id",
+            "Liverpool vs Chelsea",
+            date(2026, 9, 21),
+            [{"id": "liverpool"}],
+            broadcasts,
+        )
+        self.assertIsNone(partial_match)
+
+    def test_split_home_events_includes_broadcasts(self):
+        logos = _team_logos_map()
+        broadcasts = normalize_broadcasts({
+            "entries": [
+                {
+                    "event_id": "ucla-game",
+                    "date": "2026-09-12",
+                    "teams": ["ucla"],
+                    "title_contains": ["UCLA"],
+                    "providers": ["FOX", "BTN"],
+                },
+            ],
+        })
+        
+        snapshot = normalize_snapshot({
+            "updated_at": "2026-09-12T00:00:00+00:00",
+            "timezone": "America/New_York",
+            "events": [
+                {
+                    "id": "ucla-game",
+                    "title": "UCLA vs Oregon",
+                    "start": "2026-09-12T19:30:00-04:00",
+                    "end": "2026-09-12T22:30:00-04:00",
+                    "all_day": False,
+                },
+                {
+                    "id": "saturday-dinner",
+                    "title": "Saturday dinner",
+                    "start": "2026-09-12T18:00:00-04:00",
+                    "end": "2026-09-12T20:00:00-04:00",
+                    "all_day": False,
+                },
+            ],
+        })
+        
+        lists = split_home_events(
+            snapshot,
+            now=NOW,
+            timezone_name="America/New_York",
+            team_logos=logos,
+            broadcasts=broadcasts,
+        )
+        
+        week_by_title = {event["title"]: event for event in lists["this_week"]}
+        self.assertEqual(week_by_title["UCLA vs Oregon"]["broadcasts"], ["FOX", "BTN"])
+        self.assertNotIn("broadcasts", week_by_title["Saturday dinner"])
 
     def _assert_home_calendar_has_no_operator_chrome(self, html: str) -> None:
         calendar_html = html

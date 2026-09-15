@@ -282,6 +282,7 @@ s3://$MEME_ASSETS_BUCKET/
 | `ops/projects/board.json` | `data/projects/board.json` |
 | `ops/calendar/snapshot.json` | `data/calendar/snapshot.json` |
 | `ops/calendar/team-logos.json` | `data/calendar/team-logos.json`. Empty `{match: [], teams: []}` if both missing. Optional chrome only. `match[]` stays backward-compatible for followed-team needles (UCLA/Liverpool). `teams[]` holds any team id with `aliases` + `logo_url` (longest alias wins). `title_parse.separators` and `categories[]` (hex + `google_color_id`) live on the same object. |
+| `ops/calendar/broadcasts.json` | `data/calendar/broadcasts.json`. Empty `{entries: []}` if both missing. Optional US TV/streaming providers for sports events. Shape: `{ updated_at, timezone, entries: [{ event_id?, date, teams[], title_contains[], providers[], source }] }`. Match order: calendar `event_id`, else date + team IDs, else date + title needles. Never invent entries. Refresh with `scripts/refresh_broadcasts.py` (queries ESPN public API; no key needed). |
 | `ops/queue/x-activity/{date}.json` | `data/x_activity/{date}.json` |
 | `ops/queue/daily-candidates/{date}.json` | `data/daily_candidates/` |
 | `ops/grok-bot/routines.json` | `data/grok_bot_routines.json` |
