@@ -443,7 +443,7 @@ def get_queue_storage() -> QueueStorage:
     return _queue_storage
 
 
-def reset_queue_storage() -> None:
-    """Clear the process-wide QueueStorage (tests)."""
+def reset_queue_storage(queue: QueueStorage | None = None) -> None:
+    """Clear or replace the process-wide QueueStorage (tests)."""
     global _queue_storage
-    _queue_storage = None
+    _queue_storage = queue

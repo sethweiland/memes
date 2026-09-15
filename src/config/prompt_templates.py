@@ -28,6 +28,8 @@ class PromptTemplates:
     TEMPLATE_NAMES = [
         "system_generation",    # Main meme generation system prompt
         "user_generation",      # Main meme generation user prompt
+        "system_generation_free",
+        "user_generation_free",
         "caption",              # Social media caption generation
         "brainstorm",           # Topic brainstorming
         "query_expansion",      # Search query expansion
@@ -62,8 +64,10 @@ class PromptTemplates:
                 self._available_templates.add(name)
 
     def has_template(self, template_name: str) -> bool:
-        """Check if a template exists."""
-        return template_name in self._available_templates
+        """Check if a template exists on disk (not just the static name list)."""
+        if template_name in self._available_templates:
+            return True
+        return (self.prompts_dir / f"{template_name}.j2").exists()
 
     def render(self, template_name: str, **kwargs: Any) -> str:
         """

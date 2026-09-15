@@ -25,6 +25,10 @@ class GeneratedMeme:
     local_path: str | None = None
     score: float | None = None
     caption: str | None = None  # Social media caption with historical context
+    evaluation_notes: str = ""
+    scores: dict | None = None
+    overall_score: float | None = None
+    grounding: dict | None = None
 
 
 class MemeImageGenerator:

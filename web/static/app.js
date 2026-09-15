@@ -520,6 +520,20 @@ function initReviewPage(jobId) {
         if (meme.evaluation_notes) {
             html += '<div class="eval-notes">' + escapeHtml(meme.evaluation_notes) + '</div>';
         }
+        if (meme.rationale) {
+            html += '<div class="eval-notes meme-rationale"><strong>Why:</strong> ' + escapeHtml(meme.rationale) + '</div>';
+        }
+        if (meme.grounding && (meme.grounding.claim || meme.grounding.support)) {
+            html += '<div class="eval-notes meme-grounding">';
+            html += '<strong>Grounding:</strong> ' + escapeHtml(meme.grounding.claim || '');
+            if (meme.grounding.support) {
+                html += ' — ' + escapeHtml(meme.grounding.support);
+            }
+            if (meme.grounding.confidence) {
+                html += ' <em>(' + escapeHtml(meme.grounding.confidence) + ')</em>';
+            }
+            html += '</div>';
+        }
 
         // Feedback: star rating + textarea
         html += '<div class="feedback-section">';

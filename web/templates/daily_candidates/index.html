@@ -15,6 +15,9 @@
         </div>
         <div class="gallery-counts" style="margin-top:4px;">
             Topic: <strong>{{ data.topic }}</strong>
+            {% if data.topic_rationale %}
+            <div class="topic-rationale">{{ data.topic_rationale }}</div>
+            {% endif %}
         </div>
         {% endif %}
     </div>
@@ -73,6 +76,47 @@
                 <span>Score: {{ candidate.overall_score }}/10</span>
                 <span>Index: #{{ candidate.index }}</span>
             </div>
+            {% endif %}
+
+            {% set topic_rationale = data.topic_rationale|default('', true) %}
+            {% if candidate_has_why(candidate, topic_rationale) %}
+            <details class="project-expand candidate-why" data-field="why">
+                <summary>
+                    <span class="project-expand-preview">{{ why_preview(candidate, topic_rationale) }}</span>
+                    <span class="project-expand-toggle"><span class="project-expand-more">Why</span><span class="project-expand-less">Less</span></span>
+                </summary>
+                <div class="project-expand-full candidate-why-full">
+                    {% if topic_rationale %}
+                    <p><span class="project-field-label">Topic</span> {{ topic_rationale }}</p>
+                    {% endif %}
+                    {% if candidate.rationale %}
+                    <p><span class="project-field-label">Joke</span> {{ candidate.rationale }}</p>
+                    {% endif %}
+                    {% if candidate.overall_score is not none or (candidate.scores is mapping and candidate.scores|length) %}
+                    <p><span class="project-field-label">Scores</span>
+                        {% if candidate.overall_score is not none %}Overall {{ candidate.overall_score }}/10{% endif %}
+                        {% if candidate.scores is mapping and candidate.scores|length %}
+                            {% for name, value in candidate.scores.items() %}
+                            · {{ name }} {{ value }}
+                            {% endfor %}
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    {% if candidate.evaluation_notes %}
+                    <p><span class="project-field-label">Evaluator</span> {{ candidate.evaluation_notes }}</p>
+                    {% endif %}
+                    {% if candidate.grounding and (candidate.grounding.claim or candidate.grounding.support) %}
+                    <p class="candidate-grounding{% if candidate.grounding.confidence == 'low' %} is-low{% endif %}">
+                        <span class="project-field-label">Grounding</span>
+                        {% if candidate.grounding.claim %}{{ candidate.grounding.claim }}{% endif %}
+                        {% if candidate.grounding.support %} — {{ candidate.grounding.support }}{% endif %}
+                        {% if candidate.grounding.confidence %}
+                        <span class="grounding-confidence">{{ candidate.grounding.confidence }}</span>
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            </details>
             {% endif %}
             
             <!-- Caption Editor -->
@@ -221,6 +265,40 @@
 .fade-out {
     opacity: 0.3;
     transition: opacity 0.3s;
+}
+
+.topic-rationale {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #555;
+}
+
+.candidate-why {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #444;
+}
+
+.candidate-why-full p {
+    margin: 0 0 8px;
+}
+
+.candidate-why-full p:last-child {
+    margin-bottom: 0;
+}
+
+.candidate-grounding.is-low {
+    color: #92400e;
+}
+
+.grounding-confidence {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6b7280;
 }
 </style>
 

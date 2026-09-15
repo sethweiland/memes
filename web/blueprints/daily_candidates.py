@@ -9,8 +9,9 @@ from pathlib import Path
 
 from flask import Blueprint, render_template, request, jsonify, abort
 
-from src.core.meme_assets import upload_meme_to_s3, get_queue_storage
+from src.core.daily_queue import candidate_has_why, why_preview
 from src.core.instagram_publisher import publish_to_instagram
+from src.core.meme_assets import upload_meme_to_s3, get_queue_storage
 
 
 bp = Blueprint("daily_candidates", __name__, url_prefix="/memes/gallery/daily-candidates")
@@ -53,6 +54,8 @@ def index():
         selected_date=selected_date,
         data=data,
         available_dates=available_dates,
+        candidate_has_why=candidate_has_why,
+        why_preview=why_preview,
     )
 
 

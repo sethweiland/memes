@@ -1,6 +1,6 @@
 """
 Two-stage meme generation pipeline (human-in-the-loop).
-Stage 1: Generate freely without explanation.
+Stage 1: Generate with a short reviewer rationale (not a joke lecture in the meme text).
 Stage 2: Evaluate using domain-specific criteria.
 
 Supports both domain-specific (TwoStagePipeline) and generic (GenericTwoStagePipeline) modes.
@@ -32,10 +32,16 @@ class EvaluatedMeme:
     is_absurdist: bool = False    # Flag for intentional absurdism
     template_category: str = ""   # "trending", "new", "classic", or ""
     generation_source: str = ""   # e.g. "critic_rewrite"
+    grounding: dict | None = None  # {claim, support, confidence} when a specific fact is used
+    grounding_action: str = "ok"   # ok | downscore | skip
 
     def get_score(self, criterion: str) -> int:
         """Get score for a specific criterion."""
         return self.scores.get(criterion, 0)
+
+    @property
+    def rationale(self) -> str:
+        return (self.idea.rationale or self.idea.explanation or "").strip()
 
     def to_dict(self) -> dict:
         result = {
@@ -44,12 +50,29 @@ class EvaluatedMeme:
             "bottom_text": self.idea.bottom_text,
             "overall_score": self.overall_score,
             "evaluation_notes": self.evaluation_notes,
+            "rationale": self.rationale,
             "is_absurdist": self.is_absurdist,
             "template_category": self.template_category,
         }
+        if self.grounding:
+            result["grounding"] = self.grounding
         # Add individual scores
         result.update(self.scores)
         return result
+
+
+def _attach_evaluation(images: list[GeneratedMeme], evaluated: list[EvaluatedMeme]) -> None:
+    """Copy scores / notes / grounding onto generated images (same idea objects)."""
+    by_idea = {id(item.idea): item for item in evaluated}
+    for img in images:
+        item = by_idea.get(id(img.idea))
+        if item is None:
+            continue
+        img.evaluation_notes = item.evaluation_notes or ""
+        img.scores = item.scores or {}
+        img.overall_score = item.overall_score
+        img.grounding = item.grounding
+        img.score = item.overall_score
 
 
 def _format_context_text(context: list[dict], current_events_context: str = "", max_chars: int = 600) -> str:
@@ -106,8 +129,8 @@ class TwoStagePipeline:
         creative_brief: str = "",
     ) -> list[MemeIdea]:
         """
-        Stage 1: Generate memes WITHOUT explanation requirement.
-        Higher creativity, no justification needed = more unexpected ideas.
+        Stage 1: Generate memes with a short reviewer rationale, not a joke lecture.
+        Meme text stays unexplained; RATIONALE is one line for the human.
 
         Args:
             previously_covered: Topics/references from prior batches to avoid repeating
@@ -126,7 +149,8 @@ class TwoStagePipeline:
             system_prompt = self.prompts.render("system_generation_free")
         else:
             system_prompt = f"""You are a comedy writer for {self.domain.display_name.lower()} memes.
-Be weird, unexpected, creative. Take risks. No explanations needed - just write funny memes."""
+Be weird, unexpected, creative. Take risks. Do not explain the joke in the meme text.
+After each meme, add one short RATIONALE line for the human reviewer (why it works / what beat it hits)."""
 
         if self.prompts.has_template("user_generation_free"):
             user_prompt = self.prompts.render(
@@ -148,7 +172,7 @@ CONTEXT FROM {self.domain.content_source_description.upper()}:
 {trending_section}
 
 Generate {num_ideas} memes. Be creative, unexpected, absurdist. Take risks.
-DON'T explain why they're funny - just write them.
+Do not explain the joke IN the meme text.
 
 TEMPLATE REQUIREMENTS — STRICT:
 - EVERY meme must use a DIFFERENT template (no duplicates!)
@@ -161,6 +185,7 @@ Use EXACT format:
 FORMAT: template name
 TOP_TEXT: top text
 BOTTOM_TEXT: bottom text
+RATIONALE: one short line for the reviewer — why the joke works / what cultural beat it hits
 
 ---
 
@@ -195,7 +220,7 @@ FORMAT: next template..."""
         response = self.rag.grok._chat([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
-        ], max_tokens=2000, temperature=self.config.generation_creativity)
+        ], max_tokens=2500, temperature=self.config.generation_creativity)
 
         return self.rag.grok._parse_meme_response(response)
 
@@ -213,11 +238,13 @@ FORMAT: next template..."""
 
         meme_list = ""
         for i, m in enumerate(memes, 1):
+            rationale = (m.rationale or m.explanation or "").strip()
             meme_list += f"""
 MEME {i}:
 Template: {m.format}
 Top: {m.top_text}
 Bottom: {m.bottom_text}
+Rationale: {rationale or "(none)"}
 """
 
         criteria_section = self.domain.get_evaluation_prompt_section()
@@ -426,7 +453,7 @@ Be STRICT on accuracy criteria. If a fact is made up, score it low."""
 
         # Stage 1: Generate freely
         print(f"\n{'='*70}")
-        print("STAGE 1: FREE GENERATION (no explanation required)")
+        print("STAGE 1: FREE GENERATION (short reviewer rationale, no joke-explaining in the meme)")
         print(f"{'='*70}")
 
         all_memes = []
@@ -492,6 +519,13 @@ Be STRICT on accuracy criteria. If a fact is made up, score it low."""
         evaluated = self.evaluate_for_review(all_memes, context_text)
         print(f"Evaluated {len(evaluated)} memes")
 
+        try:
+            from .grounding import ground_evaluated
+            print("Grounding specific person/gear claims (bounded)...")
+            evaluated = ground_evaluated(self.rag.grok, topic, evaluated)
+        except Exception as exc:
+            print(f"Grounding pass skipped: {exc}")
+
         # Present for review
         self.review_candidates(evaluated, num_to_review)
 
@@ -512,14 +546,17 @@ Be STRICT on accuracy criteria. If a fact is made up, score it low."""
         Returns:
             List of GeneratedMeme with local file paths
         """
-        selected = [evaluated[i - 1].idea for i in indices if 0 < i <= len(evaluated)]
+        selected_items = [evaluated[i - 1] for i in indices if 0 < i <= len(evaluated)]
+        selected = [item.idea for item in selected_items]
 
         if not selected:
             print("No valid memes selected.")
             return []
 
         print(f"\nGenerating {len(selected)} selected memes...")
-        return self.pipeline.generate_images_from_concepts(selected, num_images=len(selected))
+        images = self.pipeline.generate_images_from_concepts(selected, num_images=len(selected))
+        _attach_evaluation(images, selected_items)
+        return images
 
 
 class GenericTwoStagePipeline:
@@ -611,7 +648,7 @@ Your response (just the persona, nothing else):"""
         format_lane: str = "mixed",
     ) -> list[MemeIdea]:
         """
-        Stage 1: Generate memes WITHOUT explanation requirement.
+        Stage 1: Generate memes with a short reviewer rationale, not a joke lecture.
         Works with any topic, not just domain-specific ones.
 
         Args:
@@ -743,13 +780,14 @@ STYLE REQUIREMENTS:
 - At least 2 should be UNHINGED/ABSURDIST (intentionally weird)
 - At least 2 should be HYPER-SPECIFIC (detailed scenarios)
 - Aim for actual laughs, not polite smiles
-- NO explanations — if you have to explain it, rewrite it
+- Do not explain the joke IN the meme text — if you have to, rewrite it
 
 Use EXACT format:
 
 FORMAT: template name
 TOP_TEXT: top text
 BOTTOM_TEXT: bottom text
+RATIONALE: one short line for the reviewer — why the joke works / what cultural beat it hits
 
 ---
 
@@ -780,7 +818,7 @@ FORMAT: next template..."""
         response = self.grok._chat([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
-        ], max_tokens=2000, temperature=self.config.generation_creativity)
+        ], max_tokens=2500, temperature=self.config.generation_creativity)
 
         return self.grok._parse_meme_response(response)
 
@@ -798,11 +836,13 @@ FORMAT: next template..."""
 
         meme_list = ""
         for i, m in enumerate(memes, 1):
+            rationale = (m.rationale or m.explanation or "").strip()
             meme_list += f"""
 MEME {i}:
 Template: {m.format}
 Top: {m.top_text}
 Bottom: {m.bottom_text}
+Rationale: {rationale or "(none)"}
 """
 
         criteria_section = self.domain.get_evaluation_prompt_section()
@@ -983,17 +1023,26 @@ Reward one clear comedic turn, painful truth, inside-scene specificity, deadpan 
 
         for img in images:
             idea = img.idea
+            grounding = img.grounding or {}
+            grounding_block = ""
+            if grounding.get("claim"):
+                grounding_block = (
+                    f"\nGROUNDING (do not invent beyond this): "
+                    f"{grounding.get('claim')} — {grounding.get('support', '')} "
+                    f"(confidence: {grounding.get('confidence', '')})\n"
+                )
 
             prompt = f"""Write a short social media caption (1-2 sentences) for this meme.
 
 Meme template: {idea.format}
 Top text: {idea.top_text}
 Bottom text: {idea.bottom_text}
-
+{grounding_block}
 The caption should:
 - Be witty or add context
 - Sound natural for Instagram/Twitter
 - NOT include hashtags
+- If grounding confidence is low, do not invent festival lore, tours, or gear history
 
 Just write the caption, nothing else."""
 
@@ -1024,11 +1073,14 @@ Just write the caption, nothing else."""
         Returns:
             List of GeneratedMeme with local file paths
         """
-        selected = [evaluated[i - 1].idea for i in indices if 0 < i <= len(evaluated)]
+        selected_items = [evaluated[i - 1] for i in indices if 0 < i <= len(evaluated)]
+        selected = [item.idea for item in selected_items]
 
         if not selected:
             print("No valid memes selected.")
             return []
 
         print(f"\nGenerating {len(selected)} selected memes...")
-        return self.generate_images_from_concepts(selected, num_images=len(selected))
+        images = self.generate_images_from_concepts(selected, num_images=len(selected))
+        _attach_evaluation(images, selected_items)
+        return images

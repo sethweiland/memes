@@ -20,6 +20,7 @@ class MemeIdea:
     explanation: str
     source_quote: str  # Original quote that inspired this
     artist_reference: str
+    rationale: str = ""  # Short reviewer note: why the joke works / cultural beat
 
 
 class GrokClient:
@@ -229,13 +230,16 @@ FORMAT: next meme...
                         data = [data]
                     for item in data:
                         if isinstance(item, dict):
+                            explanation = item.get("explanation", "") or ""
+                            rationale = item.get("rationale", "") or ""
                             memes.append(MemeIdea(
                                 format=item.get("format", item.get("template", "")),
                                 top_text=item.get("top_text", ""),
                                 bottom_text=item.get("bottom_text", ""),
-                                explanation=item.get("explanation", ""),
+                                explanation=explanation,
                                 source_quote=item.get("source_quote", ""),
                                 artist_reference=item.get("artist_reference", ""),
+                                rationale=rationale or explanation,
                             ))
                     if memes:
                         return memes
@@ -262,7 +266,7 @@ FORMAT: next meme...
         field_marker_re = re.compile(
             r'\b(FORMAT|TEMPLATE|TOP[_ ]?(?:TEXT|PANEL[_ ]?TEXT)|BOTTOM[_ ]?(?:TEXT|PANEL[_ ]?TEXT)|'
             r'TOP_PANEL_TEXT|BOTTOM_PANEL_TEXT|PANEL[_ ]?\d+[_ ]?TEXT|'
-            r'EXPLANATION|SOURCE[_ ]?QUOTE|ARTIST[_ ]?REFERENCE):',
+            r'EXPLANATION|RATIONALE|SOURCE[_ ]?QUOTE|ARTIST[_ ]?REFERENCE):',
             flags=re.IGNORECASE,
         )
 
@@ -282,6 +286,7 @@ FORMAT: next meme...
                 explanation="",
                 source_quote="",
                 artist_reference="",
+                rationale="",
             )
 
             section = normalize_inline_markers(section)
@@ -328,6 +333,9 @@ FORMAT: next meme...
                 elif upper_line.startswith("EXPLANATION:"):
                     meme.explanation = clean_value(line.split(":", 1)[1])
                     current_field = "explanation"
+                elif upper_line.startswith("RATIONALE:"):
+                    meme.rationale = clean_value(line.split(":", 1)[1])
+                    current_field = "rationale"
                 elif upper_line.startswith("SOURCE_QUOTE:") or upper_line.startswith("SOURCE QUOTE:"):
                     meme.source_quote = clean_value(line.split(":", 1)[1])
                     current_field = "source_quote"
@@ -344,6 +352,11 @@ FORMAT: next meme...
                 if panels:
                     meme.top_text = panels[0]
                     meme.bottom_text = " / ".join(panels[1:])
+
+            if not meme.rationale and meme.explanation:
+                meme.rationale = meme.explanation
+            if not meme.explanation and meme.rationale:
+                meme.explanation = meme.rationale
 
             if meme.format or meme.top_text:  # Has some content
                 memes.append(meme)
